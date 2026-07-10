@@ -254,11 +254,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main area */}
-      <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:1.6fr_1fr]">
+      {/* Main area — equal-height columns on desktop; cards scroll internally */}
+      <div className="grid grid-cols-1 gap-4 xl:h-[600px] xl:grid-cols-[1.6fr_1fr]">
         {/* Left column: workload + recently completed */}
-        <div className="flex flex-col gap-4">
-        <Card className="flex max-h-[440px] flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-4">
+        <Card className="flex max-h-[440px] flex-col overflow-hidden xl:max-h-none xl:min-h-0 xl:flex-[2]">
           <CardHeader className="flex-none">
             <CardTitle>ภาระงานของทีม</CardTitle>
             <Link href="/tasks" className="text-[12.5px] font-medium text-teal-600 hover:underline">
@@ -284,7 +284,7 @@ export default function DashboardPage() {
         </Card>
 
           {/* Recently completed */}
-          <Card className="flex max-h-[320px] flex-col overflow-hidden">
+          <Card className="flex max-h-[320px] flex-col overflow-hidden xl:max-h-none xl:min-h-0 xl:flex-1">
             <CardHeader className="flex-none">
               <CardTitle>งานที่เพิ่งเสร็จ</CardTitle>
             </CardHeader>
@@ -310,9 +310,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Right column: report status + blockers + activity */}
-        <div className="flex flex-col gap-4">
+        <div className="flex min-h-0 flex-col gap-4">
           {/* Report status */}
-          <Card>
+          <Card className="xl:flex-none">
             <CardHeader>
               <CardTitle>สถานะรายงานวันนี้</CardTitle>
               <Link href="/standup" className="text-[12.5px] font-medium text-teal-600 hover:underline">
@@ -348,7 +348,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Blockers */}
-          <Card className="flex max-h-[360px] flex-col overflow-hidden">
+          <Card className="flex max-h-[360px] flex-col overflow-hidden xl:max-h-none xl:min-h-0 xl:flex-1">
             <CardHeader className="flex-none">
               <CardTitle>อุปสรรคล่าสุด</CardTitle>
               {!!insights?.topBlockers.length && (
@@ -385,7 +385,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent activity */}
-          <Card className="flex max-h-[380px] flex-col overflow-hidden">
+          <Card className="flex max-h-[380px] flex-col overflow-hidden xl:max-h-none xl:min-h-0 xl:flex-1">
             <div className="flex flex-none items-center gap-2 border-b border-hairline px-[18px] py-3.5 text-[14px] font-semibold">
               <Clock className="size-4 text-muted-foreground" />
               กิจกรรมของทีม
