@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { RequireAuth } from "@/components/require-auth";
 import { DataProvider } from "@/lib/store";
 
 export default function AppLayout({
@@ -7,8 +8,10 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DataProvider>
-      <AppShell>{children}</AppShell>
-    </DataProvider>
+    <RequireAuth>
+      <DataProvider>
+        <AppShell>{children}</AppShell>
+      </DataProvider>
+    </RequireAuth>
   );
 }

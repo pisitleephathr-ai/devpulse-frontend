@@ -37,9 +37,7 @@ export default function CreateReportPage() {
               addReport(data);
               router.push("/reports");
               toast(
-                data.status === "ฉบับร่าง"
-                  ? "บันทึกฉบับร่างแล้ว"
-                  : "ส่งรายงานแล้ว"
+                data.status === "DRAFT" ? "บันทึกฉบับร่างแล้ว" : "ส่งรายงานแล้ว"
               );
             }}
             onCancel={() => router.push("/reports")}

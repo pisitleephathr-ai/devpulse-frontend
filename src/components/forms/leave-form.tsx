@@ -7,42 +7,27 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FormActions } from "@/components/form-card";
 import {
-  LEAVE_TYPES_FORM,
-  CURRENT_USER,
-  type Leave,
-} from "@/lib/mock-data";
+  LEAVE_TYPE_ENUM_OPTIONS,
+  type LeaveTypeEnum,
+  type LeaveInput,
+} from "@/lib/mappers";
 
-const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-
-function fmt(iso: string) {
-  const [, m, d] = iso.split("-").map(Number);
-  return `${d} ${MONTHS[m - 1]}`;
-}
-
-function rangeLabel(start: string, end: string) {
-  if (start === end) return fmt(start);
-  const [, m1, d1] = start.split("-").map(Number);
-  const [, m2, d2] = end.split("-").map(Number);
-  if (m1 === m2) return `${d1}–${d2} ${MONTHS[m1 - 1]}`;
-  return `${fmt(start)} – ${fmt(end)}`;
-}
-
-function daysBetween(start: string, end: string) {
-  const ms = new Date(end).getTime() - new Date(start).getTime();
-  return Math.max(1, Math.round(ms / 86_400_000) + 1);
-}
-
-type Values = { type: string; start: string; end: string; reason: string };
+type Values = {
+  type: LeaveTypeEnum;
+  start: string;
+  end: string;
+  reason: string;
+};
 
 const EMPTY: Values = {
-  type: LEAVE_TYPES_FORM[0],
+  type: "VACATION",
   start: "2026-07-27",
   end: "2026-07-31",
   reason: "",
 };
 
 type LeaveFormProps = {
-  onSubmit: (data: Omit<Leave, "id">) => void;
+  onSubmit: (data: LeaveInput) => void;
   onCancel: () => void;
 };
 
@@ -68,24 +53,26 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
   function submit() {
     if (!validate()) return;
     setSubmitting(true);
-    const data: Omit<Leave, "id"> = {
-      name: CURRENT_USER.name,
-      key: CURRENT_USER.key,
+    const data: LeaveInput = {
       type: values.type,
-      dates: rangeLabel(values.start, values.end),
-      days: daysBetween(values.start, values.end),
+      startDate: values.start,
+      endDate: values.end,
       reason: values.reason.trim(),
-      status: "รออนุมัติ",
     };
-    setTimeout(() => onSubmit(data), 450);
+    setTimeout(() => onSubmit(data), 300);
   }
 
   return (
     <div className="flex flex-col gap-4">
       <Field label="ประเภทการลา">
-        <Select value={values.type} onChange={(e) => set("type", e.target.value)}>
-          {LEAVE_TYPES_FORM.map((t) => (
-            <option key={t}>{t}</option>
+        <Select
+          value={values.type}
+          onChange={(e) => set("type", e.target.value as LeaveTypeEnum)}
+        >
+          {LEAVE_TYPE_ENUM_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </Select>
       </Field>
@@ -126,15 +113,9 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
         <Button
           type="button"
           variant="secondary"
+          onClick={onCancel}
           disabled={submitting}
-          onClick={() => {
-            setValues(EMPTY);
-            setErrors({});
-          }}
         >
-          รีเซ็ต
-        </Button>
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
           ยกเลิก
         </Button>
         <Button type="button" onClick={submit} disabled={submitting}>

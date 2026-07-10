@@ -1,0 +1,253 @@
+/**
+ * Translation layer between the backend API (English enums, ISO dates, ids)
+ * and the frontend's existing view types (Thai/English display strings,
+ * "d ม." dates, avatarKey). Keeps the UI untouched — components keep consuming
+ * the same shapes from mock-data.ts.
+ */
+import type {
+  Report,
+  Task,
+  Leave,
+  User,
+  Priority,
+  TaskStatus,
+} from "./mock-data";
+
+/* ----------------------------- Enum types ------------------------------ */
+
+export type RoleEnum = "MANAGER" | "ADMIN" | "DEVELOPER" | "QA";
+export type ReportStatusEnum = "SUBMITTED" | "DRAFT" | "LATE";
+export type TaskStatusEnum = "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+export type PriorityEnum = "HIGH" | "MEDIUM" | "LOW";
+export type LeaveTypeEnum = "VACATION" | "SICK" | "PERSONAL" | "PARENTAL";
+export type LeaveStatusEnum = "PENDING" | "APPROVED" | "REJECTED";
+
+/* --------------------------- API entity types -------------------------- */
+
+export type ApiUserMini = {
+  id: string;
+  name: string;
+  avatarKey: string;
+  role: RoleEnum;
+};
+export type ApiUser = ApiUserMini & {
+  email: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+export type ApiProject = {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
+};
+export type ApiReport = {
+  id: string;
+  date: string;
+  summary: string;
+  did: string;
+  blockers: string;
+  plan: string;
+  status: ReportStatusEnum;
+  author: ApiUserMini;
+  project: ApiProject;
+};
+export type ApiTask = {
+  id: string;
+  title: string;
+  priority: PriorityEnum;
+  status: TaskStatusEnum;
+  dueDate: string | null;
+  project: ApiProject;
+  assignee: ApiUserMini | null;
+};
+export type ApiLeave = {
+  id: string;
+  type: LeaveTypeEnum;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string;
+  status: LeaveStatusEnum;
+  user: ApiUserMini;
+  reviewedBy: ApiUserMini | null;
+};
+export type ApiActivity = {
+  id: string;
+  action: string;
+  message: string;
+  createdAt: string;
+  user: ApiUserMini;
+};
+
+/* --------------------------- Enum ↔ label maps ------------------------- */
+
+export const ROLE_TO_TH: Record<RoleEnum, string> = {
+  MANAGER: "หัวหน้าทีม",
+  ADMIN: "ผู้ดูแลระบบ",
+  DEVELOPER: "นักพัฒนา",
+  QA: "QA",
+};
+export const REPORT_STATUS_TO_TH: Record<ReportStatusEnum, string> = {
+  SUBMITTED: "ส่งแล้ว",
+  DRAFT: "ฉบับร่าง",
+  LATE: "ส่งช้า",
+};
+export const TASK_STATUS_TO_LABEL: Record<TaskStatusEnum, TaskStatus> = {
+  TODO: "Todo",
+  IN_PROGRESS: "In Progress",
+  REVIEW: "Review",
+  DONE: "Done",
+};
+export const PRIORITY_TO_LABEL: Record<PriorityEnum, Priority> = {
+  HIGH: "High",
+  MEDIUM: "Medium",
+  LOW: "Low",
+};
+export const LEAVE_TYPE_TO_TH: Record<LeaveTypeEnum, string> = {
+  VACATION: "ลาพักร้อน",
+  SICK: "ลาป่วย",
+  PERSONAL: "ลากิจ",
+  PARENTAL: "ลาเลี้ยงดูบุตร",
+};
+export const LEAVE_STATUS_TO_TH: Record<LeaveStatusEnum, string> = {
+  PENDING: "รออนุมัติ",
+  APPROVED: "อนุมัติแล้ว",
+  REJECTED: "ปฏิเสธ",
+};
+
+function invert<T extends string>(map: Record<T, string>): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(map).map(([k, v]) => [v, k])
+  ) as Record<string, T>;
+}
+export const TH_TO_ROLE = invert(ROLE_TO_TH);
+export const TH_TO_REPORT_STATUS = invert(REPORT_STATUS_TO_TH);
+export const LABEL_TO_TASK_STATUS = invert(TASK_STATUS_TO_LABEL);
+export const LABEL_TO_PRIORITY = invert(PRIORITY_TO_LABEL);
+export const TH_TO_LEAVE_TYPE = invert(LEAVE_TYPE_TO_TH);
+export const TH_TO_LEAVE_STATUS = invert(LEAVE_STATUS_TO_TH);
+
+/* Option lists (value = enum sent to API, label = display string). */
+export const REPORT_STATUS_ENUM_OPTIONS = enumOptions(REPORT_STATUS_TO_TH);
+export const TASK_STATUS_ENUM_OPTIONS = enumOptions(TASK_STATUS_TO_LABEL);
+export const PRIORITY_ENUM_OPTIONS = enumOptions(PRIORITY_TO_LABEL);
+export const LEAVE_TYPE_ENUM_OPTIONS = enumOptions(LEAVE_TYPE_TO_TH);
+export const ROLE_ENUM_OPTIONS = enumOptions(ROLE_TO_TH);
+
+function enumOptions<T extends string>(map: Record<T, string>) {
+  return (Object.entries(map) as [T, string][]).map(([value, label]) => ({
+    value,
+    label,
+  }));
+}
+
+/* ------------------------------ Date helpers --------------------------- */
+
+const MONTHS_TH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+export function formatThaiDate(iso: string | Date): string {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS_TH[d.getMonth()]}`;
+}
+
+export function formatThaiRange(startIso: string, endIso: string): string {
+  const s = new Date(startIso);
+  const e = new Date(endIso);
+  if (s.getTime() === e.getTime()) return formatThaiDate(s);
+  if (s.getMonth() === e.getMonth())
+    return `${s.getDate()}–${e.getDate()} ${MONTHS_TH[s.getMonth()]}`;
+  return `${formatThaiDate(s)} – ${formatThaiDate(e)}`;
+}
+
+/* ----------------------------- API → view ------------------------------ */
+
+export function mapUser(u: ApiUser): User {
+  return {
+    id: u.id,
+    name: u.name,
+    key: u.avatarKey,
+    email: u.email,
+    role: ROLE_TO_TH[u.role] ?? u.role,
+    active: u.active,
+  };
+}
+
+export function mapReport(r: ApiReport): Report {
+  return {
+    id: r.id,
+    date: formatThaiDate(r.date),
+    name: r.author.name,
+    key: r.author.avatarKey,
+    proj: r.project.name,
+    summary: r.summary,
+    status: REPORT_STATUS_TO_TH[r.status] ?? r.status,
+    did: r.did,
+    blockers: r.blockers,
+    plan: r.plan,
+  };
+}
+
+export function mapTask(t: ApiTask): Task {
+  return {
+    id: t.id,
+    title: t.title,
+    proj: t.project.code,
+    projFg: t.project.color,
+    key: t.assignee?.avatarKey ?? "?",
+    pri: PRIORITY_TO_LABEL[t.priority],
+    due: t.dueDate ? formatThaiDate(t.dueDate) : "—",
+    status: TASK_STATUS_TO_LABEL[t.status],
+  };
+}
+
+export function mapLeave(l: ApiLeave): Leave {
+  return {
+    id: l.id,
+    name: l.user.name,
+    key: l.user.avatarKey,
+    type: LEAVE_TYPE_TO_TH[l.type] ?? l.type,
+    dates: formatThaiRange(l.startDate, l.endDate),
+    days: l.days,
+    reason: l.reason,
+    status: LEAVE_STATUS_TO_TH[l.status] ?? l.status,
+  };
+}
+
+/* ---------------------------- Input DTO types -------------------------- */
+
+export type ReportInput = {
+  projectId: string;
+  date?: string;
+  summary?: string;
+  did: string;
+  blockers?: string;
+  plan?: string;
+  status?: ReportStatusEnum;
+};
+export type TaskInput = {
+  title: string;
+  projectId: string;
+  assigneeId?: string | null;
+  priority?: PriorityEnum;
+  status?: TaskStatusEnum;
+  dueDate?: string | null;
+};
+export type LeaveInput = {
+  type: LeaveTypeEnum;
+  startDate: string;
+  endDate: string;
+  reason: string;
+};
+export type UserInput = {
+  name: string;
+  email: string;
+  password: string;
+  role?: RoleEnum;
+};
+export type UserUpdateInput = Partial<{
+  name: string;
+  role: RoleEnum;
+  active: boolean;
+}>;

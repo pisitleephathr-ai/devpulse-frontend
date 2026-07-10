@@ -1,60 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Field, FormActions } from "@/components/form-card";
+import { useData } from "@/lib/store";
 import {
-  TASK_PROJECTS,
-  TASK_STATUSES,
-  PRIORITIES,
-  TEAM_MEMBERS,
-  type Task,
-  type Priority,
-  type TaskStatus,
-} from "@/lib/mock-data";
+  PRIORITY_ENUM_OPTIONS,
+  TASK_STATUS_ENUM_OPTIONS,
+  LABEL_TO_PRIORITY,
+  LABEL_TO_TASK_STATUS,
+  type PriorityEnum,
+  type TaskStatusEnum,
+  type TaskInput,
+} from "@/lib/mappers";
+import type { Task, TaskStatus } from "@/lib/mock-data";
 
-const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-function formatThaiDate(iso: string) {
-  const [, m, d] = iso.split("-").map(Number);
-  return `${d} ${MONTHS[m - 1]}`;
+const MONTHS_TH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+/** Best-effort "14 ก.ค." -> "2026-07-14" for prefilling the date input. */
+function thaiToIso(due: string): string {
+  const m = due.match(/(\d+)\s+(.+)/);
+  if (!m) return "";
+  const idx = MONTHS_TH.indexOf(m[2].trim());
+  if (idx < 0) return "";
+  return `2026-${String(idx + 1).padStart(2, "0")}-${m[1].padStart(2, "0")}`;
 }
 
 type Values = {
   title: string;
-  projCode: string;
-  assignee: string;
-  pri: Priority;
-  due: string; // ISO in the input
-  status: TaskStatus;
+  projectId: string;
+  assigneeId: string; // "" = unassigned
+  priority: PriorityEnum;
+  status: TaskStatusEnum;
+  dueDate: string;
 };
-
-const EMPTY: Values = {
-  title: "",
-  projCode: TASK_PROJECTS[0].code,
-  assignee: TEAM_MEMBERS[0].key,
-  pri: "Medium",
-  due: "2026-07-15",
-  status: "Todo",
-};
-
-/** Best-effort reverse of "14 ก.ค." back to an ISO date for the input. */
-function dueToIso(due: string): string {
-  const m = due.match(/(\d+)\s+(.+)/);
-  if (!m) return EMPTY.due;
-  const day = m[1].padStart(2, "0");
-  const monthIdx = MONTHS.indexOf(m[2].trim());
-  if (monthIdx < 0) return EMPTY.due;
-  return `2026-${String(monthIdx + 1).padStart(2, "0")}-${day}`;
-}
 
 type TaskFormProps = {
   mode: "create" | "edit";
   task?: Task;
-  /** Preselected status for create mode (e.g. the column the user clicked). */
+  /** Column the user clicked (create mode), as a display label. */
   defaultStatus?: TaskStatus;
-  onSubmit: (data: Omit<Task, "id">) => void;
+  onSubmit: (data: TaskInput) => void;
   onCancel: () => void;
 };
 
@@ -65,21 +52,39 @@ export function TaskForm({
   onSubmit,
   onCancel,
 }: TaskFormProps) {
-  const initial: Values =
-    mode === "edit" && task
-      ? {
-          title: task.title,
-          projCode: task.proj,
-          assignee: task.key,
-          pri: task.pri,
-          due: dueToIso(task.due),
-          status: task.status,
-        }
-      : { ...EMPTY, status: defaultStatus ?? EMPTY.status };
+  const { projects, users } = useData();
 
-  const [values, setValues] = useState<Values>(initial);
+  const [values, setValues] = useState<Values>(() => ({
+    title: task?.title ?? "",
+    projectId: "",
+    assigneeId: "",
+    priority: task ? LABEL_TO_PRIORITY[task.pri] : "MEDIUM",
+    status: task
+      ? LABEL_TO_TASK_STATUS[task.status]
+      : defaultStatus
+        ? LABEL_TO_TASK_STATUS[defaultStatus]
+        : "TODO",
+    dueDate: task ? thaiToIso(task.due) : "2026-07-15",
+  }));
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Resolve project/assignee ids once reference data is loaded.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValues((v) => {
+      const next = { ...v };
+      if (!next.projectId && projects.length) {
+        next.projectId =
+          (task && projects.find((p) => p.code === task.proj)?.id) ||
+          projects[0].id;
+      }
+      if (!next.assigneeId && task) {
+        next.assigneeId = users.find((u) => u.key === task.key)?.id ?? "";
+      }
+      return next;
+    });
+  }, [projects, users, task]);
 
   const set = <K extends keyof Values>(key: K, v: Values[K]) => {
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -89,25 +94,23 @@ export function TaskForm({
   function validate(): boolean {
     const next: Partial<Record<keyof Values, string>> = {};
     if (!values.title.trim()) next.title = "กรุณากรอกชื่องาน";
-    if (!values.due) next.due = "กรุณาเลือกวันครบกำหนด";
+    if (!values.projectId) next.projectId = "กรุณาเลือกโปรเจกต์";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
   function submit() {
     if (!validate()) return;
-    const proj = TASK_PROJECTS.find((p) => p.code === values.projCode)!;
     setSubmitting(true);
-    const data: Omit<Task, "id"> = {
+    const data: TaskInput = {
       title: values.title.trim(),
-      proj: proj.code,
-      projFg: proj.color,
-      key: values.assignee,
-      pri: values.pri,
-      due: formatThaiDate(values.due),
+      projectId: values.projectId,
+      assigneeId: values.assigneeId || null,
+      priority: values.priority,
       status: values.status,
+      dueDate: values.dueDate || null,
     };
-    setTimeout(() => onSubmit(data), 400);
+    setTimeout(() => onSubmit(data), 300);
   }
 
   return (
@@ -121,13 +124,13 @@ export function TaskForm({
       </Field>
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        <Field label="โปรเจกต์">
+        <Field label="โปรเจกต์" error={errors.projectId}>
           <Select
-            value={values.projCode}
-            onChange={(e) => set("projCode", e.target.value)}
+            value={values.projectId}
+            onChange={(e) => set("projectId", e.target.value)}
           >
-            {TASK_PROJECTS.map((p) => (
-              <option key={p.code} value={p.code}>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
@@ -135,12 +138,13 @@ export function TaskForm({
         </Field>
         <Field label="ผู้รับผิดชอบ">
           <Select
-            value={values.assignee}
-            onChange={(e) => set("assignee", e.target.value)}
+            value={values.assigneeId}
+            onChange={(e) => set("assigneeId", e.target.value)}
           >
-            {TEAM_MEMBERS.map((m) => (
-              <option key={m.key} value={m.key}>
-                {m.name}
+            <option value="">— ไม่ระบุ —</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
               </option>
             ))}
           </Select>
@@ -150,29 +154,33 @@ export function TaskForm({
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <Field label="ความสำคัญ">
           <Select
-            value={values.pri}
-            onChange={(e) => set("pri", e.target.value as Priority)}
+            value={values.priority}
+            onChange={(e) => set("priority", e.target.value as PriorityEnum)}
           >
-            {PRIORITIES.map((p) => (
-              <option key={p}>{p}</option>
+            {PRIORITY_ENUM_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </Select>
         </Field>
         <Field label="สถานะ">
           <Select
             value={values.status}
-            onChange={(e) => set("status", e.target.value as TaskStatus)}
+            onChange={(e) => set("status", e.target.value as TaskStatusEnum)}
           >
-            {TASK_STATUSES.map((s) => (
-              <option key={s}>{s}</option>
+            {TASK_STATUS_ENUM_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </Select>
         </Field>
-        <Field label="ครบกำหนด" error={errors.due}>
+        <Field label="ครบกำหนด">
           <Input
             type="date"
-            value={values.due}
-            onChange={(e) => set("due", e.target.value)}
+            value={values.dueDate}
+            onChange={(e) => set("dueDate", e.target.value)}
           />
         </Field>
       </div>
@@ -181,23 +189,13 @@ export function TaskForm({
         <Button
           type="button"
           variant="secondary"
+          onClick={onCancel}
           disabled={submitting}
-          onClick={() => {
-            setValues(initial);
-            setErrors({});
-          }}
         >
-          รีเซ็ต
-        </Button>
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
           ยกเลิก
         </Button>
         <Button type="button" onClick={submit} disabled={submitting}>
-          {submitting
-            ? "กำลังบันทึก…"
-            : mode === "create"
-              ? "สร้างงาน"
-              : "บันทึก"}
+          {submitting ? "กำลังบันทึก…" : mode === "create" ? "สร้างงาน" : "บันทึก"}
         </Button>
       </FormActions>
     </div>

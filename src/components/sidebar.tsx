@@ -16,6 +16,8 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { NAV_ITEMS, CURRENT_USER } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
+import { useCurrentUser } from "@/lib/use-current-user";
+import { ROLE_TO_TH, type RoleEnum } from "@/lib/mappers";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -31,6 +33,12 @@ const ICONS: Record<string, LucideIcon> = {
 export function Sidebar() {
   const pathname = usePathname();
   const { pendingLeaveCount: pending } = useData();
+  const me = useCurrentUser();
+  const meKey = me?.avatarKey ?? CURRENT_USER.key;
+  const meName = me?.name ?? CURRENT_USER.name;
+  const meRole = me
+    ? ROLE_TO_TH[me.role as RoleEnum] ?? me.role
+    : CURRENT_USER.role;
 
   return (
     <nav className="flex w-[232px] flex-none flex-col border-r border-zinc-200 bg-white">
@@ -81,12 +89,10 @@ export function Sidebar() {
 
       {/* Current user */}
       <div className="flex items-center gap-2.5 border-t border-hairline px-3.5 py-3">
-        <Avatar userKey={CURRENT_USER.key} size={30} />
+        <Avatar userKey={meKey} size={30} />
         <div className="min-w-0">
-          <div className="truncate text-[12.5px] font-semibold">
-            {CURRENT_USER.name}
-          </div>
-          <div className="text-[11px] text-zinc-400">{CURRENT_USER.role}</div>
+          <div className="truncate text-[12.5px] font-semibold">{meName}</div>
+          <div className="text-[11px] text-zinc-400">{meRole}</div>
         </div>
       </div>
     </nav>

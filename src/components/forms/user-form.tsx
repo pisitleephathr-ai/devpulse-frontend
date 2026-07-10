@@ -5,43 +5,55 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Field, FormActions } from "@/components/form-card";
-import { ROLE_OPTIONS, type User } from "@/lib/mock-data";
+import { ROLE_ENUM_OPTIONS, type RoleEnum } from "@/lib/mappers";
+import type { User } from "@/lib/mock-data";
 
-type Values = { name: string; email: string; role: string };
-
-/** Derive an avatar key from the email local part, e.g. "ben@x" -> "Ben". */
-function keyFromEmail(email: string) {
-  const local = email.split("@")[0] || "user";
-  return local.charAt(0).toUpperCase() + local.slice(1);
-}
+export type UserFormValues = {
+  name: string;
+  email: string;
+  password: string;
+  role: RoleEnum;
+};
 
 type UserFormProps = {
   mode: "create" | "edit";
   user?: User;
-  onSubmit: (data: Omit<User, "id">) => void;
+  roleEnum?: RoleEnum;
+  onSubmit: (data: UserFormValues) => void;
   onCancel: () => void;
 };
 
-export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
-  const initial: Values = user
-    ? { name: user.name, email: user.email, role: user.role }
-    : { name: "", email: "", role: ROLE_OPTIONS[2] };
-
-  const [values, setValues] = useState<Values>(initial);
-  const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
+export function UserForm({
+  mode,
+  user,
+  roleEnum,
+  onSubmit,
+  onCancel,
+}: UserFormProps) {
+  const [values, setValues] = useState<UserFormValues>({
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    password: "",
+    role: roleEnum ?? "DEVELOPER",
+  });
+  const [errors, setErrors] = useState<Partial<Record<keyof UserFormValues, string>>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const set = <K extends keyof Values>(key: K, v: Values[K]) => {
+  const set = <K extends keyof UserFormValues>(key: K, v: UserFormValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: v }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
   function validate(): boolean {
-    const next: Partial<Record<keyof Values, string>> = {};
+    const next: Partial<Record<keyof UserFormValues, string>> = {};
     if (!values.name.trim()) next.name = "กรุณากรอกชื่อ";
-    if (!values.email.trim()) next.email = "กรุณากรอกอีเมล";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))
-      next.email = "รูปแบบอีเมลไม่ถูกต้อง";
+    if (mode === "create") {
+      if (!values.email.trim()) next.email = "กรุณากรอกอีเมล";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))
+        next.email = "รูปแบบอีเมลไม่ถูกต้อง";
+      if (values.password.length < 6)
+        next.password = "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -49,14 +61,16 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
   function submit() {
     if (!validate()) return;
     setSubmitting(true);
-    const data: Omit<User, "id"> = {
-      name: values.name.trim(),
-      email: values.email.trim(),
-      role: values.role,
-      key: user ? user.key : keyFromEmail(values.email.trim()),
-      active: user ? user.active : true,
-    };
-    setTimeout(() => onSubmit(data), 400);
+    setTimeout(
+      () =>
+        onSubmit({
+          name: values.name.trim(),
+          email: values.email.trim(),
+          password: values.password,
+          role: values.role,
+        }),
+      300
+    );
   }
 
   return (
@@ -74,14 +88,32 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
           type="email"
           value={values.email}
           onChange={(e) => set("email", e.target.value)}
+          disabled={mode === "edit"}
           placeholder="name@devpulse.io"
+          className={mode === "edit" ? "bg-zinc-100 text-zinc-500" : ""}
         />
       </Field>
 
+      {mode === "create" && (
+        <Field label="รหัสผ่านเริ่มต้น" error={errors.password}>
+          <Input
+            type="password"
+            value={values.password}
+            onChange={(e) => set("password", e.target.value)}
+            placeholder="อย่างน้อย 6 ตัวอักษร"
+          />
+        </Field>
+      )}
+
       <Field label="บทบาท">
-        <Select value={values.role} onChange={(e) => set("role", e.target.value)}>
-          {ROLE_OPTIONS.map((r) => (
-            <option key={r}>{r}</option>
+        <Select
+          value={values.role}
+          onChange={(e) => set("role", e.target.value as RoleEnum)}
+        >
+          {ROLE_ENUM_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </Select>
       </Field>
@@ -90,15 +122,9 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
         <Button
           type="button"
           variant="secondary"
+          onClick={onCancel}
           disabled={submitting}
-          onClick={() => {
-            setValues(initial);
-            setErrors({});
-          }}
         >
-          รีเซ็ต
-        </Button>
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
           ยกเลิก
         </Button>
         <Button type="button" onClick={submit} disabled={submitting}>

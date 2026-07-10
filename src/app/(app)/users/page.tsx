@@ -13,6 +13,7 @@ import { UserForm } from "@/components/forms/user-form";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { ROLE_COLORS, type User } from "@/lib/mock-data";
+import { TH_TO_ROLE } from "@/lib/mappers";
 
 const TEMPLATE = "190px minmax(200px,1fr) 130px 110px 170px";
 
@@ -135,8 +136,9 @@ export default function UsersPage() {
           <UserForm
             mode="edit"
             user={editing}
+            roleEnum={TH_TO_ROLE[editing.role]}
             onSubmit={(data) => {
-              updateUser(editing.id, data);
+              updateUser(editing.id, { name: data.name, role: data.role });
               setEditing(null);
               toast("บันทึกข้อมูลผู้ใช้แล้ว");
             }}
