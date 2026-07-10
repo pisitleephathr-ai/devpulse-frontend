@@ -114,7 +114,28 @@ export function KanbanBoard({
                 {card.title}
               </div>
               <div className="flex items-center gap-2">
-                <Avatar userKey={card.key} size={22} fontSize={9} />
+                {card.assignees.length > 0 ? (
+                  <div
+                    className="flex -space-x-1.5"
+                    title={card.assignees.map((a) => a.name).join(", ")}
+                  >
+                    {card.assignees.slice(0, 3).map((a) => (
+                      <span
+                        key={a.id}
+                        className="rounded-full ring-2 ring-[color:var(--card)]"
+                      >
+                        <Avatar userKey={a.key} size={22} fontSize={9} />
+                      </span>
+                    ))}
+                    {card.assignees.length > 3 && (
+                      <span className="flex size-[22px] items-center justify-center rounded-full bg-muted text-[9px] font-semibold text-muted-foreground ring-2 ring-[color:var(--card)]">
+                        +{card.assignees.length - 3}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <Avatar userKey="?" size={22} fontSize={9} />
+                )}
                 <StatusBadge
                   label={card.pri}
                   colors={PRIORITY_COLORS[card.pri]}

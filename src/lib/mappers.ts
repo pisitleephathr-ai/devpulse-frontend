@@ -94,6 +94,8 @@ export type ApiTask = {
   dueDate: string | null;
   project: ApiProject;
   assignee: ApiUserMini | null;
+  /** full assignee set (multi-assignee); falls back to [assignee] */
+  assignees?: ApiUserMini[];
   _count?: { links: number; attachments: number };
 };
 export type ApiTaskDetail = ApiTask & {
@@ -244,13 +246,21 @@ export function mapReport(r: ApiReport): Report {
 }
 
 export function mapTask(t: ApiTask): Task {
+  const list =
+    t.assignees && t.assignees.length
+      ? t.assignees
+      : t.assignee
+        ? [t.assignee]
+        : [];
+  const assignees = list.map((u) => ({ id: u.id, key: u.avatarKey, name: u.name }));
   return {
     id: t.id,
     title: t.title,
     description: t.description ?? "",
     proj: t.project.code,
     projFg: t.project.color,
-    key: t.assignee?.avatarKey ?? "?",
+    key: assignees[0]?.key ?? "?",
+    assignees,
     pri: PRIORITY_TO_LABEL[t.priority],
     due: t.dueDate ? formatThaiDate(t.dueDate) : "—",
     dueISO: t.dueDate ?? null,
@@ -294,6 +304,7 @@ export type TaskInput = {
   title: string;
   projectId: string;
   assigneeId?: string | null;
+  assigneeIds?: string[];
   priority?: PriorityEnum;
   status?: TaskStatusEnum;
   dueDate?: string | null;

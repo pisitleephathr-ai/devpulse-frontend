@@ -65,7 +65,8 @@ export default function TasksPage() {
     useData();
   const me = useCurrentUser();
   const canManage = canManageTasks(me);
-  const ownsTask = (t: Task) => !!me && t.key === me.avatarKey;
+  const ownsTask = (t: Task) =>
+    !!me && t.assignees.some((a) => a.key === me.avatarKey);
   const canEdit = (t: Task) => isManagerOrAdmin(me) || ownsTask(t);
 
   const [search, setSearch] = useState("");
@@ -112,7 +113,7 @@ export default function TasksPage() {
         matchesSearch([t.title, t.description], search) &&
         (statusF === "all" || t.status === statusF) &&
         (priorityF === "all" || t.pri === priorityF) &&
-        (assigneeF === "all" || t.key === assigneeF) &&
+        (assigneeF === "all" || t.assignees.some((a) => a.key === assigneeF)) &&
         (projectF === "all" || t.proj === projectF) &&
         matchDue(t.dueISO, dueF)
     );
@@ -148,7 +149,6 @@ export default function TasksPage() {
   }
 
   function exportCsv() {
-    const nameByKey = new Map(users.map((u) => [u.key, u.name]));
     const nameByCode = new Map(projects.map((p) => [p.code, p.name]));
     downloadCsv(
       `tasks-${todayStamp()}.csv`,
@@ -157,7 +157,7 @@ export default function TasksPage() {
         t.title,
         t.description,
         nameByCode.get(t.proj) ?? t.proj,
-        nameByKey.get(t.key) ?? "—",
+        t.assignees.map((a) => a.name).join(", ") || "—",
         t.status,
         t.pri,
         t.dueISO ?? "",
@@ -366,11 +366,23 @@ export default function TasksPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <Avatar userKey={detail.key} size={26} fontSize={10} />
-              <span className="text-[13px] font-medium">
-                {users.find((u) => u.key === detail.key)?.name ?? detail.key}
-              </span>
+            <div className="flex flex-wrap items-center gap-3">
+              {detail.assignees.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-1.5">
+                    {detail.assignees.slice(0, 5).map((a) => (
+                      <span key={a.id} className="rounded-full ring-2 ring-[color:var(--card)]">
+                        <Avatar userKey={a.key} size={26} fontSize={10} />
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-[13px] font-medium">
+                    {detail.assignees.map((a) => a.name).join(", ")}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[13px] text-zinc-400">ไม่มีผู้รับผิดชอบ</span>
+              )}
               <StatusBadge
                 label={detail.pri}
                 colors={PRIORITY_COLORS[detail.pri]}

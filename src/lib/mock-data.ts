@@ -329,7 +329,10 @@ export type Task = {
   /** Project short code shown on the card, e.g. "ATLAS". */
   proj: string;
   projFg: string;
+  /** primary assignee avatar key (first assignee) */
   key: string;
+  /** all assignees */
+  assignees: { id: string; key: string; name: string }[];
   pri: Priority;
   due: string;
   /** ISO due date for date-range filtering (null if none). */
@@ -362,7 +365,7 @@ export const TASK_PROJECTS = [
 
 const TASKS_SEED: Omit<
   Task,
-  "id" | "description" | "dueISO" | "linkCount" | "attachmentCount"
+  "id" | "description" | "dueISO" | "linkCount" | "attachmentCount" | "assignees"
 >[] = [
   { title: "Rate limiting สำหรับ Public API", proj: "ATLAS", projFg: "#0f766e", key: "Jonas", pri: "High", due: "14 ก.ค.", status: "Todo" },
   { title: "Empty state หน้ารายการรายงาน", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Low", due: "18 ก.ค.", status: "Todo" },
@@ -383,6 +386,7 @@ export const TASKS: Task[] = TASKS_SEED.map((t, i) => ({
   dueISO: null,
   linkCount: 0,
   attachmentCount: 0,
+  assignees: [{ id: `t${i + 1}-a`, key: t.key, name: t.key }],
   ...t,
 }));
 

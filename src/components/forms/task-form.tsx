@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar } from "@/components/ui/avatar";
 import { Field, FormActions } from "@/components/form-card";
+import { cn } from "@/lib/utils";
 import { useData } from "@/lib/store";
 import {
   PRIORITY_ENUM_OPTIONS,
@@ -44,7 +46,7 @@ export function isImageUrl(url: string): boolean {
 type Values = {
   title: string;
   projectId: string;
-  assignee: string;
+  assigneeIds: string[];
   priority: PriorityEnum;
   status: TaskStatusEnum;
   dueDate: string;
@@ -78,7 +80,7 @@ export function TaskForm({
   const [values, setValues] = useState<Values>(() => ({
     title: task?.title ?? "",
     projectId: "",
-    assignee: "",
+    assigneeIds: task?.assignees.map((a) => a.id) ?? [],
     priority: task ? LABEL_TO_PRIORITY[task.pri] : "MEDIUM",
     status: task
       ? LABEL_TO_TASK_STATUS[task.status]
@@ -105,12 +107,9 @@ export function TaskForm({
         next.projectId =
           (task && projects.find((p) => p.code === task.proj)?.id) || projects[0].id;
       }
-      if (!next.assignee && task) {
-        next.assignee = users.find((u) => u.key === task.key)?.id ?? "";
-      }
       return next;
     });
-  }, [projects, users, task]);
+  }, [projects, task]);
 
   const set = <K extends keyof Values>(key: K, v: Values[K]) => {
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -155,7 +154,7 @@ export function TaskForm({
     const data: TaskInput = {
       title: values.title.trim(),
       projectId: proj.id,
-      assigneeId: values.assignee || null,
+      assigneeIds: values.assigneeIds,
       priority: values.priority,
       status: values.status,
       dueDate: values.dueDate || null,
@@ -176,27 +175,52 @@ export function TaskForm({
         />
       </Field>
 
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        <Field label="โปรเจกต์" error={errors.projectId}>
-          <Select value={values.projectId} onChange={(e) => set("projectId", e.target.value)}>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="ผู้รับผิดชอบ">
-          <Select value={values.assignee} onChange={(e) => set("assignee", e.target.value)}>
-            <option value="">— ไม่ระบุ —</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+      <Field label="โปรเจกต์" error={errors.projectId}>
+        <Select value={values.projectId} onChange={(e) => set("projectId", e.target.value)}>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <Field label="ผู้รับผิดชอบ" hint="เลือกได้หลายคน">
+        {users.length === 0 ? (
+          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-[12.5px] text-muted-foreground">
+            เลือกผู้รับผิดชอบ…
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {users.map((u) => {
+              const selected = values.assigneeIds.includes(u.id);
+              return (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() =>
+                    set(
+                      "assigneeIds",
+                      selected
+                        ? values.assigneeIds.filter((id) => id !== u.id)
+                        : [...values.assigneeIds, u.id]
+                    )
+                  }
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-medium transition-colors",
+                    selected
+                      ? "border-teal-300 bg-teal-50 text-teal-700 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300"
+                      : "border-border text-zinc-600 hover:bg-muted dark:text-zinc-300"
+                  )}
+                >
+                  <Avatar userKey={u.key} size={18} fontSize={8} />
+                  {u.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </Field>
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <Field label="ความสำคัญ">
