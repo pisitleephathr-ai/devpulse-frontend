@@ -522,11 +522,15 @@ function Switch({ checked, onChange, disabled, label }: { checked: boolean; onCh
       aria-label={label}
       disabled={disabled}
       onClick={onChange}
-      className={`relative h-[22px] w-[38px] flex-none shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 focus-visible:ring-offset-1 disabled:cursor-default disabled:opacity-60 ${
+      className={`inline-flex h-6 w-11 flex-none shrink-0 items-center rounded-full px-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 focus-visible:ring-offset-1 disabled:cursor-default disabled:opacity-60 ${
         checked ? "bg-teal-600" : "bg-zinc-300 dark:bg-zinc-600"
       }`}
     >
-      <span className={`absolute top-[2px] size-[18px] rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
+      <span
+        className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
     </button>
   );
 }
