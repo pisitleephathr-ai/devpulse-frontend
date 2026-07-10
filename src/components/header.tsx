@@ -6,6 +6,7 @@ import { LogOut, User as UserIcon } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { CURRENT_USER, PAGE_TITLES } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { clearSession } from "@/lib/auth";
@@ -42,6 +43,9 @@ export function Header() {
 
       {/* Global search (Cmd/Ctrl+K) */}
       <GlobalSearch />
+
+      {/* Theme toggle */}
+      <ThemeToggle />
 
       {/* Notifications */}
       <NotificationBell />

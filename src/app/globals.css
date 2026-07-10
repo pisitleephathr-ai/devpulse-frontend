@@ -1,24 +1,61 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (next-themes adds `.dark` on <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
   DevPulse design tokens.
-  The handoff palette maps almost 1:1 onto Tailwind's zinc + teal scales.
-  Primary accent = teal-600 (#0d9488) as in the handoff.
-  Page canvas + hairline dividers are the few custom values.
+  Semantic colors are driven by CSS variables so the whole app can flip between
+  light and dark. Light values equal the previous hardcoded palette, so light
+  mode is unchanged; `.dark` overrides the variables.
 */
-@theme {
-  /*
-    iOS / Apple-style system UI stack. Prefers native Apple system fonts on
-    macOS/iOS (no font files shipped in the repo), then Segoe UI on Windows,
-    Noto Sans Thai for Thai glyph coverage, and generic fallbacks.
-  */
+@theme inline {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Segoe UI", var(--font-noto-thai), "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
-  --color-canvas: #f6f7f8;
-  --color-hairline: #f0f0f1;
-  --color-hairline-soft: #f7f7f8;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--popover);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+
+  --color-canvas: var(--canvas);
+  --color-hairline: var(--hairline);
+  --color-hairline-soft: var(--hairline-soft);
+}
+
+:root {
+  color-scheme: light;
+  --background: #f6f7f8;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
+
+  --canvas: #f6f7f8;
+  --hairline: #f0f0f1;
+  --hairline-soft: #f7f7f8;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0a0a0c;
+  --foreground: #f4f4f5;
+  --card: #18181b;
+  --popover: #1c1c1f;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --border: #2a2a2e;
+
+  --canvas: #0a0a0c;
+  --hairline: #242428;
+  --hairline-soft: #1c1c20;
 }
 
 html,
@@ -28,8 +65,8 @@ body {
 
 body {
   margin: 0;
-  background: var(--color-canvas);
-  color: #18181b;
+  background: var(--canvas);
+  color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -41,6 +78,11 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid #99f6e4;
   border-color: #0d9488 !important;
+}
+.dark input:focus-visible,
+.dark select:focus-visible,
+.dark textarea:focus-visible {
+  outline-color: #134e4a;
 }
 
 @keyframes dp-toast {
@@ -59,3 +101,36 @@ textarea:focus-visible {
   scrollbar-width: thin;
   scrollbar-color: #d4d4d8 transparent;
 }
+.dark * {
+  scrollbar-color: #3f3f46 transparent;
+}
+
+/*
+  Dark-mode bridge for hardcoded light-only utilities still used across pages.
+  Un-layered so these win over Tailwind's layered utilities in dark mode only;
+  light mode is untouched. Core components use the semantic tokens directly;
+  this catches the long tail so nothing renders as light-on-light in the dark.
+*/
+.dark .bg-white { background-color: var(--card); }
+.dark .bg-zinc-50 { background-color: var(--muted); }
+.dark .bg-zinc-100 { background-color: var(--muted); }
+.dark .bg-zinc-200 { background-color: #3f3f46; }
+.dark .hover\:bg-zinc-50:hover { background-color: var(--muted); }
+.dark .hover\:bg-zinc-100:hover { background-color: var(--muted); }
+.dark .hover\:bg-zinc-200\/70:hover { background-color: #3f3f46; }
+
+.dark .border-zinc-100 { border-color: var(--border); }
+.dark .border-zinc-200 { border-color: var(--border); }
+.dark .border-zinc-300 { border-color: #3f3f46; }
+.dark .hover\:border-zinc-200:hover { border-color: var(--border); }
+
+.dark .text-zinc-900 { color: #f4f4f5; }
+.dark .text-zinc-800 { color: #ededf0; }
+.dark .text-zinc-700 { color: #d4d4d8; }
+.dark .text-zinc-600 { color: #b8b8bf; }
+.dark .text-zinc-500 { color: #9a9aa3; }
+.dark .text-zinc-400 { color: #8a8a93; }
+.dark .text-zinc-300 { color: #6b6b73; }
+
+/* Darken the modal/overlay scrim a bit more in dark mode. */
+.dark .bg-zinc-900\/40 { background-color: rgb(0 0 0 / 0.6); }

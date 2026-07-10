@@ -53,7 +53,7 @@ export function Dialog({
       <div
         onMouseDown={(e) => e.stopPropagation()}
         className={cn(
-          "flex max-h-[85vh] w-[560px] max-w-full flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]",
+          "flex max-h-[85vh] w-[560px] max-w-full flex-col overflow-hidden rounded-[14px] bg-card shadow-[0_20px_50px_rgba(0,0,0,0.2)]",
           className
         )}
       >
@@ -61,7 +61,7 @@ export function Dialog({
           <div className="flex-1">
             <div className="text-[15px] font-semibold">{title}</div>
             {description && (
-              <div className="mt-0.5 text-xs text-zinc-500">{description}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{description}</div>
             )}
           </div>
           <button

@@ -13,7 +13,7 @@ export const Select = React.forwardRef<
   <select
     ref={ref}
     className={cn(
-      "w-full cursor-pointer appearance-none rounded-lg border border-zinc-300 bg-white bg-[length:14px] bg-[right_10px_center] bg-no-repeat py-[9px] pl-3 pr-8 text-[13px] text-zinc-700 focus-visible:outline-none",
+      "w-full cursor-pointer appearance-none rounded-lg border border-border bg-card bg-[length:14px] bg-[right_10px_center] bg-no-repeat py-[9px] pl-3 pr-8 text-[13px] text-foreground focus-visible:outline-none",
       className
     )}
     style={{ backgroundImage: CHEVRON, ...style }}

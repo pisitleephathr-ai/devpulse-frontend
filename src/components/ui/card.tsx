@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+        "rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
         className
       )}
       {...props}
@@ -37,7 +37,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn("text-[13.5px] font-semibold text-zinc-900", className)}
+      className={cn("text-[13.5px] font-semibold text-foreground", className)}
       {...props}
     />
   );
