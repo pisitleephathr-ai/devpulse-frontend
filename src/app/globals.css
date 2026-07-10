@@ -96,6 +96,18 @@ textarea:focus-visible {
   }
 }
 
+/* Honor reduced-motion: near-instant transitions, no pulsing/looping. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Thin, unobtrusive scrollbars for kanban / tables */
 * {
   scrollbar-width: thin;

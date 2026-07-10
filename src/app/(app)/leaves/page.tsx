@@ -12,6 +12,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { DataTable, DataTableRow } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
+import { TableRowsSkeleton } from "@/components/skeletons";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import {
@@ -29,7 +30,7 @@ import { X } from "lucide-react";
 const TEMPLATE = "160px 96px 150px 64px minmax(170px,1fr) 104px 172px";
 
 export default function LeavesPage() {
-  const { leaves, users, setLeaveStatus } = useData();
+  const { leaves, users, loading, setLeaveStatus } = useData();
   const me = useCurrentUser();
   const canApprove = canApproveLeave(me);
 
@@ -129,6 +130,9 @@ export default function LeavesPage() {
         )}
       </FilterBar>
 
+      {loading && leaves.length === 0 ? (
+        <TableRowsSkeleton rows={6} />
+      ) : (
       <DataTable
         template={TEMPLATE}
         minWidth={1000}
@@ -200,6 +204,7 @@ export default function LeavesPage() {
           ))
         )}
       </DataTable>
+      )}
 
       {/* View detail */}
       <Dialog

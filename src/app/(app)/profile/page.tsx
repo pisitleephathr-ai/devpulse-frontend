@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { FormCard, Field } from "@/components/form-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
+import { ProfileSkeleton } from "@/components/skeletons";
 import { toast } from "@/components/ui/toaster";
 import { api, ApiError } from "@/lib/api";
 import { updateStoredUser, type AuthUser } from "@/lib/auth";
@@ -81,6 +82,10 @@ export default function ProfilePage() {
       <div className="flex w-[640px] max-w-full flex-col gap-4">
         <PageHeader eyebrow="MY PROFILE" title="โปรไฟล์ของฉัน" />
 
+        {!profile ? (
+          <ProfileSkeleton />
+        ) : (
+        <>
         {/* Profile header card */}
         <div className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-[22px] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           <Avatar userKey={profile?.avatarKey ?? "?"} size={56} fontSize={20} />
@@ -196,6 +201,8 @@ export default function ProfilePage() {
             </div>
           </FormCard>
         </form>
+        </>
+        )}
       </div>
     </div>
   );

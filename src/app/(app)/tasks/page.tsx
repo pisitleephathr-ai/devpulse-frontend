@@ -12,6 +12,7 @@ import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { downloadCsv, todayStamp } from "@/lib/csv";
 import { TaskComments } from "@/components/task-comments";
+import { KanbanSkeleton } from "@/components/skeletons";
 import { KanbanBoard } from "@/components/kanban-board";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -60,7 +61,7 @@ function matchDue(iso: string | null, f: string): boolean {
 }
 
 export default function TasksPage() {
-  const { tasks, projects, users, addTask, updateTask, deleteTask, moveTask } =
+  const { tasks, projects, users, loading, addTask, updateTask, deleteTask, moveTask } =
     useData();
   const me = useCurrentUser();
   const canManage = canManageTasks(me);
@@ -261,7 +262,9 @@ export default function TasksPage() {
         )}
       </FilterBar>
 
-      {filtered.length === 0 ? (
+      {loading && tasks.length === 0 ? (
+        <KanbanSkeleton />
+      ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-zinc-200 bg-white">
           <EmptyState
             icon={<KanbanSquare className="size-5" />}

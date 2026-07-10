@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
+import { CalendarSkeleton } from "@/components/skeletons";
 import { WEEKDAYS } from "@/lib/mock-data";
 
 type CalType = "TASK" | "REPORT" | "LEAVE" | "EVENT";
@@ -197,6 +198,9 @@ export default function CalendarPage() {
       )}
 
       {/* Grid */}
+      {!loaded ? (
+        <CalendarSkeleton />
+      ) : (
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="grid grid-cols-7 border-b border-hairline">
           {WEEKDAYS.map((w) => (
@@ -249,6 +253,7 @@ export default function CalendarPage() {
           })}
         </div>
       </div>
+      )}
 
       {/* Day detail modal */}
       {openDay !== null && (

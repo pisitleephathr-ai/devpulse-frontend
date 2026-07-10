@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { SearchInput } from "@/components/search-input";
 import { DataTable, DataTableRow } from "@/components/data-table";
+import { TableRowsSkeleton } from "@/components/skeletons";
 import { StatusBadge } from "@/components/status-badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "@/components/ui/toaster";
@@ -20,7 +21,7 @@ import type { ApiRole } from "@/lib/mappers";
 const TEMPLATE = "minmax(160px,1fr) 130px 90px 110px 150px";
 
 export default function RolesPage() {
-  const { roles, addRole, updateRole, deleteRole } = useData();
+  const { roles, loading, addRole, updateRole, deleteRole } = useData();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ApiRole | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ApiRole | null>(null);
@@ -50,6 +51,9 @@ export default function RolesPage() {
         />
       </FilterBar>
 
+      {loading && roles.length === 0 ? (
+        <TableRowsSkeleton rows={5} />
+      ) : (
       <DataTable
         template={TEMPLATE}
         minWidth={720}
@@ -116,6 +120,7 @@ export default function RolesPage() {
           </DataTableRow>
         ))}
       </DataTable>
+      )}
 
       {/* Add */}
       <Dialog open={adding} onClose={() => setAdding(false)} title="เพิ่มบทบาทใหม่">

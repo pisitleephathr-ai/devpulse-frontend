@@ -12,6 +12,7 @@ import { SearchInput } from "@/components/search-input";
 import { DataTable, DataTableRow } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
+import { TableRowsSkeleton } from "@/components/skeletons";
 import { UserForm } from "@/components/forms/user-form";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
@@ -24,7 +25,7 @@ import { matchesSearch } from "@/lib/filters";
 const TEMPLATE = "180px minmax(180px,1fr) 120px 96px 150px 168px";
 
 export default function UsersPage() {
-  const { users, roles, addUser, updateUser, toggleUser } = useData();
+  const { users, roles, loading, addUser, updateUser, toggleUser } = useData();
   const me = useCurrentUser();
   const canManage = canManageUsers(me);
 
@@ -116,6 +117,9 @@ export default function UsersPage() {
         )}
       </FilterBar>
 
+      {loading && users.length === 0 ? (
+        <TableRowsSkeleton rows={6} />
+      ) : (
       <DataTable
         template={TEMPLATE}
         minWidth={980}
@@ -228,6 +232,7 @@ export default function UsersPage() {
           })
         )}
       </DataTable>
+      )}
 
       {/* Add */}
       <Dialog

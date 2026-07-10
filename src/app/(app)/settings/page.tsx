@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
 import { Field } from "@/components/form-card";
 import { PageHeader } from "@/components/page-header";
+import { FormSkeleton } from "@/components/skeletons";
 import { toast } from "@/components/ui/toaster";
 import { api, ApiError } from "@/lib/api";
 
@@ -36,12 +37,14 @@ export default function SettingsPage() {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     api
       .get<{ setting: Setting }>("/api/settings")
       .then((r) => setSetting(r.setting))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoaded(true));
     api
       .get<{ leaveTypes: LeaveType[] }>("/api/settings/leave-types")
       .then((r) => setLeaveTypes(r.leaveTypes))
@@ -65,6 +68,10 @@ export default function SettingsPage() {
       <div className="flex w-[640px] max-w-full flex-col gap-4">
         <PageHeader eyebrow="SETTINGS" title="ตั้งค่า" />
 
+        {!loaded ? (
+          <FormSkeleton sections={2} />
+        ) : (
+        <>
         {/* Workspace */}
         <div className="rounded-xl border border-zinc-200 bg-white p-[22px] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           <div className="mb-3.5 text-[13.5px] font-semibold">เวิร์กสเปซ</div>
@@ -142,6 +149,8 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       <AddLeaveTypeDialog
