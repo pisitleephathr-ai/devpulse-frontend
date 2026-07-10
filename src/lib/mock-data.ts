@@ -456,9 +456,11 @@ export type User = {
   /** role code for permission checks (e.g. "ADMIN") */
   roleCode: string;
   active: boolean;
+  /** whether this user is expected to submit a daily report */
+  requiresDailyReport: boolean;
 };
 
-const USERS_SEED: Omit<User, "id" | "roleCode">[] = [
+const USERS_SEED: Omit<User, "id" | "roleCode" | "requiresDailyReport">[] = [
   { name: "เลนา ฮอฟฟ์แมน", key: "Lena", email: "lena@devpulse.io", role: "หัวหน้าทีม", active: true },
   { name: "ดานา คิม", key: "Dana", email: "dana@devpulse.io", role: "ผู้ดูแลระบบ", active: true },
   { name: "มายา เฉิน", key: "Maya", email: "maya@devpulse.io", role: "นักพัฒนา", active: true },
@@ -472,6 +474,7 @@ const USERS_SEED: Omit<User, "id" | "roleCode">[] = [
 export const USERS: User[] = USERS_SEED.map((u, i) => ({
   id: `u${i + 1}`,
   roleCode: "DEVELOPER",
+  requiresDailyReport: true,
   ...u,
 }));
 

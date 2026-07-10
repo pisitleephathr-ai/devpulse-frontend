@@ -21,7 +21,7 @@ import { canManageUsers } from "@/lib/permissions";
 import { roleNameOf } from "@/lib/mappers";
 import { matchesSearch } from "@/lib/filters";
 
-const TEMPLATE = "190px minmax(200px,1fr) 130px 110px 170px";
+const TEMPLATE = "180px minmax(180px,1fr) 120px 96px 150px 168px";
 
 export default function UsersPage() {
   const { users, roles, addUser, updateUser, toggleUser } = useData();
@@ -52,6 +52,15 @@ export default function UsersPage() {
     setSearch("");
     setRoleF("all");
     setStatusF("all");
+  }
+
+  function toggleReport(u: User) {
+    updateUser(u.id, { requiresDailyReport: !u.requiresDailyReport });
+    toast(
+      u.requiresDailyReport
+        ? `${u.name} ไม่ต้องส่งรายงานประจำวันแล้ว`
+        : `${u.name} ต้องส่งรายงานประจำวันแล้ว`
+    );
   }
 
   return (
@@ -109,8 +118,8 @@ export default function UsersPage() {
 
       <DataTable
         template={TEMPLATE}
-        minWidth={880}
-        headers={["ชื่อ", "อีเมล", "บทบาท", "สถานะ", ""]}
+        minWidth={980}
+        headers={["ชื่อ", "อีเมล", "บทบาท", "สถานะ", "ต้องส่งรายงาน", ""]}
       >
         {filtered.length === 0 ? (
           <EmptyState
@@ -151,6 +160,40 @@ export default function UsersPage() {
                 </span>
                 <span>
                   <StatusBadge label={u.active ? "ใช้งานอยู่" : "ปิดใช้งาน"} />
+                </span>
+                <span className="justify-self-start" style={{ opacity }}>
+                  {canManage ? (
+                    <button
+                      onClick={() => toggleReport(u)}
+                      role="switch"
+                      aria-checked={u.requiresDailyReport}
+                      title={
+                        u.requiresDailyReport
+                          ? "ต้องส่งรายงาน — คลิกเพื่อยกเว้น"
+                          : "ไม่ต้องส่งรายงาน — คลิกเพื่อเปิด"
+                      }
+                      className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11.5px] font-medium transition-colors ${
+                        u.requiresDailyReport
+                          ? "border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
+                      }`}
+                    >
+                      <span
+                        className={`size-2 rounded-full ${
+                          u.requiresDailyReport ? "bg-teal-500" : "bg-zinc-300"
+                        }`}
+                      />
+                      {u.requiresDailyReport ? "ต้องส่งรายงาน" : "ไม่ต้องส่งรายงาน"}
+                    </button>
+                  ) : (
+                    <span
+                      className={`text-[11.5px] font-medium ${
+                        u.requiresDailyReport ? "text-teal-700" : "text-zinc-400"
+                      }`}
+                    >
+                      {u.requiresDailyReport ? "ต้องส่งรายงาน" : "ไม่ต้องส่งรายงาน"}
+                    </span>
+                  )}
                 </span>
                 <div className="flex justify-end gap-1.5">
                   {canManage ? (
@@ -216,7 +259,11 @@ export default function UsersPage() {
             mode="edit"
             user={editing}
             onSubmit={(data) => {
-              updateUser(editing.id, { name: data.name, roleId: data.roleId });
+              updateUser(editing.id, {
+                name: data.name,
+                roleId: data.roleId,
+                requiresDailyReport: data.requiresDailyReport,
+              });
               setEditing(null);
               toast("บันทึกข้อมูลผู้ใช้แล้ว");
             }}

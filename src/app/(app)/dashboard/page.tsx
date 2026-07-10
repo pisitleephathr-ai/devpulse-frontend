@@ -21,6 +21,7 @@ import { api } from "@/lib/api";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { canManageTasks } from "@/lib/permissions";
 import { relativeTimeTh } from "@/lib/utils";
+import { getThaiGreeting, formatThaiDateFull } from "@/lib/thai-datetime";
 import type { ApiActivity, ApiUserMini } from "@/lib/mappers";
 import { CURRENT_USER } from "@/lib/mock-data";
 
@@ -91,20 +92,22 @@ const ACTION_DOT: Record<string, string> = {
   "password.change": "#a1a1aa",
 };
 
-function todayThai(): string {
-  const days = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
-  const months = [
-    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
-    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
-  ];
-  const d = new Date();
-  return `วัน${days[d.getDay()]}ที่ ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
-}
-
 export default function DashboardPage() {
   const me = useCurrentUser();
-  const firstName = (me?.name ?? CURRENT_USER.name).split(" ")[0];
+  const displayName =
+    me?.name?.trim() || me?.email?.split("@")[0] || CURRENT_USER.name;
+  const firstName = displayName.split(" ")[0];
   const canCreateTask = canManageTasks(me);
+
+  // Greeting/date depend on the current Bangkok time — compute after mount so
+  // the static prerender doesn't lock in a build-time value (hydration-safe).
+  const [clock, setClock] = useState<{ greeting: string; date: string } | null>(
+    null
+  );
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setClock({ greeting: getThaiGreeting(), date: formatThaiDateFull() });
+  }, []);
 
   const [insights, setInsights] = useState<Insights | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -158,17 +161,15 @@ export default function DashboardPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="mb-1 font-mono text-[10.5px] font-semibold tracking-[0.1em] text-teal-600">
-            DASHBOARD · {todayThai()}
+            DASHBOARD · {clock?.date ?? " "}
           </div>
           <div className="flex items-baseline gap-2.5">
             <h1 className="text-[19px] font-bold tracking-[-0.02em]">
-              สวัสดี คุณ{firstName}
+              {clock?.greeting ?? "สวัสดี"} คุณ{firstName}
             </h1>
-            {r && (
-              <span className="text-[13px] text-zinc-500">
-                ส่งรายงานแล้ว {r.submittedCount} จาก {r.totalMembers} คน
-              </span>
-            )}
+            <span className="text-[13px] text-zinc-500">
+              นี่คือภาพรวมงานของทีมวันนี้
+            </span>
           </div>
         </div>
         <button

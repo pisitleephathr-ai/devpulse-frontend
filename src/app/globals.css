@@ -7,8 +7,14 @@
   Page canvas + hairline dividers are the few custom values.
 */
 @theme {
-  --font-sans: var(--font-noto-thai), var(--font-geist-sans), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  /*
+    iOS / Apple-style system UI stack. Prefers native Apple system fonts on
+    macOS/iOS (no font files shipped in the repo), then Segoe UI on Windows,
+    Noto Sans Thai for Thai glyph coverage, and generic fallbacks.
+  */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Segoe UI", var(--font-noto-thai), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
   --color-canvas: #f6f7f8;
   --color-hairline: #f0f0f1;
@@ -26,6 +32,7 @@ body {
   color: #18181b;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Consistent focus treatment matching the handoff */

@@ -43,6 +43,7 @@ export type ApiUserMini = {
 export type ApiUser = ApiUserMini & {
   email: string;
   active: boolean;
+  requiresDailyReport?: boolean;
   createdAt: string;
   updatedAt: string;
   /** role object (new API); string enum tolerated from the old API */
@@ -212,6 +213,7 @@ export function mapUser(u: ApiUser): User {
     role: roleNameOf(u.role),
     roleCode: roleCodeOf(u.role),
     active: u.active,
+    requiresDailyReport: u.requiresDailyReport ?? true,
   };
 }
 
@@ -299,11 +301,13 @@ export type UserInput = {
   email: string;
   password: string;
   roleId: string;
+  requiresDailyReport?: boolean;
 };
 export type UserUpdateInput = Partial<{
   name: string;
   roleId: string;
   active: boolean;
+  requiresDailyReport: boolean;
 }>;
 
 /* ------------------------------- Roles --------------------------------- */

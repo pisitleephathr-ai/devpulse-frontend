@@ -14,6 +14,7 @@ export type UserFormValues = {
   email: string;
   password: string;
   roleId: string;
+  requiresDailyReport: boolean;
 };
 
 type UserFormProps = {
@@ -42,6 +43,7 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
     email: user?.email ?? "",
     password: "",
     roleId: "",
+    requiresDailyReport: user?.requiresDailyReport ?? true,
   }));
   const [errors, setErrors] = useState<Partial<Record<keyof UserFormValues, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -83,6 +85,7 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
           email: values.email.trim(),
           password: values.password,
           roleId,
+          requiresDailyReport: values.requiresDailyReport,
         }),
       300
     );
@@ -136,6 +139,23 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
           </Select>
         )}
       </Field>
+
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={values.requiresDailyReport}
+          onChange={(e) => set("requiresDailyReport", e.target.checked)}
+          className="mt-0.5 size-[15px] flex-none accent-teal-600"
+        />
+        <span>
+          <span className="block text-[13px] font-medium text-zinc-800">
+            ต้องส่งรายงานประจำวัน
+          </span>
+          <span className="block text-[11.5px] text-zinc-500">
+            ปิดตัวเลือกนี้สำหรับผู้ใช้ที่ไม่จำเป็นต้องส่งรายงานทุกวัน
+          </span>
+        </span>
+      </label>
 
       <FormActions>
         <Button

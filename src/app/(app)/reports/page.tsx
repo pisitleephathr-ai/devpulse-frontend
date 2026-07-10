@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, X, Pencil, Trash2, FileText, Download } from "lucide-react";
+import {
+  Plus,
+  X,
+  Pencil,
+  Trash2,
+  FileText,
+  Download,
+  CalendarDays,
+  TriangleAlert,
+  RefreshCw,
+} from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -10,7 +20,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
-import { DataTable, DataTableRow } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -22,23 +31,31 @@ import { isManagerOrAdmin } from "@/lib/permissions";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { downloadCsv, todayStamp } from "@/lib/csv";
+import { bangkokDateISO, thaiDateShortFromISO } from "@/lib/thai-datetime";
 import { REPORT_STATUS_OPTIONS, type Report } from "@/lib/mock-data";
 
-const TEMPLATE = "80px 160px 130px minmax(200px,1fr) 96px 128px";
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 function isoToThai(iso: string) {
   const [, m, d] = iso.split("-").map(Number);
   return `${d} ${MONTHS[m - 1]}`;
 }
 
+/** Placeholders that mean "no blocker" — used to mute/hide the blocker box. */
+const NO_BLOCKER = new Set(["", "ไม่มี", "—", "-", "วันนี้ไม่มี", "ไม่มีครับ", "ไม่มีค่ะ"]);
+function hasBlocker(s: string) {
+  return !NO_BLOCKER.has((s ?? "").trim());
+}
+
 export default function ReportsPage() {
-  const { reports, users, projects, updateReport, deleteReport } = useData();
+  const { reports, users, projects, updateReport, deleteReport, loading, error, refresh } =
+    useData();
   const me = useCurrentUser();
   const canEditReport = (r: Report) =>
     isManagerOrAdmin(me) || (!!me && r.key === me.avatarKey);
 
+  // Default the date filter to today's Bangkok date (reduces noise on open).
   const [search, setSearch] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(() => bangkokDateISO());
   const [member, setMember] = useState("all");
   const [project, setProject] = useState("all");
   const [status, setStatus] = useState("all");
@@ -47,8 +64,15 @@ export default function ReportsPage() {
   const [editing, setEditing] = useState<Report | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Report | null>(null);
 
+  const isToday = date === bangkokDateISO();
   const filtersActive =
     !!search || !!date || member !== "all" || project !== "all" || status !== "all";
+
+  // Role display name by avatar key (report data has no role of its own).
+  const roleByKey = useMemo(
+    () => new Map(users.map((u) => [u.key, u.role])),
+    [users]
+  );
 
   const filtered = useMemo(() => {
     const dateLabel = date ? isoToThai(date) : null;
@@ -63,6 +87,7 @@ export default function ReportsPage() {
   }, [reports, search, date, member, project, status]);
 
   function clearFilters() {
+    // Product rule: Clear shows ALL reports (does not return to today).
     setSearch("");
     setDate("");
     setMember("all");
@@ -107,6 +132,25 @@ export default function ReportsPage() {
           onChange={setSearch}
           placeholder="ค้นหางาน แผน อุปสรรค…"
         />
+        {/* วันนี้ / ทั้งหมด quick toggles */}
+        <div className="flex items-center overflow-hidden rounded-lg border border-zinc-200">
+          <button
+            onClick={() => setDate(bangkokDateISO())}
+            className={`px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${
+              isToday ? "bg-teal-600 text-white" : "bg-white text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            วันนี้
+          </button>
+          <button
+            onClick={() => setDate("")}
+            className={`border-l border-zinc-200 px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${
+              !date ? "bg-teal-600 text-white" : "bg-white text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            ทั้งหมด
+          </button>
+        </div>
         <Input
           type="date"
           value={date}
@@ -158,69 +202,85 @@ export default function ReportsPage() {
         )}
       </FilterBar>
 
-      <DataTable
-        template={TEMPLATE}
-        minWidth={880}
-        headers={["วันที่", "สมาชิก", "โปรเจกต์", "สรุป", "สถานะ", ""]}
-      >
-        {filtered.length === 0 ? (
+      {/* Active-date hint chip */}
+      {date && (
+        <div className="flex items-center gap-2 text-[12.5px] text-zinc-500">
+          <CalendarDays className="size-3.5 text-teal-600" />
+          {isToday ? "กำลังแสดงรายงานของวันนี้ · " : "วันที่: "}
+          <span className="font-medium text-zinc-700">{thaiDateShortFromISO(date)}</span>
+        </div>
+      )}
+
+      {/* States */}
+      {loading && reports.length === 0 ? (
+        <CardGrid>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </CardGrid>
+      ) : error && reports.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-6 py-12">
+          <span className="text-[13px] text-red-800">โหลดรายงานไม่สำเร็จ</span>
+          <button
+            onClick={() => refresh()}
+            className="flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-red-700 hover:bg-red-100"
+          >
+            <RefreshCw className="size-3.5" />
+            ลองใหม่
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        reports.length === 0 ? (
+          <EmptyState
+            icon={<FileText className="size-5" />}
+            title="ยังไม่มีรายงาน"
+            description="สร้างรายงานประจำวันฉบับแรก"
+          />
+        ) : isToday && !search && member === "all" && project === "all" && status === "all" ? (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-200 bg-white px-6 py-14 text-center">
+            <span className="flex size-11 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
+              <CalendarDays className="size-5" />
+            </span>
+            <div className="text-[14px] font-semibold">ยังไม่มีรายงานสำหรับวันนี้</div>
+            <p className="text-[12.5px] text-zinc-500">เลือกดูวันอื่น หรือดูรายงานทั้งหมด</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDate("")}
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[12.5px] font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                ดูทั้งหมด
+              </button>
+              <Link href="/reports/new" className={buttonVariants({ size: "sm" })}>
+                <Plus className="size-3.5" />
+                เขียนรายงานวันนี้
+              </Link>
+            </div>
+          </div>
+        ) : (
           <EmptyState
             icon={<FileText className="size-5" />}
             title="ไม่พบรายงาน"
-            description="ลองปรับตัวกรอง หรือสร้างรายงานใหม่"
+            description="ลองปรับตัวกรอง"
           />
-        ) : (
-          filtered.map((r) => (
-            <DataTableRow key={r.id}>
-              <span className="text-[12.5px] text-zinc-500">{r.date}</span>
-              <div className="flex min-w-0 items-center gap-2.5">
-                <Avatar userKey={r.key} size={24} fontSize={9.5} />
-                <span className="truncate text-[13px] font-medium">
-                  {r.name}
-                </span>
-              </div>
-              <span className="text-[12.5px] text-zinc-700">{r.proj}</span>
-              <span className="truncate text-[12.5px] text-zinc-500">
-                {r.summary}
-              </span>
-              <span>
-                <StatusBadge label={r.status} />
-              </span>
-              <div className="flex justify-end gap-1.5">
-                <button
-                  onClick={() => setViewing(r)}
-                  className="rounded-[7px] border border-zinc-200 px-2.5 py-1 text-[12.5px] font-medium text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50"
-                >
-                  ดู
-                </button>
-                {canEditReport(r) && (
-                  <>
-                    <button
-                      onClick={() => setEditing(r)}
-                      className="flex size-[26px] items-center justify-center rounded-[7px] border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-100"
-                      aria-label="แก้ไข"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setPendingDelete(r)}
-                      className="flex size-[26px] items-center justify-center rounded-[7px] border border-zinc-200 text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
-                      aria-label="ลบ"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </DataTableRow>
-          ))
-        )}
-      </DataTable>
+        )
+      ) : (
+        <CardGrid>
+          {filtered.map((r) => (
+            <ReportCard
+              key={r.id}
+              report={r}
+              role={roleByKey.get(r.key)}
+              canEdit={canEditReport(r)}
+              onView={() => setViewing(r)}
+              onEdit={() => setEditing(r)}
+              onDelete={() => setPendingDelete(r)}
+            />
+          ))}
+        </CardGrid>
+      )}
 
       {/* View */}
-      {viewing && (
-        <ReportModal report={viewing} onClose={() => setViewing(null)} />
-      )}
+      {viewing && <ReportModal report={viewing} onClose={() => setViewing(null)} />}
 
       {/* Edit */}
       <Dialog
@@ -262,6 +322,171 @@ export default function ReportsPage() {
   );
 }
 
+/* ------------------------------- Card grid ------------------------------ */
+
+function CardGrid({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {children}
+    </div>
+  );
+}
+
+function ReportCard({
+  report: r,
+  role,
+  canEdit,
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  report: Report;
+  role?: string;
+  canEdit: boolean;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const blocker = hasBlocker(r.blockers);
+  const longContent =
+    (r.did?.length ?? 0) + (r.plan?.length ?? 0) + (r.blockers?.length ?? 0) > 320;
+
+  return (
+    <article className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
+        <Avatar userKey={r.key} size={34} fontSize={13} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[13.5px] font-semibold">{r.name}</span>
+            {role && (
+              <span className="rounded-[5px] bg-zinc-100 px-1.5 py-px text-[10.5px] font-medium text-zinc-500">
+                {role}
+              </span>
+            )}
+          </div>
+          <div className="truncate text-[11.5px] text-zinc-400">
+            {r.proj} · {r.date}
+          </div>
+        </div>
+        <StatusBadge label={r.status} />
+      </div>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col gap-3 px-4 py-3.5">
+        <CardSection label="งานที่ทำ" text={r.did} clamp={!expanded} />
+        <CardSection label="แผนงาน" text={r.plan} clamp={!expanded} />
+        <CardSection
+          label="ปัญหา / อุปสรรค"
+          text={r.blockers}
+          clamp={!expanded}
+          highlight={blocker}
+        />
+        {longContent && (
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            className="self-start text-[12px] font-medium text-teal-600 hover:underline"
+          >
+            {expanded ? "ย่อลง" : "ดูเพิ่มเติม"}
+          </button>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-1.5 border-t border-hairline px-4 py-2.5">
+        <button
+          onClick={onView}
+          className="rounded-[7px] border border-zinc-200 px-2.5 py-1 text-[12.5px] font-medium text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50"
+        >
+          ดูรายละเอียด
+        </button>
+        {canEdit && (
+          <>
+            <button
+              onClick={onEdit}
+              className="flex size-[28px] items-center justify-center rounded-[7px] border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-100"
+              aria-label="แก้ไข"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="flex size-[28px] items-center justify-center rounded-[7px] border border-zinc-200 text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
+              aria-label="ลบ"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function CardSection({
+  label,
+  text,
+  clamp,
+  highlight,
+}: {
+  label: string;
+  text: string;
+  clamp: boolean;
+  highlight?: boolean;
+}) {
+  const isEmpty = !text?.trim();
+
+  return (
+    <div
+      className={
+        highlight ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2" : ""
+      }
+    >
+      <div
+        className={`mb-1 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] ${
+          highlight ? "text-amber-700" : "text-zinc-400"
+        }`}
+      >
+        {highlight && <TriangleAlert className="size-3" />}
+        {label}
+      </div>
+      {isEmpty ? (
+        <p className="text-[12.5px] italic text-zinc-300">—</p>
+      ) : (
+        <p
+          className={`whitespace-pre-line text-[12.5px] leading-relaxed ${
+            highlight ? "text-amber-900" : "text-zinc-700"
+          } ${clamp ? "line-clamp-4" : ""}`}
+        >
+          {text}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="flex items-center gap-2.5">
+        <div className="size-9 animate-pulse rounded-full bg-zinc-100" />
+        <div className="flex-1 space-y-1.5">
+          <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-100" />
+          <div className="h-2.5 w-1/3 animate-pulse rounded bg-zinc-100" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-2.5 w-full animate-pulse rounded bg-zinc-100" />
+        <div className="h-2.5 w-5/6 animate-pulse rounded bg-zinc-100" />
+        <div className="h-2.5 w-2/3 animate-pulse rounded bg-zinc-100" />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ Detail modal ---------------------------- */
+
 function ReportModal({
   report,
   onClose,
@@ -276,7 +501,7 @@ function ReportModal({
     >
       <div
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-[560px] max-w-full overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]"
+        className="max-h-[85vh] w-[560px] max-w-full overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]"
       >
         <div className="flex items-center gap-[11px] border-b border-hairline px-[22px] py-[18px]">
           <Avatar userKey={report.key} size={30} fontSize={11} />
@@ -295,23 +520,46 @@ function ReportModal({
             <X className="size-4" />
           </button>
         </div>
-        <div className="flex flex-col gap-4 px-[22px] py-5">
-          <Section label="TODAY" text={report.did} />
-          <Section label="BLOCKERS" text={report.blockers} />
-          <Section label="TOMORROW" text={report.plan} />
+        <div className="flex max-h-[calc(85vh-72px)] flex-col gap-4 overflow-y-auto px-[22px] py-5">
+          <Section label="งานที่ทำ" text={report.did} />
+          <Section label="ปัญหา / อุปสรรค" text={report.blockers} highlight={hasBlocker(report.blockers)} />
+          <Section label="แผนงาน" text={report.plan} />
         </div>
       </div>
     </div>
   );
 }
 
-function Section({ label, text }: { label: string; text: string }) {
+function Section({
+  label,
+  text,
+  highlight,
+}: {
+  label: string;
+  text: string;
+  highlight?: boolean;
+}) {
   return (
-    <div>
-      <div className="mb-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] text-zinc-500">
+    <div className={highlight ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5" : ""}>
+      <div
+        className={`mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] ${
+          highlight ? "text-amber-700" : "text-zinc-500"
+        }`}
+      >
+        {highlight && <TriangleAlert className="size-3" />}
         {label}
       </div>
-      <div className="text-[13px] leading-relaxed text-zinc-700">{text}</div>
+      {text?.trim() ? (
+        <div
+          className={`whitespace-pre-line text-[13px] leading-relaxed ${
+            highlight ? "text-amber-900" : "text-zinc-700"
+          }`}
+        >
+          {text}
+        </div>
+      ) : (
+        <div className="text-[13px] italic text-zinc-300">—</div>
+      )}
     </div>
   );
 }
