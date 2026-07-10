@@ -12,6 +12,7 @@ import {
   CalendarDays,
   TriangleAlert,
   RefreshCw,
+  ListChecks,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { downloadCsv, todayStamp } from "@/lib/csv";
 import { bangkokDateISO, thaiDateShortFromISO } from "@/lib/thai-datetime";
-import { REPORT_STATUS_OPTIONS, type Report } from "@/lib/mock-data";
+import { REPORT_STATUS_OPTIONS, type Report, type RelatedTask } from "@/lib/mock-data";
 
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 function isoToThai(iso: string) {
@@ -415,6 +416,7 @@ function ReportCard({
             {expanded ? "ย่อลง" : "ดูเพิ่มเติม"}
           </button>
         )}
+        <RelatedTasksRow tasks={r.relatedTasks ?? []} />
       </div>
 
       {/* Actions */}
@@ -496,6 +498,41 @@ function CardSection({
   );
 }
 
+/** Compact linked-task strip for a report card — shows a few, then "+N". */
+function RelatedTasksRow({ tasks, max = 3 }: { tasks: RelatedTask[]; max?: number }) {
+  if (!tasks.length) return null;
+  const shown = tasks.slice(0, max);
+  const extra = tasks.length - shown.length;
+  return (
+    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 border-t border-hairline pt-3">
+      <span className="flex flex-none items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.05em] text-zinc-400 dark:text-zinc-500">
+        <ListChecks className="size-3" />
+        งานที่เกี่ยวข้อง
+      </span>
+      {shown.map((t) => (
+        <span
+          key={t.id}
+          className="inline-flex max-w-[170px] items-center gap-1 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] text-zinc-600 dark:text-zinc-300"
+          title={t.title}
+        >
+          <span
+            className="flex-none font-mono text-[9.5px] font-semibold"
+            style={{ color: t.projColor }}
+          >
+            {t.proj}
+          </span>
+          <span className="truncate">{t.title}</span>
+        </span>
+      ))}
+      {extra > 0 && (
+        <span className="flex-none text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
+          +{extra} เพิ่มเติม
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SkeletonCard() {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4">
@@ -554,6 +591,32 @@ function ReportModal({
           <Section label="งานที่ทำ" text={report.did} />
           <Section label="ปัญหา / อุปสรรค" text={report.blockers} highlight={hasBlocker(report.blockers)} />
           <Section label="แผนงาน" text={report.plan} />
+          {report.relatedTasks && report.relatedTasks.length > 0 && (
+            <div>
+              <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] text-zinc-500">
+                <ListChecks className="size-3" />
+                งานที่เกี่ยวข้อง ({report.relatedTasks.length})
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {report.relatedTasks.map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[12px] text-zinc-700"
+                    title={t.title}
+                  >
+                    <span
+                      className="flex-none font-mono text-[10px] font-semibold"
+                      style={{ color: t.projColor }}
+                    >
+                      {t.proj}
+                    </span>
+                    <span className="max-w-[220px] truncate">{t.title}</span>
+                    <span className="flex-none text-[10.5px] text-zinc-400">{t.status}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -78,6 +78,16 @@ export type ApiReport = {
   status: ReportStatusEnum;
   author: ApiUserMini;
   project: ApiProject;
+  /** optional tasks linked to this report (compact shape) */
+  relatedTasks?: ApiRelatedTask[];
+};
+/** Compact task shape embedded in a report's related-task list. */
+export type ApiRelatedTask = {
+  id: string;
+  title: string;
+  status: TaskStatusEnum;
+  priority: PriorityEnum;
+  project: { id: string; code: string; color: string; name: string };
 };
 export type ApiTaskLink = { id: string; title: string; url: string };
 export type ApiTaskAttachment = {
@@ -247,6 +257,14 @@ export function mapReport(r: ApiReport): Report {
     did: r.did,
     blockers: r.blockers,
     plan: r.plan,
+    relatedTasks: (r.relatedTasks ?? []).map((t) => ({
+      id: t.id,
+      title: t.title,
+      status: TASK_STATUS_TO_LABEL[t.status],
+      pri: PRIORITY_TO_LABEL[t.priority],
+      proj: t.project.code,
+      projColor: t.project.color,
+    })),
   };
 }
 
@@ -309,6 +327,8 @@ export type ReportInput = {
   blockers?: string;
   plan?: string;
   status?: ReportStatusEnum;
+  /** optional board tasks linked to this report */
+  relatedTaskIds?: string[];
 };
 export type TaskLinkInput = { title: string; url: string };
 export type TaskAttachmentInput = {
