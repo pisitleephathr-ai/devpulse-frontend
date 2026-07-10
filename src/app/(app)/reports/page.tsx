@@ -353,7 +353,7 @@ function ReportCard({
     (r.did?.length ?? 0) + (r.plan?.length ?? 0) + (r.blockers?.length ?? 0) > 320;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <article className="dp-card-hover flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
         <Avatar userKey={r.key} size={34} fontSize={13} />

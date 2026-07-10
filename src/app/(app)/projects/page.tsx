@@ -175,7 +175,7 @@ export default function ProjectsPage() {
           {filtered.map((p) => (
             <article
               key={p.id}
-              className={`flex flex-col rounded-xl border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${
+              className={`dp-card-hover flex flex-col rounded-xl border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${
                 p.isArchived ? "border-zinc-200 opacity-70" : "border-zinc-200"
               }`}
             >

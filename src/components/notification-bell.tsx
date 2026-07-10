@@ -64,7 +64,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-[340px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+        <div className="dp-menu absolute right-0 top-[calc(100%+8px)] z-40 w-[340px] overflow-hidden rounded-xl border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
           <div className="flex items-center justify-between border-b border-hairline px-3.5 py-2.5">
             <span className="text-[13px] font-semibold">การแจ้งเตือน</span>
             {unread > 0 && (

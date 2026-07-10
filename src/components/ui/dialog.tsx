@@ -46,14 +46,14 @@ export function Dialog({
   return (
     <div
       onMouseDown={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-6"
+      className="dp-scrim fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-6"
       role="dialog"
       aria-modal="true"
     >
       <div
         onMouseDown={(e) => e.stopPropagation()}
         className={cn(
-          "flex max-h-[85vh] w-[560px] max-w-full flex-col overflow-hidden rounded-[14px] bg-card shadow-[0_20px_50px_rgba(0,0,0,0.2)]",
+          "dp-pop flex max-h-[85vh] w-[560px] max-w-full flex-col overflow-hidden rounded-[14px] bg-card shadow-[0_20px_50px_rgba(0,0,0,0.2)]",
           className
         )}
       >

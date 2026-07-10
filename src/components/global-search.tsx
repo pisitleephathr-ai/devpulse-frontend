@@ -159,14 +159,14 @@ export function GlobalSearch() {
       {open && (
         <div
           onMouseDown={() => setOpen(false)}
-          className="fixed inset-0 z-[60] flex items-start justify-center bg-zinc-900/40 p-4 pt-[12vh]"
+          className="dp-scrim fixed inset-0 z-[60] flex items-start justify-center bg-zinc-900/40 p-4 pt-[12vh]"
         >
           <div
             onMouseDown={(e) => e.stopPropagation()}
             onKeyDown={onKeyDown}
             role="dialog"
             aria-label="ค้นหาทั่วทั้งระบบ"
-            className="w-[560px] max-w-full overflow-hidden rounded-[14px] border border-zinc-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
+            className="dp-pop w-[560px] max-w-full overflow-hidden rounded-[14px] border border-border bg-popover shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
           >
             {/* Input */}
             <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
