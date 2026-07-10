@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/components/require-auth";
+import { RouteGuard } from "@/components/route-guard";
 import { DataProvider } from "@/lib/store";
 
 export default function AppLayout({
@@ -10,7 +11,9 @@ export default function AppLayout({
   return (
     <RequireAuth>
       <DataProvider>
-        <AppShell>{children}</AppShell>
+        <AppShell>
+          <RouteGuard>{children}</RouteGuard>
+        </AppShell>
       </DataProvider>
     </RequireAuth>
   );

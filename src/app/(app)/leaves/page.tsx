@@ -19,14 +19,17 @@ import {
   LEAVE_TYPES_FORM,
   LEAVE_STATUS_OPTIONS,
   TEAM_MEMBERS,
-  CURRENT_USER,
   type Leave,
 } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/use-current-user";
+import { canApproveLeave } from "@/lib/permissions";
 
 const TEMPLATE = "160px 96px 150px 64px minmax(170px,1fr) 104px 172px";
 
 export default function LeavesPage() {
   const { leaves, setLeaveStatus } = useData();
+  const me = useCurrentUser();
+  const canApprove = canApproveLeave(me);
 
   const [member, setMember] = useState("all");
   const [type, setType] = useState("all");
@@ -148,7 +151,7 @@ export default function LeavesPage() {
                 >
                   ดู
                 </button>
-                {CURRENT_USER.isManager && l.status === "รออนุมัติ" && (
+                {canApprove && l.status === "รออนุมัติ" && (
                   <>
                     <button
                       onClick={() => decide(l, "อนุมัติแล้ว")}
@@ -176,7 +179,7 @@ export default function LeavesPage() {
         onClose={() => setViewing(null)}
         title="รายละเอียดคำขอลา"
         footer={
-          viewing && CURRENT_USER.isManager && viewing.status === "รออนุมัติ" ? (
+          viewing && canApprove && viewing.status === "รออนุมัติ" ? (
             <>
               <button
                 onClick={() => {

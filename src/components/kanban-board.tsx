@@ -17,6 +17,10 @@ type KanbanBoardProps = {
   onCardClick: (task: Task) => void;
   onDropTask: (taskId: string, status: TaskStatus) => void;
   onAddInColumn: (status: TaskStatus) => void;
+  /** show the per-column "+" add buttons (managers/admins). */
+  showAdd?: boolean;
+  /** whether a given card may be dragged (RBAC). Defaults to always. */
+  canDrag?: (task: Task) => boolean;
 };
 
 /** Kanban with HTML5 drag-and-drop between columns + click-to-open cards. */
@@ -25,6 +29,8 @@ export function KanbanBoard({
   onCardClick,
   onDropTask,
   onAddInColumn,
+  showAdd = true,
+  canDrag,
 }: KanbanBoardProps) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<TaskStatus | null>(null);
@@ -63,20 +69,25 @@ export function KanbanBoard({
             <span className="rounded-full border border-zinc-200 bg-white px-2 py-px text-[11.5px] font-semibold text-zinc-500">
               {col.cards.length}
             </span>
-            <button
-              onClick={() => onAddInColumn(col.name)}
-              className="flex size-5 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white hover:text-teal-600"
-              aria-label={`เพิ่มงานใน ${col.name}`}
-            >
-              <Plus className="size-3.5" />
-            </button>
+            {showAdd && (
+              <button
+                onClick={() => onAddInColumn(col.name)}
+                className="flex size-5 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white hover:text-teal-600"
+                aria-label={`เพิ่มงานใน ${col.name}`}
+              >
+                <Plus className="size-3.5" />
+              </button>
+            )}
           </div>
 
-          {col.cards.map((card) => (
+          {col.cards.map((card) => {
+            const draggable = canDrag ? canDrag(card) : true;
+            return (
             <div
               key={card.id}
-              draggable
+              draggable={draggable}
               onDragStart={(e) => {
+                if (!draggable) return;
                 e.dataTransfer.setData("text/plain", card.id);
                 e.dataTransfer.effectAllowed = "move";
                 setDragId(card.id);
@@ -87,7 +98,8 @@ export function KanbanBoard({
               }}
               onClick={() => onCardClick(card)}
               className={cn(
-                "cursor-grab rounded-[10px] border border-zinc-200 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:border-zinc-300 hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)] active:cursor-grabbing",
+                "rounded-[10px] border border-zinc-200 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:border-zinc-300 hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]",
+                draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
                 dragId === card.id && "opacity-50"
               )}
             >
@@ -97,7 +109,8 @@ export function KanbanBoard({
               >
                 {card.proj}
               </div>
-              <div className="mb-2.5 text-[13px] font-medium leading-normal text-zinc-900">
+              {/* Full title — wraps to multiple lines, never truncated. */}
+              <div className="mb-2.5 whitespace-normal break-words text-[13px] font-medium leading-normal text-zinc-900 [overflow-wrap:anywhere]">
                 {card.title}
               </div>
               <div className="flex items-center gap-2">
@@ -112,7 +125,8 @@ export function KanbanBoard({
                 <span className="text-[11px] text-zinc-400">{card.due}</span>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       ))}
     </div>

@@ -1,46 +1,78 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, X, KanbanSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
+import { FilterBar } from "@/components/filter-bar";
 import { KanbanBoard } from "@/components/kanban-board";
 import { StatusBadge } from "@/components/status-badge";
+import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { TaskForm } from "@/components/forms/task-form";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
+import { useCurrentUser } from "@/lib/use-current-user";
+import { canManageTasks, isManagerOrAdmin } from "@/lib/permissions";
 import {
   groupTasks,
-  TEAM_MEMBERS,
   PRIORITY_COLORS,
-  TASK_PROJECTS,
   TASK_STATUSES,
   type Task,
   type TaskStatus,
 } from "@/lib/mock-data";
 
-export default function TasksPage() {
-  const { tasks, addTask, updateTask, deleteTask, moveTask } = useData();
+const PRIORITIES = ["High", "Medium", "Low"];
 
-  const [projectFilter, setProjectFilter] = useState("all");
+export default function TasksPage() {
+  const { tasks, projects, users, addTask, updateTask, deleteTask, moveTask } =
+    useData();
+  const me = useCurrentUser();
+  const canManage = canManageTasks(me);
+  const ownsTask = (t: Task) => !!me && t.key === me.avatarKey;
+  const canEdit = (t: Task) => isManagerOrAdmin(me) || ownsTask(t);
+
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("all");
+  const [priorityF, setPriorityF] = useState("all");
+  const [assigneeF, setAssigneeF] = useState("all");
+  const [projectF, setProjectF] = useState("all");
+
   const [createStatus, setCreateStatus] = useState<TaskStatus | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
 
-  const filtered = useMemo(
-    () =>
-      projectFilter === "all"
-        ? tasks
-        : tasks.filter((t) => t.proj === projectFilter),
-    [tasks, projectFilter]
-  );
+  const filtersActive =
+    !!search || statusF !== "all" || priorityF !== "all" || assigneeF !== "all" || projectF !== "all";
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return tasks.filter(
+      (t) =>
+        (!q ||
+          t.title.toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q)) &&
+        (statusF === "all" || t.status === statusF) &&
+        (priorityF === "all" || t.pri === priorityF) &&
+        (assigneeF === "all" || t.key === assigneeF) &&
+        (projectF === "all" || t.proj === projectF)
+    );
+  }, [tasks, search, statusF, priorityF, assigneeF, projectF]);
+
   const columns = useMemo(() => groupTasks(filtered), [filtered]);
   const detail = detailId ? tasks.find((t) => t.id === detailId) ?? null : null;
+
+  function clearFilters() {
+    setSearch("");
+    setStatusF("all");
+    setPriorityF("all");
+    setAssigneeF("all");
+    setProjectF("all");
+  }
 
   return (
     <div className="flex h-full flex-col gap-4 px-7 py-6">
@@ -48,39 +80,110 @@ export default function TasksPage() {
         eyebrow="TASK BOARD"
         title="บอร์ดงาน"
         actions={
-          <>
-            <Select
-              className="w-auto py-[7px] text-[12.5px]"
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-            >
-              <option value="all">โปรเจกต์ทั้งหมด</option>
-              {TASK_PROJECTS.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
+          canManage ? (
             <Button onClick={() => setCreateStatus("Todo")}>
               <Plus className="size-3.5" strokeWidth={2.4} />
               สร้างงานใหม่
             </Button>
-          </>
+          ) : undefined
         }
       />
 
-      <KanbanBoard
-        columns={columns}
-        onCardClick={(t) => setDetailId(t.id)}
-        onDropTask={(id, status) => {
-          const task = tasks.find((t) => t.id === id);
-          if (task && task.status !== status) {
-            moveTask(id, status);
-            toast(`ย้าย "${task.title}" ไป ${status}`);
-          }
-        }}
-        onAddInColumn={(status) => setCreateStatus(status)}
-      />
+      <FilterBar trailing={`${filtered.length} งาน`}>
+        <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px]">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="ค้นหาชื่องาน / รายละเอียด…"
+            className="w-[180px] border-none bg-transparent p-0 text-[12.5px] outline-none placeholder:text-zinc-400"
+          />
+        </div>
+        <Select
+          className="w-auto py-[7px] text-[12.5px]"
+          value={statusF}
+          onChange={(e) => setStatusF(e.target.value)}
+        >
+          <option value="all">สถานะทั้งหมด</option>
+          {TASK_STATUSES.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </Select>
+        <Select
+          className="w-auto py-[7px] text-[12.5px]"
+          value={priorityF}
+          onChange={(e) => setPriorityF(e.target.value)}
+        >
+          <option value="all">ความสำคัญทั้งหมด</option>
+          {PRIORITIES.map((p) => (
+            <option key={p}>{p}</option>
+          ))}
+        </Select>
+        <Select
+          className="w-auto py-[7px] text-[12.5px]"
+          value={assigneeF}
+          onChange={(e) => setAssigneeF(e.target.value)}
+        >
+          <option value="all">ผู้รับผิดชอบทั้งหมด</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.key}>
+              {u.name}
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="w-auto py-[7px] text-[12.5px]"
+          value={projectF}
+          onChange={(e) => setProjectF(e.target.value)}
+        >
+          <option value="all">โปรเจกต์ทั้งหมด</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.code}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+        {filtersActive && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px] text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
+          >
+            <X className="size-3" />
+            ล้างตัวกรอง
+          </button>
+        )}
+      </FilterBar>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-zinc-200 bg-white">
+          <EmptyState
+            icon={<KanbanSquare className="size-5" />}
+            title="ไม่พบงานที่ตรงกับตัวกรอง"
+            description="ลองปรับหรือล้างตัวกรอง"
+            action={
+              filtersActive ? (
+                <Button variant="secondary" onClick={clearFilters}>
+                  ล้างตัวกรอง
+                </Button>
+              ) : undefined
+            }
+          />
+        </div>
+      ) : (
+        <KanbanBoard
+          columns={columns}
+          showAdd={canManage}
+          canDrag={(t) => canEdit(t)}
+          onCardClick={(t) => setDetailId(t.id)}
+          onDropTask={(id, status) => {
+            const task = tasks.find((t) => t.id === id);
+            if (task && task.status !== status) {
+              moveTask(id, status);
+              toast(`ย้าย "${task.title}" ไป ${status}`);
+            }
+          }}
+          onAddInColumn={(status) => setCreateStatus(status)}
+        />
+      )}
 
       {/* Create */}
       <Dialog
@@ -111,26 +214,30 @@ export default function TasksPage() {
         footer={
           detail ? (
             <>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  setPendingDelete(detail);
-                  setDetailId(null);
-                }}
-              >
-                <Trash2 className="size-3.5" />
-                ลบ
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setEditTask(detail);
-                  setDetailId(null);
-                }}
-              >
-                <Pencil className="size-3.5" />
-                แก้ไข
-              </Button>
+              {canManage && (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setPendingDelete(detail);
+                    setDetailId(null);
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                  ลบ
+                </Button>
+              )}
+              {canEdit(detail) && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setEditTask(detail);
+                    setDetailId(null);
+                  }}
+                >
+                  <Pencil className="size-3.5" />
+                  แก้ไข
+                </Button>
+              )}
             </>
           ) : null
         }
@@ -144,16 +251,20 @@ export default function TasksPage() {
               >
                 {detail.proj}
               </div>
-              <div className="text-[15px] font-semibold leading-snug">
+              <div className="text-[15px] font-semibold leading-snug [overflow-wrap:anywhere]">
                 {detail.title}
               </div>
+              {detail.description && (
+                <div className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-500">
+                  {detail.description}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
               <Avatar userKey={detail.key} size={26} fontSize={10} />
               <span className="text-[13px] font-medium">
-                {TEAM_MEMBERS.find((m) => m.key === detail.key)?.name ??
-                  detail.key}
+                {users.find((u) => u.key === detail.key)?.name ?? detail.key}
               </span>
               <StatusBadge
                 label={detail.pri}
@@ -172,6 +283,7 @@ export default function TasksPage() {
               </label>
               <Select
                 value={detail.status}
+                disabled={!canEdit(detail)}
                 onChange={(e) => {
                   moveTask(detail.id, e.target.value as TaskStatus);
                   toast("อัปเดตสถานะงานแล้ว");

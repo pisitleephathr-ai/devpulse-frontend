@@ -17,6 +17,8 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ReportForm } from "@/components/forms/report-form";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
+import { useCurrentUser } from "@/lib/use-current-user";
+import { isManagerOrAdmin } from "@/lib/permissions";
 import {
   PROJECTS,
   REPORT_STATUS_OPTIONS,
@@ -33,6 +35,9 @@ function isoToThai(iso: string) {
 
 export default function ReportsPage() {
   const { reports, updateReport, deleteReport } = useData();
+  const me = useCurrentUser();
+  const canEditReport = (r: Report) =>
+    isManagerOrAdmin(me) || (!!me && r.key === me.avatarKey);
 
   const [date, setDate] = useState("");
   const [member, setMember] = useState("all");
@@ -143,20 +148,24 @@ export default function ReportsPage() {
                 >
                   ดู
                 </button>
-                <button
-                  onClick={() => setEditing(r)}
-                  className="flex size-[26px] items-center justify-center rounded-[7px] border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-100"
-                  aria-label="แก้ไข"
-                >
-                  <Pencil className="size-3.5" />
-                </button>
-                <button
-                  onClick={() => setPendingDelete(r)}
-                  className="flex size-[26px] items-center justify-center rounded-[7px] border border-zinc-200 text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
-                  aria-label="ลบ"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+                {canEditReport(r) && (
+                  <>
+                    <button
+                      onClick={() => setEditing(r)}
+                      className="flex size-[26px] items-center justify-center rounded-[7px] border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-100"
+                      aria-label="แก้ไข"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setPendingDelete(r)}
+                      className="flex size-[26px] items-center justify-center rounded-[7px] border border-zinc-200 text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
+                      aria-label="ลบ"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </>
+                )}
               </div>
             </DataTableRow>
           ))

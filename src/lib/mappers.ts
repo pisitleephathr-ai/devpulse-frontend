@@ -24,17 +24,29 @@ export type LeaveStatusEnum = "PENDING" | "APPROVED" | "REJECTED";
 
 /* --------------------------- API entity types -------------------------- */
 
+/** Dynamic role object returned by the API. */
+export type ApiRole = {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  isSystem: boolean;
+  isActive: boolean;
+  _count?: { users: number };
+};
+
 export type ApiUserMini = {
   id: string;
   name: string;
   avatarKey: string;
-  role: RoleEnum;
 };
 export type ApiUser = ApiUserMini & {
   email: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  /** role object (new API); string enum tolerated from the old API */
+  role: ApiRole | string | null;
 };
 export type ApiProject = {
   id: string;
@@ -56,6 +68,7 @@ export type ApiReport = {
 export type ApiTask = {
   id: string;
   title: string;
+  description?: string;
   priority: PriorityEnum;
   status: TaskStatusEnum;
   dueDate: string | null;
@@ -83,12 +96,26 @@ export type ApiActivity = {
 
 /* --------------------------- Enum ↔ label maps ------------------------- */
 
-export const ROLE_TO_TH: Record<RoleEnum, string> = {
+export const ROLE_TO_TH: Record<string, string> = {
   MANAGER: "หัวหน้าทีม",
   ADMIN: "ผู้ดูแลระบบ",
   DEVELOPER: "นักพัฒนา",
   QA: "QA",
+  DESIGNER: "Designer",
 };
+
+/** Extract the role CODE from a user's role field (object or legacy string). */
+export function roleCodeOf(role: ApiRole | string | null | undefined): string {
+  if (!role) return "DEVELOPER";
+  return typeof role === "string" ? role : role.code;
+}
+
+/** Extract a human role NAME from a user's role field (object or legacy string). */
+export function roleNameOf(role: ApiRole | string | null | undefined): string {
+  if (!role) return ROLE_TO_TH.DEVELOPER;
+  if (typeof role === "string") return ROLE_TO_TH[role] ?? role;
+  return role.name || ROLE_TO_TH[role.code] || role.code;
+}
 export const REPORT_STATUS_TO_TH: Record<ReportStatusEnum, string> = {
   SUBMITTED: "ส่งแล้ว",
   DRAFT: "ฉบับร่าง",
@@ -169,7 +196,8 @@ export function mapUser(u: ApiUser): User {
     name: u.name,
     key: u.avatarKey,
     email: u.email,
-    role: ROLE_TO_TH[u.role] ?? u.role,
+    role: roleNameOf(u.role),
+    roleCode: roleCodeOf(u.role),
     active: u.active,
   };
 }
@@ -193,6 +221,7 @@ export function mapTask(t: ApiTask): Task {
   return {
     id: t.id,
     title: t.title,
+    description: t.description ?? "",
     proj: t.project.code,
     projFg: t.project.color,
     key: t.assignee?.avatarKey ?? "?",
@@ -244,10 +273,23 @@ export type UserInput = {
   name: string;
   email: string;
   password: string;
-  role?: RoleEnum;
+  roleId: string;
 };
 export type UserUpdateInput = Partial<{
   name: string;
-  role: RoleEnum;
+  roleId: string;
   active: boolean;
+}>;
+
+/* ------------------------------- Roles --------------------------------- */
+
+export type RoleInput = {
+  name: string;
+  code: string;
+  description?: string;
+};
+export type RoleUpdateInput = Partial<{
+  name: string;
+  description: string;
+  isActive: boolean;
 }>;

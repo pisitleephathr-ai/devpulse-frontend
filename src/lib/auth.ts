@@ -3,11 +3,14 @@
 const TOKEN_KEY = "devpulse_token";
 const USER_KEY = "devpulse_user";
 
+import type { ApiRole } from "./mappers";
+
 export type AuthUser = {
   id: string;
   name: string;
   email: string;
-  role: string;
+  /** role object (new API) or legacy enum string */
+  role: ApiRole | string | null;
   avatarKey: string;
   active: boolean;
 };

@@ -1,43 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Field, FormActions } from "@/components/form-card";
-import { ROLE_ENUM_OPTIONS, type RoleEnum } from "@/lib/mappers";
+import { useData } from "@/lib/store";
+import { roleNameOf } from "@/lib/mappers";
 import type { User } from "@/lib/mock-data";
 
 export type UserFormValues = {
   name: string;
   email: string;
   password: string;
-  role: RoleEnum;
+  roleId: string;
 };
 
 type UserFormProps = {
   mode: "create" | "edit";
   user?: User;
-  roleEnum?: RoleEnum;
   onSubmit: (data: UserFormValues) => void;
   onCancel: () => void;
 };
 
-export function UserForm({
-  mode,
-  user,
-  roleEnum,
-  onSubmit,
-  onCancel,
-}: UserFormProps) {
-  const [values, setValues] = useState<UserFormValues>({
+export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
+  const { roles } = useData();
+
+  // Active roles for selection; when editing, keep the user's current role even
+  // if it has since been deactivated.
+  const options = useMemo(() => {
+    const list = roles.filter((r) => r.isActive);
+    if (user) {
+      const current = roles.find((r) => r.code === user.roleCode);
+      if (current && !list.some((r) => r.id === current.id)) list.unshift(current);
+    }
+    return list;
+  }, [roles, user]);
+
+  const [values, setValues] = useState<UserFormValues>(() => ({
     name: user?.name ?? "",
     email: user?.email ?? "",
     password: "",
-    role: roleEnum ?? "DEVELOPER",
-  });
+    roleId: "",
+  }));
   const [errors, setErrors] = useState<Partial<Record<keyof UserFormValues, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Default the role once roles load (or match the editing user's role).
+  const roleId =
+    values.roleId ||
+    (user && options.find((r) => r.code === user.roleCode)?.id) ||
+    options[0]?.id ||
+    "";
 
   const set = <K extends keyof UserFormValues>(key: K, v: UserFormValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -54,6 +68,7 @@ export function UserForm({
       if (values.password.length < 6)
         next.password = "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
     }
+    if (!roleId) next.roleId = "กรุณาเลือกบทบาท";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -67,7 +82,7 @@ export function UserForm({
           name: values.name.trim(),
           email: values.email.trim(),
           password: values.password,
-          role: values.role,
+          roleId,
         }),
       300
     );
@@ -105,17 +120,21 @@ export function UserForm({
         </Field>
       )}
 
-      <Field label="บทบาท">
-        <Select
-          value={values.role}
-          onChange={(e) => set("role", e.target.value as RoleEnum)}
-        >
-          {ROLE_ENUM_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+      <Field label="บทบาท" error={errors.roleId}>
+        {roles.length === 0 ? (
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[12.5px] text-zinc-400">
+            กำลังโหลดบทบาท…
+          </div>
+        ) : (
+          <Select value={roleId} onChange={(e) => set("roleId", e.target.value)}>
+            {options.map((r) => (
+              <option key={r.id} value={r.id}>
+                {roleNameOf(r)}
+                {!r.isActive ? " (ปิดใช้งาน)" : ""}
+              </option>
+            ))}
+          </Select>
+        )}
       </Field>
 
       <FormActions>

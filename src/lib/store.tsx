@@ -30,6 +30,9 @@ import {
   type LeaveInput,
   type UserInput,
   type UserUpdateInput,
+  type ApiRole,
+  type RoleInput,
+  type RoleUpdateInput,
 } from "./mappers";
 
 /*
@@ -66,6 +69,11 @@ type DataContextValue = {
   addUser: (data: UserInput) => Promise<void>;
   updateUser: (id: string, data: UserUpdateInput) => Promise<void>;
   toggleUser: (id: string) => Promise<void>;
+
+  roles: ApiRole[];
+  addRole: (data: RoleInput) => Promise<void>;
+  updateRole: (id: string, data: RoleUpdateInput) => Promise<void>;
+  deleteRole: (id: string) => Promise<void>;
 };
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -76,6 +84,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [projects, setProjects] = useState<ApiProject[]>([]);
+  const [roles, setRoles] = useState<ApiRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,6 +108,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setReports(r.reports.map(mapReport));
       setTasks(t.tasks.map(mapTask));
       setLeaves(l.leaves.map(mapLeave));
+      // Roles are non-critical (and may 404 on an older backend) — never let
+      // them break the main load.
+      try {
+        const rl = await api.get<{ roles: ApiRole[] }>("/api/roles");
+        setRoles(rl.roles);
+      } catch {
+        setRoles([]);
+      }
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "โหลดข้อมูลไม่สำเร็จ"
@@ -254,6 +271,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [run]
   );
 
+  /* ------------------------------- Roles ---------------------------- */
+  const addRole = useCallback(
+    (data: RoleInput) =>
+      run(async () => {
+        const { role } = await api.post<{ role: ApiRole }>("/api/roles", data);
+        setRoles((prev) => [...prev, role]);
+      }),
+    [run]
+  );
+  const updateRole = useCallback(
+    (id: string, data: RoleUpdateInput) =>
+      run(async () => {
+        const { role } = await api.patch<{ role: ApiRole }>(
+          `/api/roles/${id}`,
+          data
+        );
+        setRoles((prev) => prev.map((r) => (r.id === id ? role : r)));
+      }),
+    [run]
+  );
+  const deleteRole = useCallback(
+    (id: string) =>
+      run(async () => {
+        await api.del(`/api/roles/${id}`);
+        setRoles((prev) => prev.filter((r) => r.id !== id));
+      }),
+    [run]
+  );
+
   const pendingLeaveCount = useMemo(
     () => leaves.filter((l) => l.status === "รออนุมัติ").length,
     [leaves]
@@ -282,6 +328,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addUser,
       updateUser,
       toggleUser,
+      roles,
+      addRole,
+      updateRole,
+      deleteRole,
     }),
     [
       users,
@@ -305,6 +355,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addUser,
       updateUser,
       toggleUser,
+      roles,
+      addRole,
+      updateRole,
+      deleteRole,
     ]
   );
 

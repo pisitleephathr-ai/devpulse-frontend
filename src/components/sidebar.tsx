@@ -10,14 +10,16 @@ import {
   CalendarClock,
   CalendarDays,
   Users,
+  ShieldCheck,
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
+import { canAccessMenu, isCommonMenu } from "@/lib/permissions";
 import { Avatar } from "@/components/ui/avatar";
 import { NAV_ITEMS, CURRENT_USER } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
-import { ROLE_TO_TH, type RoleEnum } from "@/lib/mappers";
+import { roleNameOf } from "@/lib/mappers";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -27,6 +29,7 @@ const ICONS: Record<string, LucideIcon> = {
   CalendarClock,
   CalendarDays,
   Users,
+  ShieldCheck,
   SlidersHorizontal,
 };
 
@@ -36,9 +39,7 @@ export function Sidebar() {
   const me = useCurrentUser();
   const meKey = me?.avatarKey ?? CURRENT_USER.key;
   const meName = me?.name ?? CURRENT_USER.name;
-  const meRole = me
-    ? ROLE_TO_TH[me.role as RoleEnum] ?? me.role
-    : CURRENT_USER.role;
+  const meRole = me ? roleNameOf(me.role) : CURRENT_USER.role;
 
   return (
     <nav className="flex w-[232px] flex-none flex-col border-r border-zinc-200 bg-white">
@@ -52,10 +53,14 @@ export function Sidebar() {
 
       {/* Nav */}
       <div className="flex flex-1 flex-col gap-0.5 px-2.5 py-2">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) =>
+          me ? canAccessMenu(me, item.id) : isCommonMenu(item.id)
+        ).map((item) => {
           const Icon = ICONS[item.icon];
           const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+            item.href === "/settings"
+              ? pathname === "/settings"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           const badge = item.id === "leaves" && pending > 0 ? pending : null;
 
           return (

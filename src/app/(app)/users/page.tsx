@@ -13,12 +13,15 @@ import { UserForm } from "@/components/forms/user-form";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { ROLE_COLORS, type User } from "@/lib/mock-data";
-import { TH_TO_ROLE } from "@/lib/mappers";
+import { useCurrentUser } from "@/lib/use-current-user";
+import { canManageUsers } from "@/lib/permissions";
 
 const TEMPLATE = "190px minmax(200px,1fr) 130px 110px 170px";
 
 export default function UsersPage() {
   const { users, addUser, updateUser, toggleUser } = useData();
+  const me = useCurrentUser();
+  const canManage = canManageUsers(me);
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
@@ -29,10 +32,12 @@ export default function UsersPage() {
         eyebrow="USER MANAGEMENT"
         title="ผู้ใช้งาน"
         actions={
-          <Button onClick={() => setAdding(true)}>
-            <Plus className="size-3.5" strokeWidth={2.4} />
-            เพิ่มผู้ใช้
-          </Button>
+          canManage ? (
+            <Button onClick={() => setAdding(true)}>
+              <Plus className="size-3.5" strokeWidth={2.4} />
+              เพิ่มผู้ใช้
+            </Button>
+          ) : undefined
         }
       />
 
@@ -80,26 +85,32 @@ export default function UsersPage() {
                   <StatusBadge label={u.active ? "ใช้งานอยู่" : "ปิดใช้งาน"} />
                 </span>
                 <div className="flex justify-end gap-1.5">
-                  <button
-                    onClick={() => setEditing(u)}
-                    className="rounded-[7px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
-                  >
-                    แก้ไข
-                  </button>
-                  <button
-                    onClick={() => {
-                      toggleUser(u.id);
-                      toast(
-                        u.active
-                          ? `ปิดใช้งาน ${u.name} แล้ว`
-                          : `เปิดใช้งาน ${u.name} แล้ว`
-                      );
-                    }}
-                    className="w-[92px] rounded-[7px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium transition-colors hover:bg-zinc-100"
-                    style={{ color: u.active ? "#b91c1c" : "#15803d" }}
-                  >
-                    {u.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
-                  </button>
+                  {canManage ? (
+                    <>
+                      <button
+                        onClick={() => setEditing(u)}
+                        className="rounded-[7px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+                      >
+                        แก้ไข
+                      </button>
+                      <button
+                        onClick={() => {
+                          toggleUser(u.id);
+                          toast(
+                            u.active
+                              ? `ปิดใช้งาน ${u.name} แล้ว`
+                              : `เปิดใช้งาน ${u.name} แล้ว`
+                          );
+                        }}
+                        className="w-[92px] rounded-[7px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium transition-colors hover:bg-zinc-100"
+                        style={{ color: u.active ? "#b91c1c" : "#15803d" }}
+                      >
+                        {u.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[11.5px] text-zinc-400">ดูอย่างเดียว</span>
+                  )}
                 </div>
               </DataTableRow>
             );
@@ -136,9 +147,8 @@ export default function UsersPage() {
           <UserForm
             mode="edit"
             user={editing}
-            roleEnum={TH_TO_ROLE[editing.role]}
             onSubmit={(data) => {
-              updateUser(editing.id, { name: data.name, role: data.role });
+              updateUser(editing.id, { name: data.name, roleId: data.roleId });
               setEditing(null);
               toast("บันทึกข้อมูลผู้ใช้แล้ว");
             }}

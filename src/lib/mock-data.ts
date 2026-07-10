@@ -123,6 +123,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "leaves", label: "คำขอลา", href: "/leaves", icon: "CalendarClock" },
   { id: "calendar", label: "ปฏิทินทีม", href: "/calendar", icon: "CalendarDays" },
   { id: "users", label: "ผู้ใช้งาน", href: "/users", icon: "Users" },
+  { id: "roles", label: "บทบาท", href: "/settings/roles", icon: "ShieldCheck" },
   { id: "settings", label: "ตั้งค่า", href: "/settings", icon: "SlidersHorizontal" },
 ];
 
@@ -134,6 +135,7 @@ export const PAGE_TITLES: Record<string, string> = {
   leaves: "คำขอลา",
   calendar: "ปฏิทินทีม",
   users: "ผู้ใช้งาน",
+  roles: "บทบาท",
   settings: "ตั้งค่า",
 };
 
@@ -317,6 +319,8 @@ export type Priority = "High" | "Medium" | "Low";
 export type Task = {
   id: string;
   title: string;
+  /** progress/notes text (used for search). */
+  description: string;
   /** Project short code shown on the card, e.g. "ATLAS". */
   proj: string;
   projFg: string;
@@ -347,7 +351,7 @@ export const TASK_PROJECTS = [
   { name: "Infra Hardening", code: "INFRA", color: "#be123c" },
 ];
 
-const TASKS_SEED: Omit<Task, "id">[] = [
+const TASKS_SEED: Omit<Task, "id" | "description">[] = [
   { title: "Rate limiting สำหรับ Public API", proj: "ATLAS", projFg: "#0f766e", key: "Jonas", pri: "High", due: "14 ก.ค.", status: "Todo" },
   { title: "Empty state หน้ารายการรายงาน", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Low", due: "18 ก.ค.", status: "Todo" },
   { title: "แผน QA สำหรับรีลีส 2.4", proj: "CONSOLE", projFg: "#7c3aed", key: "Sara", pri: "Medium", due: "16 ก.ค.", status: "Todo" },
@@ -361,7 +365,11 @@ const TASKS_SEED: Omit<Task, "id">[] = [
   { title: "ส่งออกรายงานเป็น CSV", proj: "ATLAS", projFg: "#0f766e", key: "Priya", pri: "Low", due: "7 ก.ค.", status: "Done" },
 ];
 
-export const TASKS: Task[] = TASKS_SEED.map((t, i) => ({ id: `t${i + 1}`, ...t }));
+export const TASKS: Task[] = TASKS_SEED.map((t, i) => ({
+  id: `t${i + 1}`,
+  description: "",
+  ...t,
+}));
 
 /** Group a flat task list into ordered kanban columns. */
 export function groupTasks(tasks: Task[]): KanbanColumn[] {
@@ -430,11 +438,14 @@ export type User = {
   name: string;
   key: string;
   email: string;
+  /** display name of the role (e.g. "ผู้ดูแลระบบ", "Designer") */
   role: string;
+  /** role code for permission checks (e.g. "ADMIN") */
+  roleCode: string;
   active: boolean;
 };
 
-const USERS_SEED: Omit<User, "id">[] = [
+const USERS_SEED: Omit<User, "id" | "roleCode">[] = [
   { name: "เลนา ฮอฟฟ์แมน", key: "Lena", email: "lena@devpulse.io", role: "หัวหน้าทีม", active: true },
   { name: "ดานา คิม", key: "Dana", email: "dana@devpulse.io", role: "ผู้ดูแลระบบ", active: true },
   { name: "มายา เฉิน", key: "Maya", email: "maya@devpulse.io", role: "นักพัฒนา", active: true },
@@ -445,7 +456,11 @@ const USERS_SEED: Omit<User, "id">[] = [
   { name: "เบน คาร์เตอร์", key: "Ben", email: "ben@devpulse.io", role: "นักพัฒนา", active: false },
 ];
 
-export const USERS: User[] = USERS_SEED.map((u, i) => ({ id: `u${i + 1}`, ...u }));
+export const USERS: User[] = USERS_SEED.map((u, i) => ({
+  id: `u${i + 1}`,
+  roleCode: "DEVELOPER",
+  ...u,
+}));
 
 export const ROLE_OPTIONS = ["หัวหน้าทีม", "ผู้ดูแลระบบ", "นักพัฒนา", "QA"];
 
