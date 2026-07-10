@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -18,10 +19,17 @@ import {
 } from "lucide-react";
 import { canAccessMenu, isCommonMenu } from "@/lib/permissions";
 import { Avatar } from "@/components/ui/avatar";
-import { NAV_ITEMS, CURRENT_USER } from "@/lib/mock-data";
+import { CURRENT_USER } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { roleNameOf } from "@/lib/mappers";
+import { api } from "@/lib/api";
+import {
+  resolveMenu,
+  MENU_UPDATED_EVENT,
+  type MenuConfigItem,
+  type ResolvedMenuItem,
+} from "@/lib/menu";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -52,6 +60,25 @@ export function Sidebar({
   const meName = me?.name ?? CURRENT_USER.name;
   const meRole = me ? roleNameOf(me.role) : CURRENT_USER.role;
 
+  // Menu items resolved from the saved config (falls back to code defaults).
+  const [menu, setMenu] = useState<ResolvedMenuItem[]>(() => resolveMenu([]));
+  useEffect(() => {
+    let active = true;
+    const loadMenu = () => {
+      api
+        .get<{ menu: MenuConfigItem[] }>("/api/settings/menu")
+        .then((r) => active && setMenu(resolveMenu(r.menu)))
+        .catch(() => active && setMenu(resolveMenu([])));
+    };
+    loadMenu();
+    // Refresh live when the settings page saves a new menu config.
+    window.addEventListener(MENU_UPDATED_EVENT, loadMenu);
+    return () => {
+      active = false;
+      window.removeEventListener(MENU_UPDATED_EVENT, loadMenu);
+    };
+  }, []);
+
   return (
     <nav
       className={cn(
@@ -71,20 +98,21 @@ export function Sidebar({
 
       {/* Nav */}
       <div className="flex flex-1 flex-col gap-0.5 px-2.5 py-2">
-        {NAV_ITEMS.filter((item) =>
-          me ? canAccessMenu(me, item.id) : isCommonMenu(item.id)
-        ).map((item) => {
-          const Icon = ICONS[item.icon];
-          const active =
-            item.href === "/settings"
-              ? pathname === "/settings"
-              : pathname === item.href || pathname.startsWith(item.href + "/");
-          const badge = item.id === "leaves" && pending > 0 ? pending : null;
+        {menu
+          .filter((item) => item.isVisible)
+          .filter((item) => (me ? canAccessMenu(me, item.key) : isCommonMenu(item.key)))
+          .map((item) => {
+            const Icon = ICONS[item.iconKey] ?? SlidersHorizontal;
+            const active =
+              item.href === "/settings"
+                ? pathname === "/settings"
+                : pathname === item.href || pathname.startsWith(item.href + "/");
+            const badge = item.key === "leaves" && pending > 0 ? pending : null;
 
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
               onClick={onClose}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] transition-colors",
