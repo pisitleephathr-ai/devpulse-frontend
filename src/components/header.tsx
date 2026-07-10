@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, Menu } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationBell } from "@/components/notification-bell";
@@ -11,7 +11,7 @@ import { CURRENT_USER, PAGE_TITLES } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { clearSession } from "@/lib/auth";
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const me = useCurrentUser();
@@ -35,8 +35,15 @@ export function Header() {
   }, [menuOpen]);
 
   return (
-    <header className="flex h-[58px] flex-none items-center gap-4 border-b border-zinc-200 bg-white px-6">
-      <div className="text-[15.5px] font-semibold tracking-[-0.01em]">
+    <header className="flex h-[58px] flex-none items-center gap-2.5 border-b border-border bg-card px-4 sm:gap-4 sm:px-6">
+      <button
+        onClick={onMenuClick}
+        aria-label="เปิดเมนู"
+        className="flex size-9 flex-none items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-muted lg:hidden dark:text-zinc-300"
+      >
+        <Menu className="size-5" strokeWidth={1.9} />
+      </button>
+      <div className="truncate text-[15.5px] font-semibold tracking-[-0.01em]">
         {title}
       </div>
       <div className="flex-1" />
