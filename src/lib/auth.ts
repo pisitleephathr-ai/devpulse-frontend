@@ -20,9 +20,26 @@ export function getToken(): string | null {
   return window.localStorage.getItem(TOKEN_KEY);
 }
 
+// Lightweight pub/sub so the header/sidebar react to auth/profile changes.
+const listeners = new Set<() => void>();
+export function subscribeAuth(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+function notifyAuthChange() {
+  listeners.forEach((l) => l());
+}
+
 export function setSession(token: string, user: AuthUser) {
   window.localStorage.setItem(TOKEN_KEY, token);
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  notifyAuthChange();
+}
+
+/** Update the stored user (keeps the token) and notify subscribers. */
+export function updateStoredUser(user: AuthUser) {
+  window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  notifyAuthChange();
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -40,6 +57,7 @@ export function clearSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
+  notifyAuthChange();
 }
 
 export function isAuthenticated(): boolean {

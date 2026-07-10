@@ -65,6 +65,14 @@ export type ApiReport = {
   author: ApiUserMini;
   project: ApiProject;
 };
+export type ApiTaskLink = { id: string; title: string; url: string };
+export type ApiTaskAttachment = {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileType?: string | null;
+  fileSize?: number | null;
+};
 export type ApiTask = {
   id: string;
   title: string;
@@ -74,6 +82,11 @@ export type ApiTask = {
   dueDate: string | null;
   project: ApiProject;
   assignee: ApiUserMini | null;
+  _count?: { links: number; attachments: number };
+};
+export type ApiTaskDetail = ApiTask & {
+  links: ApiTaskLink[];
+  attachments: ApiTaskAttachment[];
 };
 export type ApiLeave = {
   id: string;
@@ -227,7 +240,10 @@ export function mapTask(t: ApiTask): Task {
     key: t.assignee?.avatarKey ?? "?",
     pri: PRIORITY_TO_LABEL[t.priority],
     due: t.dueDate ? formatThaiDate(t.dueDate) : "—",
+    dueISO: t.dueDate ?? null,
     status: TASK_STATUS_TO_LABEL[t.status],
+    linkCount: t._count?.links ?? 0,
+    attachmentCount: t._count?.attachments ?? 0,
   };
 }
 
@@ -255,6 +271,12 @@ export type ReportInput = {
   plan?: string;
   status?: ReportStatusEnum;
 };
+export type TaskLinkInput = { title: string; url: string };
+export type TaskAttachmentInput = {
+  fileName: string;
+  fileUrl: string;
+  fileType?: string;
+};
 export type TaskInput = {
   title: string;
   projectId: string;
@@ -262,6 +284,9 @@ export type TaskInput = {
   priority?: PriorityEnum;
   status?: TaskStatusEnum;
   dueDate?: string | null;
+  description?: string;
+  links?: TaskLinkInput[];
+  attachments?: TaskAttachmentInput[];
 };
 export type LeaveInput = {
   type: LeaveTypeEnum;

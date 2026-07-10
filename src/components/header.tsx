@@ -86,12 +86,12 @@ export function Header() {
             <button
               onClick={() => {
                 setMenuOpen(false);
-                toast("หน้าโปรไฟล์จะมาเร็วๆ นี้");
+                router.push("/profile");
               }}
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[13px] text-zinc-700 transition-colors hover:bg-zinc-50"
             >
               <UserIcon className="size-4 text-zinc-500" />
-              โปรไฟล์
+              โปรไฟล์ของฉัน
             </button>
             <button
               onClick={() => {

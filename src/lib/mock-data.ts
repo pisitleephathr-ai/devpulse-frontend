@@ -137,6 +137,7 @@ export const PAGE_TITLES: Record<string, string> = {
   users: "ผู้ใช้งาน",
   roles: "บทบาท",
   settings: "ตั้งค่า",
+  profile: "โปรไฟล์ของฉัน",
 };
 
 /* ------------------------------------------------------------------ */
@@ -327,7 +328,11 @@ export type Task = {
   key: string;
   pri: Priority;
   due: string;
+  /** ISO due date for date-range filtering (null if none). */
+  dueISO: string | null;
   status: TaskStatus;
+  linkCount: number;
+  attachmentCount: number;
 };
 
 export type KanbanColumn = { name: TaskStatus; dot: string; cards: Task[] };
@@ -351,7 +356,10 @@ export const TASK_PROJECTS = [
   { name: "Infra Hardening", code: "INFRA", color: "#be123c" },
 ];
 
-const TASKS_SEED: Omit<Task, "id" | "description">[] = [
+const TASKS_SEED: Omit<
+  Task,
+  "id" | "description" | "dueISO" | "linkCount" | "attachmentCount"
+>[] = [
   { title: "Rate limiting สำหรับ Public API", proj: "ATLAS", projFg: "#0f766e", key: "Jonas", pri: "High", due: "14 ก.ค.", status: "Todo" },
   { title: "Empty state หน้ารายการรายงาน", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Low", due: "18 ก.ค.", status: "Todo" },
   { title: "แผน QA สำหรับรีลีส 2.4", proj: "CONSOLE", projFg: "#7c3aed", key: "Sara", pri: "Medium", due: "16 ก.ค.", status: "Todo" },
@@ -368,6 +376,9 @@ const TASKS_SEED: Omit<Task, "id" | "description">[] = [
 export const TASKS: Task[] = TASKS_SEED.map((t, i) => ({
   id: `t${i + 1}`,
   description: "",
+  dueISO: null,
+  linkCount: 0,
+  attachmentCount: 0,
   ...t,
 }));
 

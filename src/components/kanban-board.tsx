@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, FileText, Link2, Paperclip } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -121,6 +121,25 @@ export function KanbanBoard({
                   shape="tag"
                   className="text-[10.5px]"
                 />
+                {(card.description ||
+                  card.linkCount > 0 ||
+                  card.attachmentCount > 0) && (
+                  <div className="flex items-center gap-1.5 text-zinc-400">
+                    {card.description && <FileText className="size-3" />}
+                    {card.linkCount > 0 && (
+                      <span className="flex items-center gap-0.5 text-[10px]">
+                        <Link2 className="size-3" />
+                        {card.linkCount}
+                      </span>
+                    )}
+                    {card.attachmentCount > 0 && (
+                      <span className="flex items-center gap-0.5 text-[10px]">
+                        <Paperclip className="size-3" />
+                        {card.attachmentCount}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex-1" />
                 <span className="text-[11px] text-zinc-400">{card.due}</span>
               </div>
