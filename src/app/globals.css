@@ -10,10 +10,6 @@
   mode is unchanged; `.dark` overrides the variables.
 */
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-    "Segoe UI", var(--font-noto-thai), "Helvetica Neue", Arial, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
-
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -67,9 +63,23 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--foreground);
-  font-family: var(--font-sans);
+  /* Direct reference to the next/font variable — guaranteed to resolve. */
+  font-family: var(--font-noto-sans-thai), ui-sans-serif, system-ui, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+  Font utilities — un-layered so they override Tailwind's default `font-sans`
+  / `font-mono` everywhere (Noto Sans Thai primary, next/font-driven).
+*/
+.font-sans {
+  font-family: var(--font-noto-sans-thai), ui-sans-serif, system-ui, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+}
+.font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 /* Consistent focus treatment matching the handoff */
@@ -180,3 +190,42 @@ textarea:focus-visible {
 
 /* Darken the modal/overlay scrim a bit more in dark mode. */
 .dark .bg-zinc-900\/40 { background-color: rgb(0 0 0 / 0.6); }
+
+/*
+  Native <select> option popups. `color-scheme: dark` (set on .dark) handles
+  most browsers, but Windows Chrome can still render a light option list — force
+  a dark, readable background + text for options in dark mode.
+*/
+.dark select option,
+.dark select optgroup {
+  background-color: #18181b;
+  color: #f4f4f5;
+}
+
+/* Calendar event pills — readable in both themes (light tint / translucent dark). */
+.cal-pill-task { background: #dbeafe; color: #1d4ed8; }
+.dark .cal-pill-task { background: rgb(37 99 235 / 0.24); color: #bfdbfe; }
+.cal-pill-report { background: #ccfbf1; color: #0f766e; }
+.dark .cal-pill-report { background: rgb(13 148 136 / 0.24); color: #99f6e4; }
+.cal-pill-leave { background: #fef3c7; color: #b45309; }
+.dark .cal-pill-leave { background: rgb(217 119 6 / 0.26); color: #fcd34d; }
+.cal-pill-event { background: #ede9fe; color: #6d28d9; }
+.dark .cal-pill-event { background: rgb(124 58 237 / 0.26); color: #ddd6fe; }
+
+/* Safety net: any lingering gray/slate light-only utilities in dark mode. */
+.dark .bg-gray-50,
+.dark .bg-gray-100,
+.dark .bg-slate-50,
+.dark .bg-slate-100 { background-color: var(--muted); }
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-slate-200 { border-color: var(--border); }
+.dark .text-gray-900,
+.dark .text-slate-900 { color: #f4f4f5; }
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-slate-600 { color: #c4c4cb; }
+.dark .text-gray-500,
+.dark .text-gray-400,
+.dark .text-slate-500,
+.dark .text-slate-400 { color: #9a9aa3; }

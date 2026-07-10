@@ -24,11 +24,11 @@ type CalItem = {
   entityId: string;
 };
 
-const TYPE_META: Record<CalType, { label: string; bg: string; fg: string; dot: string; href: string }> = {
-  TASK: { label: "งาน", bg: "#dbeafe", fg: "#1d4ed8", dot: "#2563eb", href: "/tasks" },
-  REPORT: { label: "รายงาน", bg: "#ccfbf1", fg: "#0f766e", dot: "#0d9488", href: "/reports" },
-  LEAVE: { label: "ลา", bg: "#fef3c7", fg: "#b45309", dot: "#d97706", href: "/leaves" },
-  EVENT: { label: "กิจกรรม", bg: "#ede9fe", fg: "#6d28d9", dot: "#7c3aed", href: "/calendar" },
+const TYPE_META: Record<CalType, { label: string; cls: string; dot: string; href: string }> = {
+  TASK: { label: "งาน", cls: "cal-pill-task", dot: "#2563eb", href: "/tasks" },
+  REPORT: { label: "รายงาน", cls: "cal-pill-report", dot: "#0d9488", href: "/reports" },
+  LEAVE: { label: "ลา", cls: "cal-pill-leave", dot: "#d97706", href: "/leaves" },
+  EVENT: { label: "กิจกรรม", cls: "cal-pill-event", dot: "#7c3aed", href: "/calendar" },
 };
 
 const TH_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -191,8 +191,8 @@ export default function CalendarPage() {
         </div>
       )}
       {loaded && !error && !hasItems && (
-        <div className="flex items-center gap-2 rounded-lg border border-dashed border-zinc-200 bg-zinc-50/60 px-4 py-2.5 text-[12.5px] text-zinc-500">
-          <CalendarDays className="size-4 text-zinc-400" />
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-4 py-2.5 text-[12.5px] text-muted-foreground">
+          <CalendarDays className="size-4 text-muted-foreground" />
           ไม่มีกิจกรรมในเดือนนี้
         </div>
       )}
@@ -201,10 +201,10 @@ export default function CalendarPage() {
       {!loaded ? (
         <CalendarSkeleton />
       ) : (
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="grid grid-cols-7 border-b border-hairline">
           {WEEKDAYS.map((w) => (
-            <div key={w} className="p-2.5 text-center text-[11.5px] font-semibold text-zinc-500">{w}</div>
+            <div key={w} className="p-2.5 text-center text-[11.5px] font-semibold text-muted-foreground">{w}</div>
           ))}
         </div>
         <div className="grid grid-cols-7">
@@ -216,16 +216,17 @@ export default function CalendarPage() {
               <div
                 key={i}
                 className={`min-h-24 border-b border-r border-hairline-soft p-2 ${
-                  cell.day && dayItems.length ? "cursor-pointer hover:bg-zinc-50" : ""
-                }`}
-                style={{ background: cell.day ? undefined : "#fafafa" }}
+                  cell.day ? "bg-card" : "bg-muted/40"
+                } ${cell.day && dayItems.length ? "cursor-pointer hover:bg-muted/60" : ""}`}
                 onClick={() => cell.day && dayItems.length && setOpenDay(cell.day)}
               >
                 {cell.day && (
                   <>
                     <div
-                      className="mb-1.5 flex size-6 items-center justify-center rounded-full text-xs"
-                      style={cell.today ? { background: "#0d9488", color: "#fff", fontWeight: 700 } : { color: "#3f3f46" }}
+                      className={`mb-1.5 flex size-6 items-center justify-center rounded-full text-xs ${
+                        cell.today ? "font-bold text-white" : "text-zinc-700"
+                      }`}
+                      style={cell.today ? { background: "#0d9488" } : undefined}
                     >
                       {cell.day}
                     </div>
@@ -233,8 +234,7 @@ export default function CalendarPage() {
                       {shown.map((it) => (
                         <div
                           key={it.id}
-                          className="flex items-center gap-1 truncate rounded-[4px] px-1.5 py-0.5 text-[10.5px] font-medium"
-                          style={{ background: TYPE_META[it.type].bg, color: TYPE_META[it.type].fg }}
+                          className={`flex items-center gap-1 truncate rounded-[4px] px-1.5 py-0.5 text-[10.5px] font-medium ${TYPE_META[it.type].cls}`}
                           title={`${TYPE_META[it.type].label}: ${it.title}`}
                         >
                           <span className="truncate">{it.title}</span>
@@ -278,7 +278,7 @@ function DayModal({
 }) {
   return (
     <div onMouseDown={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-6">
-      <div onMouseDown={(e) => e.stopPropagation()} className="max-h-[80vh] w-[460px] max-w-full overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
+      <div onMouseDown={(e) => e.stopPropagation()} className="dp-pop max-h-[80vh] w-[460px] max-w-full overflow-hidden rounded-[14px] border border-border bg-card shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-between border-b border-hairline px-[22px] py-[16px]">
           <div className="text-[14px] font-semibold">{monthLabel}</div>
           <button onClick={onClose} aria-label="ปิด" className="flex size-7 items-center justify-center rounded-[7px] text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900">
@@ -292,7 +292,7 @@ function DayModal({
               href={TYPE_META[it.type].href}
               className="flex items-center gap-2.5 px-[22px] py-3 transition-colors hover:bg-zinc-50"
             >
-              <span className="rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold" style={{ background: TYPE_META[it.type].bg, color: TYPE_META[it.type].fg }}>
+              <span className={`rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold ${TYPE_META[it.type].cls}`}>
                 {TYPE_META[it.type].label}
               </span>
               <div className="min-w-0 flex-1">
