@@ -258,16 +258,16 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:1.6fr_1fr]">
         {/* Left column: workload + recently completed */}
         <div className="flex flex-col gap-4">
-        <Card>
-          <CardHeader>
+        <Card className="flex max-h-[440px] flex-col overflow-hidden">
+          <CardHeader className="flex-none">
             <CardTitle>ภาระงานของทีม</CardTitle>
             <Link href="/tasks" className="text-[12.5px] font-medium text-teal-600 hover:underline">
               เปิดบอร์ดงาน
             </Link>
           </CardHeader>
-          <div className="flex flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {loading && !insights ? (
-              <RowSkeleton rows={5} />
+              <RowSkeleton rows={6} />
             ) : insights && insights.workload.length === 0 ? (
               <div className="px-[18px] py-8 text-center text-[13px] text-muted-foreground">ยังไม่มีข้อมูลภาระงาน</div>
             ) : (
@@ -284,11 +284,11 @@ export default function DashboardPage() {
         </Card>
 
           {/* Recently completed */}
-          <Card>
-            <CardHeader>
+          <Card className="flex max-h-[320px] flex-col overflow-hidden">
+            <CardHeader className="flex-none">
               <CardTitle>งานที่เพิ่งเสร็จ</CardTitle>
             </CardHeader>
-            <div className="flex flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {loading && !insights ? (
                 <RowSkeleton rows={4} />
               ) : insights && insights.recentlyCompleted.length === 0 ? (
@@ -348,14 +348,14 @@ export default function DashboardPage() {
           </Card>
 
           {/* Blockers */}
-          <Card>
-            <CardHeader>
+          <Card className="flex max-h-[360px] flex-col overflow-hidden">
+            <CardHeader className="flex-none">
               <CardTitle>อุปสรรคล่าสุด</CardTitle>
               {!!insights?.topBlockers.length && (
                 <Link href="/reports" className="text-[12.5px] font-medium text-teal-600 hover:underline">ดูรายงาน</Link>
               )}
             </CardHeader>
-            <div className="flex flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {loading && !insights ? (
                 <RowSkeleton rows={3} />
               ) : insights && insights.topBlockers.length === 0 ? (
@@ -369,7 +369,7 @@ export default function DashboardPage() {
                       <span className="mt-0.5 flex size-5 flex-none items-center justify-center rounded-md bg-amber-100 text-amber-600 dark:bg-amber-950/50">
                         <TriangleAlert className="size-3" />
                       </span>
-                      <p className="flex-1 text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{b.text}</p>
+                      <p className="line-clamp-2 flex-1 text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200" title={b.text}>{b.text}</p>
                     </div>
                     <div className="mt-1.5 flex items-center gap-1.5 pl-7 text-[11.5px] text-muted-foreground">
                       <Avatar userKey={b.author.avatarKey} size={16} fontSize={7.5} />
@@ -385,29 +385,31 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent activity */}
-          <Card>
-            <div className="flex items-center gap-2 border-b border-hairline px-[18px] py-3.5 text-[14px] font-semibold">
+          <Card className="flex max-h-[380px] flex-col overflow-hidden">
+            <div className="flex flex-none items-center gap-2 border-b border-hairline px-[18px] py-3.5 text-[14px] font-semibold">
               <Clock className="size-4 text-muted-foreground" />
               กิจกรรมของทีม
             </div>
-            {loading && !summary ? (
-              <RowSkeleton rows={4} />
-            ) : activityItems.length > 0 ? (
-              <ActivityFeed items={activityItems} />
-            ) : (
-              <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีกิจกรรม</div>
-            )}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {loading && !summary ? (
+                <RowSkeleton rows={4} />
+              ) : activityItems.length > 0 ? (
+                <ActivityFeed items={activityItems} />
+              ) : (
+                <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีกิจกรรม</div>
+              )}
+            </div>
           </Card>
         </div>
       </div>
 
-      {/* Project progress — full width */}
-      <Card>
-        <CardHeader>
+      {/* Project progress — full width, bounded */}
+      <Card className="flex max-h-[300px] flex-col overflow-hidden">
+        <CardHeader className="flex-none">
           <CardTitle>ความคืบหน้าโปรเจกต์</CardTitle>
           <Link href="/projects" className="text-[12.5px] font-medium text-teal-600 hover:underline">โปรเจกต์</Link>
         </CardHeader>
-        <div className="px-[18px] py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-[18px] py-4">
           {loading && !summary ? (
             <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-6 animate-pulse rounded bg-muted" />)}
@@ -455,7 +457,7 @@ function Kpi({
   loading: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="flex min-h-[86px] items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       <span className="flex size-9 flex-none items-center justify-center rounded-lg" style={{ background: `${color}1f`, color }}>
         {icon}
       </span>

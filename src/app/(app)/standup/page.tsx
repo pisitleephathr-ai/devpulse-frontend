@@ -12,14 +12,16 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  SkipForward,
-  Check,
-  ListTodo,
+  Shuffle,
+  X,
   FileText,
+  ChevronDown,
+  UserPlus,
+  ClipboardList,
+  AlarmClock,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { StatCard } from "@/components/stat-card";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { api, ApiError } from "@/lib/api";
@@ -40,6 +42,7 @@ type Report = {
   blockers: string;
   project: Proj | null;
   status: string;
+  reportCount?: number;
   tasks: MiniTask[];
 };
 type Standup = {
@@ -80,6 +83,11 @@ export default function StandupPage() {
     load();
   }, []);
 
+  // Meeting mode is a full-screen presentation overlay (rendered outside the flow).
+  if (data && mode === "meeting") {
+    return <Meeting data={data} canManage={canManage} onExit={() => setMode("overview")} />;
+  }
+
   return (
     <div className="flex flex-col gap-4 px-4 py-6 sm:px-7">
       <PageHeader
@@ -91,23 +99,16 @@ export default function StandupPage() {
             <div className="flex items-center overflow-hidden rounded-lg border border-border">
               <button
                 onClick={() => setMode("overview")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-[7px] text-[12.5px] font-medium transition-colors",
-                  mode === "overview" ? "bg-teal-600 text-white" : "bg-card text-zinc-600 hover:bg-muted dark:text-zinc-300"
-                )}
+                className="flex items-center gap-1.5 bg-teal-600 px-2.5 py-[7px] text-[12.5px] font-medium text-white"
               >
-                <LayoutGrid className="size-3.5" />
-                ภาพรวม
+                <LayoutGrid className="size-3.5" /> ภาพรวม
               </button>
               <button
                 onClick={() => setMode("meeting")}
-                className={cn(
-                  "flex items-center gap-1.5 border-l border-border px-2.5 py-[7px] text-[12.5px] font-medium transition-colors",
-                  mode === "meeting" ? "bg-teal-600 text-white" : "bg-card text-zinc-600 hover:bg-muted dark:text-zinc-300"
-                )}
+                disabled={!data}
+                className="flex items-center gap-1.5 border-l border-border bg-card px-2.5 py-[7px] text-[12.5px] font-medium text-zinc-600 transition-colors hover:bg-muted disabled:opacity-50 dark:text-zinc-300"
               >
-                <Presentation className="size-3.5" />
-                โหมดประชุม
+                <Presentation className="size-3.5" /> โหมดประชุม
               </button>
             </div>
             <button
@@ -130,10 +131,8 @@ export default function StandupPage() {
             <RefreshCw className="size-3.5" /> ลองใหม่
           </button>
         </div>
-      ) : data && mode === "overview" ? (
-        <Overview data={data} canManage={canManage} onRemind={load} />
       ) : data ? (
-        <Meeting data={data} />
+        <Overview data={data} canManage={canManage} onRemind={load} onStart={() => setMode("meeting")} />
       ) : null}
     </div>
   );
@@ -145,10 +144,12 @@ function Overview({
   data,
   canManage,
   onRemind,
+  onStart,
 }: {
   data: Standup;
   canManage: boolean;
   onRemind: () => void;
+  onStart: () => void;
 }) {
   const s = data.stats;
   const [reminding, setReminding] = useState(false);
@@ -163,9 +164,7 @@ function Overview({
   async function remind() {
     setReminding(true);
     try {
-      const r = await api.post<{ notified: number }>("/api/standup/remind", {
-        date: data.date,
-      });
+      const r = await api.post<{ notified: number }>("/api/standup/remind", { date: data.date });
       toast(`แจ้งเตือน ${r.notified} คนแล้ว`);
       onRemind();
     } catch (e) {
@@ -177,43 +176,61 @@ function Overview({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-        <StatCard label="ส่งรายงานแล้ว" value={`${s.submitted}/${s.totalRequired}`} sub="ของผู้ที่ต้องส่ง" dot="#0d9488" />
-        <StatCard label="ยังไม่ส่ง" value={String(s.missing)} sub="ต้องติดตาม" dot="#f59e0b" />
-        <StatCard label="มีอุปสรรค" value={String(s.blockers)} sub="ต้องการความช่วยเหลือ" dot="#e11d48" />
-        <StatCard label="งานที่ต้องทำวันนี้" value={String(s.tasksDueToday)} sub="ครบกำหนดวันนี้" dot="#3b82f6" />
+      {/* KPI row (no exempt) */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="ส่งรายงานแล้ว" value={`${s.submitted}/${s.totalRequired}`} sub="ของผู้ที่ต้องส่ง" icon={<CheckCircle2 className="size-[18px]" />} color="#0d9488" />
+        <Kpi label="ยังไม่ส่ง" value={String(s.missing)} sub="ต้องติดตาม" icon={<AlarmClock className="size-[18px]" />} color="#f59e0b" />
+        <Kpi label="มีอุปสรรค" value={String(s.blockers)} sub="ต้องช่วยแก้" icon={<TriangleAlert className="size-[18px]" />} color="#e11d48" />
+        <Kpi label="งานครบกำหนดวันนี้" value={String(s.tasksDueToday)} sub="ทั้งทีม" icon={<ClipboardList className="size-[18px]" />} color="#3b82f6" />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:[grid-template-columns:1.6fr_1fr]">
-        {/* Left: submitted reports */}
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>รายงานของทีม ({data.submittedReports.length})</CardTitle>
-            </CardHeader>
-            {data.submittedReports.length === 0 ? (
-              <EmptyState icon={<FileText className="size-5" />} title="ยังไม่มีรายงานสำหรับวันนี้" description="รอสมาชิกส่งรายงานประจำวัน" />
-            ) : (
-              <div className="flex flex-col divide-y divide-hairline-soft">
-                {data.submittedReports.map((r) => (
-                  <ReportRow key={r.id} r={r} />
-                ))}
-              </div>
-            )}
-          </Card>
+      {/* Start meeting CTA */}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50/60 px-4 py-3 dark:border-teal-900/50 dark:bg-teal-950/20">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 flex-none items-center justify-center rounded-lg bg-teal-600 text-white">
+            <Presentation className="size-4" />
+          </span>
+          <div>
+            <div className="text-[13.5px] font-semibold">เริ่มโหมดประชุม</div>
+            <div className="text-[12px] text-muted-foreground">แสดงทีละคนสำหรับแชร์หน้าจอ · {s.submitted} คนพร้อมพูด</div>
+          </div>
         </div>
+        <button
+          onClick={onStart}
+          disabled={s.submitted === 0}
+          className="flex flex-none items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-teal-700 disabled:opacity-50"
+        >
+          <Presentation className="size-4" /> เริ่มประชุม
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:[grid-template-columns:1.55fr_1fr]">
+        {/* Left: submitted reports (unique users) */}
+        <Card className="flex max-h-[640px] flex-col">
+          <CardHeader>
+            <CardTitle>รายงานของทีม ({data.submittedReports.length})</CardTitle>
+          </CardHeader>
+          {data.submittedReports.length === 0 ? (
+            <EmptyState icon={<FileText className="size-5" />} title="ยังไม่มีรายงานสำหรับวันนี้" description="รอสมาชิกส่งรายงานประจำวัน" />
+          ) : (
+            <div className="flex flex-col divide-y divide-hairline-soft overflow-y-auto">
+              {data.submittedReports.map((r) => (
+                <ReportRow key={r.user.id} r={r} />
+              ))}
+            </div>
+          )}
+        </Card>
 
         {/* Right column */}
         <div className="flex flex-col gap-4">
           {/* Missing */}
-          <Card>
+          <Card className="flex max-h-[300px] flex-col">
             <CardHeader>
               <CardTitle>ยังไม่ส่งรายงานวันนี้ ({data.missingUsers.length})</CardTitle>
               {data.missingUsers.length > 0 && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button onClick={copyMissing} className="flex items-center gap-1 text-[12px] font-medium text-teal-600 hover:underline">
-                    <Copy className="size-3.5" /> คัดลอกรายชื่อ
+                    <Copy className="size-3.5" /> คัดลอก
                   </button>
                   {canManage && (
                     <button onClick={remind} disabled={reminding} className="flex items-center gap-1 text-[12px] font-medium text-amber-600 hover:underline disabled:opacity-50">
@@ -223,15 +240,15 @@ function Overview({
                 </div>
               )}
             </CardHeader>
-            <div className="px-[18px] py-3">
+            <div className="overflow-y-auto px-[18px] py-3">
               {data.missingUsers.length === 0 ? (
-                <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-600">
+                <div className="flex items-center gap-1.5 text-[13px] font-medium text-emerald-600">
                   <CheckCircle2 className="size-4" /> ทุกคนส่งรายงานแล้ว
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {data.missingUsers.map((u) => (
-                    <span key={u.id} className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-0.5 pl-0.5 pr-2 text-[11.5px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                    <span key={u.id} className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-0.5 pl-0.5 pr-2 text-[12px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
                       <Avatar userKey={u.avatarKey} size={18} fontSize={8} />
                       {u.name}
                     </span>
@@ -242,23 +259,23 @@ function Overview({
           </Card>
 
           {/* Blockers */}
-          <Card>
+          <Card className="flex max-h-[360px] flex-col">
             <CardHeader>
               <CardTitle>อุปสรรคที่ต้องช่วยแก้ ({data.blockers.length})</CardTitle>
             </CardHeader>
             {data.blockers.length === 0 ? (
-              <div className="flex items-center gap-2 px-[18px] py-5 text-[12.5px] text-emerald-600">
+              <div className="flex items-center gap-2 px-[18px] py-5 text-[13px] text-emerald-600">
                 <CheckCircle2 className="size-4" /> วันนี้ยังไม่มีอุปสรรคที่รายงาน
               </div>
             ) : (
-              <div className="flex flex-col divide-y divide-hairline-soft">
+              <div className="flex flex-col divide-y divide-hairline-soft overflow-y-auto">
                 {data.blockers.map((b) => (
-                  <div key={b.id} className="px-[18px] py-2.5">
+                  <div key={b.id} className="px-[18px] py-3">
                     <div className="flex items-start gap-2">
-                      <TriangleAlert className="mt-0.5 size-3.5 flex-none text-amber-500" />
-                      <p className="flex-1 whitespace-pre-line text-[12.5px] leading-snug text-zinc-700">{b.text}</p>
+                      <TriangleAlert className="mt-0.5 size-4 flex-none text-amber-500" />
+                      <p className="flex-1 whitespace-pre-line text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{b.text}</p>
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5 pl-[22px] text-[11px] text-muted-foreground">
+                    <div className="mt-1.5 flex items-center gap-1.5 pl-6 text-[11.5px] text-muted-foreground">
                       <Avatar userKey={b.user.avatarKey} size={16} fontSize={7.5} />
                       {b.user.name}
                       {b.project && ` · ${b.project.name}`}
@@ -269,24 +286,7 @@ function Overview({
             )}
           </Card>
 
-          {/* Exempt */}
-          {data.exemptUsers.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>ไม่ต้องส่งรายงาน ({data.exemptUsers.length})</CardTitle>
-              </CardHeader>
-              <div className="flex flex-wrap gap-1.5 px-[18px] py-3">
-                {data.exemptUsers.map((u) => (
-                  <span key={u.id} className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2 text-[11.5px] text-muted-foreground">
-                    <Avatar userKey={u.avatarKey} size={18} fontSize={8} />
-                    {u.name}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Meeting notes (local) */}
+          {/* Meeting notes (local, manager) */}
           {canManage && <MeetingNotes date={data.date} />}
         </div>
       </div>
@@ -294,197 +294,311 @@ function Overview({
   );
 }
 
+function Kpi({ label, value, sub, icon, color }: { label: string; value: string; sub: string; icon: React.ReactNode; color: string }) {
+  return (
+    <div className="flex min-h-[76px] items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <span className="flex size-9 flex-none items-center justify-center rounded-lg" style={{ background: `${color}1f`, color }}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <div className="truncate text-[11.5px] font-medium text-muted-foreground">{label}</div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[19px] font-bold leading-none tabular-nums">{value}</span>
+          <span className="truncate text-[11px] text-muted-foreground">{sub}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReportRow({ r }: { r: Report }) {
+  const [showTasks, setShowTasks] = useState(false);
   const hasBlocker = r.blockers.trim().length > 0;
   return (
-    <div className="px-[18px] py-3">
-      <div className="mb-1.5 flex items-center gap-2.5">
-        <Avatar userKey={r.user.avatarKey} size={26} fontSize={10} />
-        <span className="text-[13.5px] font-semibold">{r.user.name}</span>
+    <div className="px-[18px] py-3.5">
+      <div className="mb-2 flex items-center gap-2.5">
+        <Avatar userKey={r.user.avatarKey} size={28} fontSize={10.5} />
+        <span className="text-[14px] font-semibold">{r.user.name}</span>
+        {r.user.roleRef && (
+          <span className="rounded-[5px] bg-muted px-1.5 py-px text-[10.5px] font-medium text-muted-foreground">{r.user.roleRef.name}</span>
+        )}
         {r.project && (
           <span className="rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold" style={{ background: `${r.project.color}22`, color: r.project.color }}>
             {r.project.code}
           </span>
         )}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="เมื่อวาน" text={r.did} />
         <Field label="วันนี้" text={r.plan} />
       </div>
       {hasBlocker && (
-        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 dark:border-amber-900/50 dark:bg-amber-950/30">
-          <div className="mb-0.5 flex items-center gap-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+        <div className="mt-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
+          <div className="mb-0.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
             <TriangleAlert className="size-3" /> อุปสรรค
           </div>
-          <p className="whitespace-pre-line text-[12px] leading-snug text-amber-900 dark:text-amber-200">{r.blockers}</p>
+          <RichText text={r.blockers} className="text-[13px] leading-relaxed text-amber-900 dark:text-amber-200" />
         </div>
       )}
       {r.tasks.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {r.tasks.map((t) => (
-            <Link key={t.id} href="/tasks" className="flex items-center gap-1 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] text-zinc-600 hover:bg-muted dark:text-zinc-300">
-              <ListTodo className="size-3" />
-              <span className="max-w-[160px] truncate">{t.title}</span>
-            </Link>
-          ))}
+        <div className="mt-2">
+          <button
+            onClick={() => setShowTasks((v) => !v)}
+            className="flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            <ChevronDown className={cn("size-3.5 transition-transform", showTasks && "rotate-180")} />
+            ดูงานที่เกี่ยวข้อง ({r.tasks.length})
+          </button>
+          {showTasks && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {r.tasks.map((t) => (
+                <Link key={t.id} href="/tasks" className="max-w-[200px] truncate rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11.5px] text-zinc-600 hover:bg-muted dark:text-zinc-300">
+                  {t.title}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Render text as bullets when multi-line, otherwise a paragraph. Preserves breaks. */
+function RichText({ text, className }: { text: string; className?: string }) {
+  const lines = (text || "").split("\n").map((s) => s.trim()).filter(Boolean);
+  if (lines.length === 0)
+    return <p className={cn("italic text-zinc-300 dark:text-zinc-600", className)}>—</p>;
+  if (lines.length === 1) return <p className={cn("whitespace-pre-line", className)}>{lines[0]}</p>;
+  return (
+    <ul className={cn("flex flex-col gap-1.5", className)}>
+      {lines.map((l, i) => (
+        <li key={i} className="flex gap-2">
+          <span className="mt-[2px] flex-none opacity-50">•</span>
+          <span className="min-w-0">{l}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
 function Field({ label, text }: { label: string; text: string }) {
   return (
-    <div>
-      <div className="mb-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-      {text?.trim() ? (
-        <p className="whitespace-pre-line text-[12.5px] leading-snug text-zinc-700">{text}</p>
-      ) : (
-        <p className="text-[12.5px] italic text-zinc-300 dark:text-zinc-600">—</p>
-      )}
+    <div className="min-w-0">
+      <div className="mb-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <RichText text={text} className="text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200" />
     </div>
   );
 }
 
-/* ------------------------------- Meeting -------------------------------- */
+/* --------------------------- Meeting (full-screen) ---------------------- */
 
-type QueueItem = { user: ApiUserMini; report: Report | null };
+type QItem = { user: ApiUserMini; report: Report | null };
 
-function Meeting({ data }: { data: Standup }) {
-  const queue: QueueItem[] = useMemo(
-    () => [
-      ...data.submittedReports.map((r) => ({ user: r.user, report: r })),
-      ...data.missingUsers.map((u) => ({ user: u, report: null })),
-    ],
-    [data]
-  );
+function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolean; onExit: () => void }) {
+  const [includeMissing, setIncludeMissing] = useState(false);
+  const [order, setOrder] = useState<string[]>([]);
   const [idx, setIdx] = useState(0);
-  const [spoken, setSpoken] = useState<Set<string>>(new Set());
+
+  // Base queue: unique required users who submitted (+ optionally missing users).
+  const base = useMemo<QItem[]>(() => {
+    const submitted = data.submittedReports.map((r) => ({ user: r.user, report: r }));
+    const missing = includeMissing ? data.missingUsers.map((u) => ({ user: u, report: null })) : [];
+    return [...submitted, ...missing];
+  }, [data, includeMissing]);
+
+  // Reset the order (natural, by name) whenever the base set changes.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOrder(base.map((q) => q.user.id));
+    setIdx(0);
+  }, [base]);
+
+  const queue = useMemo<QItem[]>(() => {
+    const map = new Map(base.map((q) => [q.user.id, q]));
+    return order.map((id) => map.get(id)).filter(Boolean) as QItem[];
+  }, [order, base]);
 
   const total = queue.length;
-  const cur = queue[idx];
-
-  // Keyboard navigation for hands-free driving during the meeting.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, total - 1));
-      else if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [total]);
-
-  if (total === 0) {
-    return <EmptyState icon={<Presentation className="size-5" />} title="ยังไม่มีรายงานสำหรับวันนี้" description="เริ่มโหมดประชุมได้เมื่อมีสมาชิกส่งรายงาน" />;
-  }
+  const cur = queue[Math.min(idx, Math.max(total - 1, 0))];
 
   const next = () => setIdx((i) => Math.min(i + 1, total - 1));
   const prev = () => setIdx((i) => Math.max(i - 1, 0));
-  const markSpoken = () => {
-    setSpoken((s) => new Set(s).add(cur.user.id));
-    next();
-  };
+  function randomize() {
+    const ids = base.map((q) => q.user.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    setOrder(ids);
+    setIdx(0);
+  }
 
-  const r = cur.report;
+  // Lock body scroll + keyboard controls while the overlay is open.
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, total - 1));
+      else if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
+      else if (e.key === "Escape") onExit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [total, onExit]);
+
+  const r = cur?.report ?? null;
   const hasBlocker = !!r && r.blockers.trim().length > 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Progress */}
-      <div className="flex items-center gap-3">
-        <span className="text-[13px] font-semibold tabular-nums">
-          {idx + 1} / {total} คน
-        </span>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${((idx + 1) / total) * 100}%` }} />
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      {/* Top bar */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 flex-none items-center justify-center rounded-lg bg-teal-600 text-white">
+            <Presentation className="size-4" />
+          </span>
+          <div>
+            <div className="text-[14px] font-bold leading-tight">ประชุมอัปเดตงานประจำวัน</div>
+            <div className="text-[11.5px] text-muted-foreground">{formatThaiDateFull(new Date(`${data.date}T12:00:00+07:00`))}</div>
+          </div>
         </div>
-        <span className="text-[12px] text-muted-foreground">พูดแล้ว {spoken.size}/{total}</span>
+
+        {total > 0 && (
+          <div className="order-3 flex w-full items-center gap-3 sm:order-none sm:w-auto sm:flex-1">
+            <span className="flex-none text-[13px] font-semibold tabular-nums">คนที่ {idx + 1} จาก {total}</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted sm:max-w-[420px]">
+              <div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${((idx + 1) / total) * 100}%` }} />
+            </div>
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {canManage && (
+            <button
+              onClick={() => setIncludeMissing((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[12.5px] font-semibold transition-colors",
+                includeMissing
+                  ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                  : "border-border bg-card text-zinc-600 hover:bg-muted dark:text-zinc-300"
+              )}
+            >
+              <UserPlus className="size-4" /> รวมคนที่ยังไม่ส่ง
+            </button>
+          )}
+          <button
+            onClick={randomize}
+            disabled={total < 2}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-zinc-700 transition-colors hover:bg-muted disabled:opacity-40 dark:text-zinc-200"
+          >
+            <Shuffle className="size-4" /> สุ่มลำดับ
+          </button>
+          <button
+            onClick={onExit}
+            className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          >
+            <X className="size-4" /> ออกจากโหมดประชุม
+          </button>
+        </div>
       </div>
 
-      {/* Big card */}
-      <Card className="dp-pop">
-        <div className="flex flex-col gap-5 p-6 sm:p-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <Avatar userKey={cur.user.avatarKey} size={52} fontSize={20} />
+      {/* Stage */}
+      {total === 0 || !cur ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Presentation className="size-6" />
+          </span>
+          <div className="text-[18px] font-semibold">ยังไม่มีผู้ส่งรายงานสำหรับวันนี้</div>
+          <p className="max-w-sm text-[13.5px] leading-relaxed text-muted-foreground">
+            คิวการพูดจะสร้างจากผู้ที่ส่งรายงานแล้วเท่านั้น
+            {canManage ? " หรือกด “รวมคนที่ยังไม่ส่ง” เพื่อเพิ่มเข้าคิว" : ""}
+          </p>
+        </div>
+      ) : (
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-8 sm:py-8">
+          {/* Speaker header */}
+          <div className="flex items-center gap-4">
+            <Avatar userKey={cur.user.avatarKey} size={72} fontSize={28} />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-[22px] font-bold tracking-[-0.02em]">{cur.user.name}</h2>
-                {spoken.has(cur.user.id) && (
-                  <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-950/40">
-                    <Check className="size-3" /> พูดแล้ว
-                  </span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-[26px] font-bold tracking-[-0.02em] sm:text-[32px]">{cur.user.name}</h2>
+                {cur.user.roleRef && (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-[12px] font-medium text-muted-foreground">{cur.user.roleRef.name}</span>
                 )}
               </div>
-              {r?.project && <div className="text-[13px] text-muted-foreground">{r.project.name}</div>}
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[14px] text-muted-foreground">
+                {r?.project && (
+                  <span className="font-medium" style={{ color: r.project.color }}>{r.project.name}</span>
+                )}
+                {r ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-600"><CheckCircle2 className="size-4" /> ส่งรายงานแล้ว</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-amber-600"><TriangleAlert className="size-4" /> ยังไม่ได้ส่งรายงาน</span>
+                )}
+              </div>
             </div>
           </div>
 
+          {/* Content sections */}
           {!r ? (
-            <div className="flex items-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-6 text-[14px] font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-              <TriangleAlert className="size-5" /> ยังไม่ได้ส่งรายงานวันนี้
+            <div className="mt-8 flex flex-1 items-center justify-center rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-10 text-center text-[18px] font-medium text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300">
+              ยังไม่ได้ส่งรายงานประจำวันนี้
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <BigField label="สิ่งที่ทำเมื่อวาน" text={r.did} />
-              <BigField label="แผนงานวันนี้" text={r.plan} />
-              <div className="md:col-span-2">
+            <div className="mt-6 grid flex-1 grid-cols-1 gap-4 lg:grid-cols-2 lg:content-start">
+              <StageSection title="เมื่อวานทำอะไร" text={r.did} tone="neutral" />
+              <StageSection title="วันนี้จะทำอะไร" text={r.plan} tone="neutral" />
+              <div className="lg:col-span-2">
                 {hasBlocker ? (
-                  <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
-                    <div className="mb-1.5 flex items-center gap-1.5 text-[13px] font-bold text-amber-700 dark:text-amber-300">
-                      <TriangleAlert className="size-4" /> ปัญหา / อุปสรรค
+                  <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-5 dark:border-amber-700 dark:bg-amber-950/30 sm:p-6">
+                    <div className="mb-2 flex items-center gap-2 text-[15px] font-bold text-amber-700 dark:text-amber-300">
+                      <TriangleAlert className="size-5" /> อุปสรรค / ปัญหา
                     </div>
-                    <p className="whitespace-pre-line text-[15px] leading-relaxed text-amber-900 dark:text-amber-100">{r.blockers}</p>
+                    <RichText text={r.blockers} className="text-[17px] leading-relaxed text-amber-900 dark:text-amber-100 sm:text-[18px]" />
                   </div>
                 ) : (
-                  <div className="text-[13px] text-muted-foreground">ไม่มีอุปสรรค</div>
+                  <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/30 p-5 text-[15px] font-medium text-muted-foreground">
+                    <CheckCircle2 className="size-5 text-emerald-500" /> ไม่มีอุปสรรค
+                  </div>
                 )}
               </div>
-              {r.tasks.length > 0 && (
-                <div className="md:col-span-2">
-                  <div className="mb-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">งานที่เกี่ยวข้อง</div>
-                  <div className="flex flex-wrap gap-2">
-                    {r.tasks.map((t) => (
-                      <span key={t.id} className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[12.5px]">
-                        <ListTodo className="size-3.5 text-muted-foreground" />
-                        {t.title}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
-      </Card>
+      )}
 
-      {/* Controls */}
-      <div className="flex flex-wrap items-center justify-center gap-2.5">
-        <button onClick={prev} disabled={idx === 0} className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2.5 text-[13px] font-semibold text-zinc-700 transition-colors hover:bg-muted disabled:opacity-40 dark:text-zinc-200">
-          <ChevronLeft className="size-4" /> คนก่อนหน้า
-        </button>
-        <button onClick={next} disabled={idx >= total - 1} className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2.5 text-[13px] font-semibold text-zinc-700 transition-colors hover:bg-muted disabled:opacity-40 dark:text-zinc-200">
-          ข้าม <SkipForward className="size-4" />
-        </button>
-        <button onClick={markSpoken} className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-teal-700">
-          <Check className="size-4" /> ทำเครื่องหมายว่าพูดแล้ว
-        </button>
-        <button onClick={next} disabled={idx >= total - 1} className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2.5 text-[13px] font-semibold text-zinc-700 transition-colors hover:bg-muted disabled:opacity-40 dark:text-zinc-200">
-          คนถัดไป <ChevronRight className="size-4" />
-        </button>
-      </div>
+      {/* Bottom navigation */}
+      {total > 0 && (
+        <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3.5">
+          <button
+            onClick={prev}
+            disabled={idx === 0}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-5 py-3 text-[15px] font-semibold text-zinc-700 transition-colors hover:bg-muted disabled:opacity-40 dark:text-zinc-200"
+          >
+            <ChevronLeft className="size-5" /> ก่อนหน้า
+          </button>
+          <span className="text-[13px] text-muted-foreground tabular-nums">{idx + 1} / {total}</span>
+          <button
+            onClick={next}
+            disabled={idx >= total - 1}
+            className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-teal-700 disabled:opacity-40"
+          >
+            ถัดไป <ChevronRight className="size-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function BigField({ label, text }: { label: string; text: string }) {
+function StageSection({ title, text }: { title: string; text: string; tone?: "neutral" }) {
   return (
-    <div>
-      <div className="mb-1 font-mono text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-      {text?.trim() ? (
-        <p className="whitespace-pre-line text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-100">{text}</p>
-      ) : (
-        <p className="text-[15px] italic text-zinc-300 dark:text-zinc-600">—</p>
-      )}
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+      <div className="mb-2.5 text-[13px] font-bold uppercase tracking-wide text-teal-600">{title}</div>
+      <RichText text={text} className="text-[17px] leading-relaxed text-zinc-800 dark:text-zinc-100 sm:text-[18px]" />
     </div>
   );
 }
@@ -519,7 +633,7 @@ function MeetingNotes({ date }: { date: string }) {
           onChange={(e) => setNotes(e.target.value)}
           rows={4}
           placeholder="สรุปการประชุม / สิ่งที่ต้องทำ (action items)…"
-          className="w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-[12.5px] leading-relaxed text-foreground outline-none focus:border-teal-500"
+          className="w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none focus:border-teal-500"
         />
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground">{savedAt ? `บันทึกล่าสุด ${savedAt}` : ""}</span>
@@ -537,13 +651,13 @@ function MeetingNotes({ date }: { date: string }) {
 function StandupSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-[92px] animate-pulse rounded-xl border border-border bg-card" />
+          <div key={i} className="h-[76px] animate-pulse rounded-xl border border-border bg-card" />
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-4 lg:[grid-template-columns:1.6fr_1fr]">
-        <div className="h-72 animate-pulse rounded-xl border border-border bg-card" />
+      <div className="grid grid-cols-1 gap-4 lg:[grid-template-columns:1.55fr_1fr]">
+        <div className="h-96 animate-pulse rounded-xl border border-border bg-card" />
         <div className="flex flex-col gap-4">
           <div className="h-32 animate-pulse rounded-xl border border-border bg-card" />
           <div className="h-40 animate-pulse rounded-xl border border-border bg-card" />
