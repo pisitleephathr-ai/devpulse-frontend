@@ -211,6 +211,8 @@ textarea:focus-visible {
 .dark .cal-pill-leave { background: rgb(217 119 6 / 0.26); color: #fcd34d; }
 .cal-pill-event { background: #ede9fe; color: #6d28d9; }
 .dark .cal-pill-event { background: rgb(124 58 237 / 0.26); color: #ddd6fe; }
+.cal-pill-holiday { background: #ffe4e6; color: #be123c; }
+.dark .cal-pill-holiday { background: rgb(225 29 72 / 0.26); color: #fecdd3; }
 
 /* Safety net: any lingering gray/slate light-only utilities in dark mode. */
 .dark .bg-gray-50,

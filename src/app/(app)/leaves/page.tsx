@@ -172,7 +172,14 @@ export default function LeavesPage() {
                 />
               </span>
               <span className="text-[12.5px] text-zinc-700">{l.dates}</span>
-              <span className="text-[12.5px] text-zinc-500">{l.days}</span>
+              <span className="text-[12.5px] text-zinc-500">
+                {l.days} วัน
+                {l.halfDayPeriod ? (
+                  <span className="ml-1 rounded-[4px] bg-amber-50 px-1 py-px text-[10.5px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    {l.halfDayPeriod === "MORNING" ? "ครึ่งเช้า" : "ครึ่งบ่าย"}
+                  </span>
+                ) : null}
+              </span>
               <span className="truncate text-[12.5px] text-zinc-500">
                 {l.reason}
               </span>
@@ -258,7 +265,12 @@ export default function LeavesPage() {
                 />
               </DetailField>
               <DetailField label="จำนวนวัน">
-                <span className="text-[13px]">{viewing.days} วัน</span>
+                <span className="text-[13px]">
+                  {viewing.days} วัน
+                  {viewing.halfDayPeriod
+                    ? ` (${viewing.halfDayPeriod === "MORNING" ? "ครึ่งวันเช้า" : "ครึ่งวันบ่าย"})`
+                    : ""}
+                </span>
               </DetailField>
             </div>
             <DetailField label="เหตุผล">

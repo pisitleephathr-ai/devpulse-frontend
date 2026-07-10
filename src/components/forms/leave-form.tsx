@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FormActions } from "@/components/form-card";
+import { bangkokDateISO } from "@/lib/thai-datetime";
 import {
   LEAVE_TYPE_ENUM_OPTIONS,
   type LeaveTypeEnum,
   type LeaveInput,
 } from "@/lib/mappers";
 
+type Duration = "FULL" | "MORNING" | "AFTERNOON";
+
 type Values = {
   type: LeaveTypeEnum;
+  duration: Duration;
   start: string;
   end: string;
   reason: string;
@@ -21,30 +25,48 @@ type Values = {
 
 const EMPTY: Values = {
   type: "VACATION",
-  start: "2026-07-27",
-  end: "2026-07-31",
+  duration: "FULL",
+  // start/end are filled with today's Bangkok date on mount (hydration-safe).
+  start: "",
+  end: "",
   reason: "",
 };
 
 type LeaveFormProps = {
   onSubmit: (data: LeaveInput) => void;
   onCancel: () => void;
+  /** whether half-day leave is enabled (from org settings); defaults to true */
+  allowHalfDay?: boolean;
 };
 
-export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
+export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveFormProps) {
   const [values, setValues] = useState<Values>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof Values | "range", string>>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    const today = bangkokDateISO();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValues((v) => (v.start ? v : { ...v, start: today, end: today }));
+  }, []);
+
+  const isHalf = values.duration !== "FULL";
+
   const set = <K extends keyof Values>(key: K, v: Values[K]) => {
-    setValues((prev) => ({ ...prev, [key]: v }));
+    setValues((prev) => {
+      const next = { ...prev, [key]: v };
+      // Half-day is a single day: keep end pinned to start.
+      if (key === "duration" && v !== "FULL") next.end = next.start;
+      if (key === "start" && next.duration !== "FULL") next.end = next.start;
+      return next;
+    });
     setErrors((prev) => ({ ...prev, [key]: undefined, range: undefined }));
   };
 
   function validate(): boolean {
     const next: typeof errors = {};
     if (!values.reason.trim()) next.reason = "กรุณาระบุเหตุผล";
-    if (new Date(values.end) < new Date(values.start))
+    if (!isHalf && new Date(values.end) < new Date(values.start))
       next.range = "วันที่สิ้นสุดต้องไม่มาก่อนวันที่เริ่ม";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -56,8 +78,9 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
     const data: LeaveInput = {
       type: values.type,
       startDate: values.start,
-      endDate: values.end,
+      endDate: isHalf ? values.start : values.end,
       reason: values.reason.trim(),
+      ...(isHalf ? { halfDayPeriod: values.duration as "MORNING" | "AFTERNOON" } : {}),
     };
     setTimeout(() => onSubmit(data), 300);
   }
@@ -77,21 +100,40 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
         </Select>
       </Field>
 
+      <Field label="ระยะเวลา">
+        <Select
+          value={values.duration}
+          onChange={(e) => set("duration", e.target.value as Duration)}
+        >
+          <option value="FULL">เต็มวัน</option>
+          {allowHalfDay && <option value="MORNING">ครึ่งวันเช้า</option>}
+          {allowHalfDay && <option value="AFTERNOON">ครึ่งวันบ่าย</option>}
+        </Select>
+      </Field>
+
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        <Field label="วันที่เริ่ม">
+        <Field label={isHalf ? "วันที่ลา" : "วันที่เริ่ม"}>
           <Input
             type="date"
             value={values.start}
             onChange={(e) => set("start", e.target.value)}
           />
         </Field>
-        <Field label="วันที่สิ้นสุด" error={errors.range}>
-          <Input
-            type="date"
-            value={values.end}
-            onChange={(e) => set("end", e.target.value)}
-          />
-        </Field>
+        {isHalf ? (
+          <Field label="รวมเป็น">
+            <div className="flex h-[38px] items-center rounded-lg border border-border bg-muted/40 px-3 text-[13px] text-muted-foreground">
+              0.5 วัน ({values.duration === "MORNING" ? "ครึ่งเช้า" : "ครึ่งบ่าย"})
+            </div>
+          </Field>
+        ) : (
+          <Field label="วันที่สิ้นสุด" error={errors.range}>
+            <Input
+              type="date"
+              value={values.end}
+              onChange={(e) => set("end", e.target.value)}
+            />
+          </Field>
+        )}
       </div>
 
       <Field label="เหตุผล" error={errors.reason}>

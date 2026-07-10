@@ -39,6 +39,8 @@ export type ApiUserMini = {
   id: string;
   name: string;
   avatarKey: string;
+  /** present on most endpoints (userMiniSelect embeds the role) */
+  roleRef?: { code: string; name: string } | null;
 };
 export type ApiUser = ApiUserMini & {
   email: string;
@@ -108,6 +110,7 @@ export type ApiLeave = {
   startDate: string;
   endDate: string;
   days: number;
+  halfDayPeriod?: "MORNING" | "AFTERNOON" | null;
   reason: string;
   status: LeaveStatusEnum;
   user: ApiUserMini;
@@ -118,6 +121,8 @@ export type ApiActivity = {
   action: string;
   message: string;
   createdAt: string;
+  entityType?: string | null;
+  entityId?: string | null;
   user: ApiUserMini;
 };
 
@@ -278,9 +283,20 @@ export function mapLeave(l: ApiLeave): Leave {
     type: LEAVE_TYPE_TO_TH[l.type] ?? l.type,
     dates: formatThaiRange(l.startDate, l.endDate),
     days: l.days,
+    halfDayPeriod: l.halfDayPeriod ?? null,
     reason: l.reason,
     status: LEAVE_STATUS_TO_TH[l.status] ?? l.status,
   };
+}
+
+export const HALF_DAY_TH: Record<string, string> = {
+  MORNING: "ครึ่งวันเช้า",
+  AFTERNOON: "ครึ่งวันบ่าย",
+};
+
+/** Human duration label, e.g. "1 วัน" or "0.5 วัน (ครึ่งวันเช้า)". */
+export function leaveDurationLabel(days: number, half?: string | null): string {
+  return half ? `${days} วัน (${HALF_DAY_TH[half] ?? "ครึ่งวัน"})` : `${days} วัน`;
 }
 
 /* ---------------------------- Input DTO types -------------------------- */
@@ -317,6 +333,7 @@ export type LeaveInput = {
   startDate: string;
   endDate: string;
   reason: string;
+  halfDayPeriod?: "MORNING" | "AFTERNOON";
 };
 export type UserInput = {
   name: string;

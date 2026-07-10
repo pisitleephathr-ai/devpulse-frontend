@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { CalendarSkeleton } from "@/components/skeletons";
 import { WEEKDAYS } from "@/lib/mock-data";
 
-type CalType = "TASK" | "REPORT" | "LEAVE" | "EVENT";
+type CalType = "TASK" | "REPORT" | "LEAVE" | "EVENT" | "HOLIDAY";
 
 type CalItem = {
   id: string;
@@ -21,15 +21,26 @@ type CalItem = {
   user?: { id: string; name: string; avatarKey: string } | null;
   status?: string | null;
   priority?: string | null;
+  halfDayPeriod?: string | null;
+  holidayType?: string | null;
+  description?: string | null;
   entityId: string;
 };
 
 const TYPE_META: Record<CalType, { label: string; cls: string; dot: string; href: string }> = {
+  HOLIDAY: { label: "วันหยุด", cls: "cal-pill-holiday", dot: "#e11d48", href: "/calendar" },
   TASK: { label: "งาน", cls: "cal-pill-task", dot: "#2563eb", href: "/tasks" },
   REPORT: { label: "รายงาน", cls: "cal-pill-report", dot: "#0d9488", href: "/reports" },
   LEAVE: { label: "ลา", cls: "cal-pill-leave", dot: "#d97706", href: "/leaves" },
   EVENT: { label: "กิจกรรม", cls: "cal-pill-event", dot: "#7c3aed", href: "/calendar" },
 };
+
+const HALF_LABEL: Record<string, string> = { MORNING: "ครึ่งเช้า", AFTERNOON: "ครึ่งบ่าย" };
+/** Label a leave / half-day / holiday item for display. */
+function itemLabel(it: CalItem): string {
+  if (it.type === "LEAVE" && it.halfDayPeriod) return `${it.title} · ${HALF_LABEL[it.halfDayPeriod] ?? "ครึ่งวัน"}`;
+  return it.title;
+}
 
 const TH_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 const EN_MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
@@ -37,16 +48,19 @@ const EN_MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY
 // "Today" from the app's context date (2026-07-10), kept deterministic.
 const TODAY_YEAR = 2026, TODAY_MONTH = 7, TODAY_DAY = 10;
 
-type Cell = { day: number | null; today: boolean };
+type Cell = { day: number | null; today: boolean; weekend: boolean };
 
 function buildCells(year: number, month: number): Cell[] {
   const leadingBlanks = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const isCurrent = year === TODAY_YEAR && month === TODAY_MONTH;
   const cells: Cell[] = [];
-  for (let i = 0; i < leadingBlanks; i++) cells.push({ day: null, today: false });
-  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, today: isCurrent && d === TODAY_DAY });
-  while (cells.length % 7 !== 0) cells.push({ day: null, today: false });
+  for (let i = 0; i < leadingBlanks; i++) cells.push({ day: null, today: false, weekend: false });
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(Date.UTC(year, month - 1, d)).getUTCDay();
+    cells.push({ day: d, today: isCurrent && d === TODAY_DAY, weekend: dow === 0 || dow === 6 });
+  }
+  while (cells.length % 7 !== 0) cells.push({ day: null, today: false, weekend: false });
   return cells;
 }
 
@@ -175,13 +189,17 @@ export default function CalendarPage() {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3.5 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center gap-3.5 text-xs text-muted-foreground">
         {(Object.keys(TYPE_META) as CalType[]).map((t) => (
           <span key={t} className="flex items-center gap-1.5">
             <span className="size-2 rounded-[3px]" style={{ background: TYPE_META[t].dot }} />
             {TYPE_META[t].label}
           </span>
         ))}
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-[3px] bg-rose-100 ring-1 ring-rose-300 dark:bg-rose-950/40" />
+          เสาร์ / อาทิตย์ (วันหยุด)
+        </span>
       </div>
 
       {/* Empty / error banners */}
@@ -210,34 +228,49 @@ export default function CalendarPage() {
         <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
             const dayItems = cell.day ? dayMap[cell.day] ?? [] : [];
+            const hasHoliday = dayItems.some((it) => it.type === "HOLIDAY");
             const shown = dayItems.slice(0, 3);
             const extra = dayItems.length - shown.length;
+            const nonWorking = cell.weekend || hasHoliday;
             return (
               <div
                 key={i}
                 className={`min-h-24 border-b border-r border-hairline-soft p-2 ${
-                  cell.day ? "bg-card" : "bg-muted/40"
+                  !cell.day
+                    ? "bg-muted/40"
+                    : nonWorking
+                    ? "bg-rose-50/50 dark:bg-rose-950/15"
+                    : "bg-card"
                 } ${cell.day && dayItems.length ? "cursor-pointer hover:bg-muted/60" : ""}`}
                 onClick={() => cell.day && dayItems.length && setOpenDay(cell.day)}
               >
                 {cell.day && (
                   <>
-                    <div
-                      className={`mb-1.5 flex size-6 items-center justify-center rounded-full text-xs ${
-                        cell.today ? "font-bold text-white" : "text-zinc-700"
-                      }`}
-                      style={cell.today ? { background: "#0d9488" } : undefined}
-                    >
-                      {cell.day}
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <div
+                        className={`flex size-6 items-center justify-center rounded-full text-xs ${
+                          cell.today
+                            ? "font-bold text-white"
+                            : cell.weekend
+                            ? "font-medium text-rose-500 dark:text-rose-400"
+                            : "text-zinc-700 dark:text-zinc-200"
+                        }`}
+                        style={cell.today ? { background: "#0d9488" } : undefined}
+                      >
+                        {cell.day}
+                      </div>
+                      {nonWorking && !cell.today && (
+                        <span className="text-[9.5px] font-semibold text-rose-500/80 dark:text-rose-400/80">หยุด</span>
+                      )}
                     </div>
                     <div className="flex flex-col gap-[3px]">
                       {shown.map((it) => (
                         <div
                           key={it.id}
                           className={`flex items-center gap-1 truncate rounded-[4px] px-1.5 py-0.5 text-[10.5px] font-medium ${TYPE_META[it.type].cls}`}
-                          title={`${TYPE_META[it.type].label}: ${it.title}`}
+                          title={`${TYPE_META[it.type].label}: ${itemLabel(it)}`}
                         >
-                          <span className="truncate">{it.title}</span>
+                          <span className="truncate">{itemLabel(it)}</span>
                         </div>
                       ))}
                       {extra > 0 && (
@@ -296,8 +329,12 @@ function DayModal({
                 {TYPE_META[it.type].label}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-medium">{it.title}</div>
-                {it.project && <div className="truncate text-[11.5px] text-zinc-400">{it.project.name}</div>}
+                <div className="truncate text-[13px] font-medium">{itemLabel(it)}</div>
+                {it.type === "HOLIDAY" && it.description ? (
+                  <div className="truncate text-[11.5px] text-muted-foreground">{it.description}</div>
+                ) : it.project ? (
+                  <div className="truncate text-[11.5px] text-muted-foreground">{it.project.name}</div>
+                ) : null}
               </div>
               {it.user && <Avatar userKey={it.user.avatarKey} size={22} fontSize={9} />}
             </Link>

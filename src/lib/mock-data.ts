@@ -413,6 +413,7 @@ export type Leave = {
   type: string;
   dates: string;
   days: number;
+  halfDayPeriod?: "MORNING" | "AFTERNOON" | null;
   reason: string;
   status: string;
 };

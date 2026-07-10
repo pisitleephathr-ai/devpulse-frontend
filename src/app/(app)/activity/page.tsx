@@ -41,12 +41,35 @@ function actionColor(action: string) {
   return ACTION_META[action]?.color ?? "#a1a1aa";
 }
 
+/** Entity-type labels + colours (target of the action). */
+const ENTITY_META: Record<string, { label: string; color: string }> = {
+  task: { label: "งาน", color: "#2563eb" },
+  report: { label: "รายงาน", color: "#0d9488" },
+  leave: { label: "การลา", color: "#f59e0b" },
+  user: { label: "ผู้ใช้", color: "#6366f1" },
+  role: { label: "บทบาท", color: "#8b5cf6" },
+  project: { label: "โปรเจกต์", color: "#0ea5e9" },
+  comment: { label: "ความคิดเห็น", color: "#0ea5e9" },
+};
+const ENTITY_OPTIONS = Object.keys(ENTITY_META);
+
+function exactTime(iso: string) {
+  return new Date(iso).toLocaleString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function ActivityPage() {
   const { users } = useData();
 
   const [search, setSearch] = useState("");
   const [userId, setUserId] = useState("all");
   const [action, setAction] = useState("all");
+  const [entityType, setEntityType] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -56,7 +79,7 @@ export default function ActivityPage() {
   const [error, setError] = useState(false);
 
   const filtersActive =
-    !!search || userId !== "all" || action !== "all" || !!dateFrom || !!dateTo;
+    !!search || userId !== "all" || action !== "all" || entityType !== "all" || !!dateFrom || !!dateTo;
 
   // Load the distinct action list once (for the dropdown).
   useEffect(() => {
@@ -72,6 +95,7 @@ export default function ActivityPage() {
     if (search) params.set("search", search);
     if (userId !== "all") params.set("userId", userId);
     if (action !== "all") params.set("action", action);
+    if (entityType !== "all") params.set("entityType", entityType);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     params.set("limit", "200");
@@ -98,12 +122,13 @@ export default function ActivityPage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [search, userId, action, dateFrom, dateTo]);
+  }, [search, userId, action, entityType, dateFrom, dateTo]);
 
   function clearFilters() {
     setSearch("");
     setUserId("all");
     setAction("all");
+    setEntityType("all");
     setDateFrom("");
     setDateTo("");
   }
@@ -163,6 +188,18 @@ export default function ActivityPage() {
             </option>
           ))}
         </Select>
+        <Select
+          className="w-auto py-[7px] text-[12.5px]"
+          value={entityType}
+          onChange={(e) => setEntityType(e.target.value)}
+        >
+          <option value="all">ทุกประเภทข้อมูล</option>
+          {ENTITY_OPTIONS.map((et) => (
+            <option key={et} value={et}>
+              {ENTITY_META[et].label}
+            </option>
+          ))}
+        </Select>
         <Input
           type="date"
           value={dateFrom}
@@ -218,29 +255,46 @@ export default function ActivityPage() {
         ) : (
           groups.map(([day, entries]) => (
             <div key={day}>
-              <div className="sticky top-0 z-10 border-b border-hairline bg-zinc-50/80 px-[18px] py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 backdrop-blur">
+              <div className="sticky top-0 z-10 border-b border-hairline bg-muted/70 px-[18px] py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
                 {day}
               </div>
-              {entries.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center gap-3 border-b border-hairline-soft px-[18px] py-2.5 last:border-b-0"
-                >
-                  <Avatar userKey={a.user.avatarKey} size={28} fontSize={10.5} />
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[13px] text-zinc-800">{a.message}</span>
-                  </div>
-                  <span
-                    className="flex-none rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold"
-                    style={{ background: `${actionColor(a.action)}1a`, color: actionColor(a.action) }}
+              {entries.map((a) => {
+                const entity = a.entityType ? ENTITY_META[a.entityType] : null;
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-start gap-3 border-b border-hairline-soft px-[18px] py-3 last:border-b-0"
                   >
-                    {actionLabel(a.action)}
-                  </span>
-                  <span className="w-[92px] flex-none text-right text-[11.5px] text-zinc-400">
-                    {relativeTimeTh(a.createdAt)}
-                  </span>
-                </div>
-              ))}
+                    <Avatar userKey={a.user.avatarKey} size={30} fontSize={11} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] leading-relaxed text-foreground">{a.message}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <span className="font-medium text-zinc-500 dark:text-zinc-400">{a.user.name}</span>
+                        {a.user.roleRef && (
+                          <span className="rounded-[4px] bg-muted px-1.5 py-px font-medium">
+                            {a.user.roleRef.name}
+                          </span>
+                        )}
+                        {entity && (
+                          <span
+                            className="rounded-[4px] px-1.5 py-px font-medium"
+                            style={{ background: `${entity.color}1a`, color: entity.color }}
+                          >
+                            {entity.label}
+                          </span>
+                        )}
+                        <span title={exactTime(a.createdAt)}>· {relativeTimeTh(a.createdAt)}</span>
+                      </div>
+                    </div>
+                    <span
+                      className="flex-none rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold"
+                      style={{ background: `${actionColor(a.action)}1a`, color: actionColor(a.action) }}
+                    >
+                      {actionLabel(a.action)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           ))
         )}
