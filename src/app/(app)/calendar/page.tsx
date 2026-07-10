@@ -1,13 +1,34 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { api } from "@/lib/api";
 import {
   WEEKDAYS,
-  CALENDAR_EVENTS,
   CALENDAR_TODAY,
   CALENDAR_LEADING_BLANKS,
   CALENDAR_DAYS_IN_MONTH,
 } from "@/lib/mock-data";
 
+type ApiEvent = {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  type: "LEAVE" | "DEADLINE";
+};
+
+type DayEvent = { label: string; type: "LEAVE" | "DEADLINE" };
 type Cell = { day: number | null; today: boolean };
+
+const EVENT_STYLE: Record<DayEvent["type"], { background: string; color: string }> = {
+  LEAVE: { background: "#ccfbf1", color: "#0f766e" },
+  DEADLINE: { background: "#ede9fe", color: "#6d28d9" },
+};
+
+// Fixed view: July 2026 (matches the handoff grid).
+const YEAR = 2026;
+const MONTH = 7; // 1-indexed
 
 function buildCells(): Cell[] {
   const cells: Cell[] = [];
@@ -19,13 +40,33 @@ function buildCells(): Cell[] {
   return cells;
 }
 
-const EVENT_STYLE = {
-  leave: { background: "#ccfbf1", color: "#0f766e" },
-  task: { background: "#ede9fe", color: "#6d28d9" },
-} as const;
+/** Expand ranged API events into a day-of-month → events map for the view month. */
+function toDayMap(events: ApiEvent[]): Record<number, DayEvent[]> {
+  const map: Record<number, DayEvent[]> = {};
+  for (const ev of events) {
+    const s = new Date(ev.startDate);
+    const e = new Date(ev.endDate);
+    const inMonth = (d: Date) =>
+      d.getUTCFullYear() === YEAR && d.getUTCMonth() === MONTH - 1;
+    const startDay = inMonth(s) ? s.getUTCDate() : 1;
+    const endDay = inMonth(e) ? e.getUTCDate() : CALENDAR_DAYS_IN_MONTH;
+    for (let day = startDay; day <= endDay; day++) {
+      (map[day] ??= []).push({ label: ev.title, type: ev.type });
+    }
+  }
+  return map;
+}
 
 export default function CalendarPage() {
   const cells = buildCells();
+  const [dayMap, setDayMap] = useState<Record<number, DayEvent[]>>({});
+
+  useEffect(() => {
+    api
+      .get<{ events: ApiEvent[] }>(`/api/calendar?year=${YEAR}&month=${MONTH}`)
+      .then((r) => setDayMap(toDayMap(r.events)))
+      .catch(() => setDayMap({}));
+  }, []);
 
   return (
     <div className="flex flex-col gap-4 px-7 py-6">
@@ -74,7 +115,7 @@ export default function CalendarPage() {
         </div>
         <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
-            const events = cell.day ? CALENDAR_EVENTS[cell.day] ?? [] : [];
+            const events = cell.day ? dayMap[cell.day] ?? [] : [];
             return (
               <div
                 key={i}
