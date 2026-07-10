@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   LayoutDashboard,
+  Presentation,
   FileText,
   KanbanSquare,
   FolderKanban,
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard,
+  Presentation,
   FileText,
   KanbanSquare,
   FolderKanban,

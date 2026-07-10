@@ -11,6 +11,7 @@ export const ALL_ROLES = ["ADMIN", "MANAGER", "DEVELOPER", "QA", "DESIGNER"];
 /** Menu key → allowed role codes. Omitted/`*` means everyone. */
 const MENU_ACCESS: Record<string, string[]> = {
   dashboard: ALL_ROLES,
+  standup: ALL_ROLES,
   reports: ALL_ROLES,
   tasks: ALL_ROLES,
   leaves: ALL_ROLES,

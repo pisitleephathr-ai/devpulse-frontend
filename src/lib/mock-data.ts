@@ -118,6 +118,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "แดชบอร์ด", href: "/dashboard", icon: "LayoutDashboard" },
+  { id: "standup", label: "ประชุมเช้า", href: "/standup", icon: "Presentation" },
   { id: "reports", label: "รายงานประจำวัน", href: "/reports", icon: "FileText" },
   { id: "tasks", label: "บอร์ดงาน", href: "/tasks", icon: "KanbanSquare" },
   { id: "projects", label: "โปรเจกต์", href: "/projects", icon: "FolderKanban" },
@@ -132,6 +133,7 @@ export const NAV_ITEMS: NavItem[] = [
 /** Human page titles shown in the header, keyed by first path segment. */
 export const PAGE_TITLES: Record<string, string> = {
   dashboard: "แดชบอร์ด",
+  standup: "ประชุมอัปเดตงานประจำวัน",
   reports: "รายงานประจำวัน",
   tasks: "บอร์ดงาน",
   projects: "โปรเจกต์",
