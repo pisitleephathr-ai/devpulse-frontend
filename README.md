@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DevPulse
 
-## Getting Started
+A team operations dashboard for software teams — track **daily reports, tasks, leave requests, projects, blockers, and team activity** in one place.
 
-First, run the development server:
+- **Live app:** https://devpulse-fontend.vercel.app
+- **Live API:** https://devpulse-backend-production-a216.up.railway.app
 
+## Features
+
+- **Dashboard insights** — KPIs, per-person workload, report-submission status, top blockers, recent activity, dynamic Bangkok-time greeting
+- **Daily reports** — card layout, defaults to today, search + author/project/status/date filters, CSV export
+- **Task board** — Kanban with drag-drop, **multiple assignees**, comments, links/attachments, filters, CSV export
+- **Projects** — create / edit / archive / restore, per-project stats
+- **Leave requests** — request, approve/reject (RBAC-gated, no self-approval)
+- **Calendar** — real tasks (due dates), reports, approved leaves, and events aggregated per month
+- **Users & roles** — dynamic roles, `requiresDailyReport` per user
+- **Activity / audit log** — filterable (manager/admin only)
+- **Global search** — Cmd/Ctrl+K command palette across all entities
+- **Notifications** — in-app bell with polling
+- **Polish** — dark mode, skeleton loading, subtle animations, responsive (mobile drawer), RBAC throughout
+
+## Tech stack
+
+| Layer | Tech |
+| --- | --- |
+| Frontend | Next.js (App Router), TypeScript, Tailwind CSS v4, next-themes, framer-motion, lucide-react |
+| Backend | Express, TypeScript, Prisma, PostgreSQL, JWT, Zod, bcryptjs, helmet, express-rate-limit |
+| Hosting | Vercel (frontend), Railway (backend + Postgres) — GitHub auto-deploy |
+
+## Repositories
+
+- Frontend: `pisitleephathr-ai/devpulse-frontend`
+- Backend: `pisitleephathr-ai/devpulse-backend`
+
+## Local setup
+
+### Backend
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd devpulse-backend
+npm install
+cp .env.example .env        # set DATABASE_URL, JWT_SECRET, CORS_ORIGIN
+npx prisma migrate deploy   # or: npm run migrate  (dev)
+npm run seed                # seed demo roles/users (password: password123)
+npm run dev                 # http://localhost:4000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Frontend
+```bash
+cd devpulse-fontend
+npm install
+# .env.local:  NEXT_PUBLIC_API_URL=http://localhost:4000
+npm run dev                 # http://localhost:3000
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Backend** (`.env`)
 
-## Learn More
+| Var | Notes |
+| --- | --- |
+| `DATABASE_URL` | Postgres connection string |
+| `JWT_SECRET` | ≥ 16 chars |
+| `JWT_EXPIRES_IN` | e.g. `7d` |
+| `PORT` | default 4000 |
+| `NODE_ENV` | `development` \| `production` \| `test` |
+| `CORS_ORIGIN` | comma-separated origins; the Vercel domain in prod (not `*`) |
 
-To learn more about Next.js, take a look at the following resources:
+**Frontend** (`.env.local`): `NEXT_PUBLIC_API_URL` → the API base URL.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Common scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Backend:** `npm run dev`, `npm run build`, `npm run typecheck`, `npm test` (API smoke tests), `npm run migrate:deploy`, `npm run seed`, `npm run seed:roles`.
+**Frontend:** `npm run dev`, `npm run lint`, `npm run build`.
 
-## Deploy on Vercel
+## Demo account
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Seeded users log in with **`password123`** (e.g. `boss@devpulse.io`). The login page's "ทดลองใช้งาน" button prefills a demo email; enter the password to sign in. Change default passwords for real use.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Docs
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) · [TESTING.md](TESTING.md) · [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) · [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md)
