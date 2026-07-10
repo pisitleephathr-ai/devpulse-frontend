@@ -28,6 +28,7 @@ const ICONS: Record<string, LucideIcon> = {
   KanbanSquare,
   CalendarClock,
   CalendarDays,
+  Activity,
   Users,
   ShieldCheck,
   SlidersHorizontal,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, TriangleAlert } from "lucide-react";
+import { Eye, EyeOff, TriangleAlert, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
@@ -99,6 +99,15 @@ export default function ProfilePage() {
               shape="tag"
             />
           )}
+        </div>
+
+        {/* Security reminder — encourage changing the initial password. */}
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <ShieldAlert className="mt-0.5 size-4 flex-none text-amber-600" />
+          <div className="text-[12.5px] leading-relaxed text-amber-900">
+            <strong>เพื่อความปลอดภัย</strong> — หากคุณยังใช้รหัสผ่านเริ่มต้นที่ผู้ดูแลตั้งให้
+            กรุณาเปลี่ยนรหัสผ่านใหม่ด้านล่างนี้
+          </div>
         </div>
 
         {/* Personal information */}

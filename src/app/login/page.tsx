@@ -1,20 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, TriangleAlert } from "lucide-react";
+import { Activity, TriangleAlert, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { setSession, type AuthUser } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 
+/** Demo account hint shown when arriving via the landing page's demo button. */
+const DEMO_EMAIL = "boss@devpulse.io";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("lena@devpulse.io");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Read one-shot query/session signals after mount (avoids useSearchParams'
+  // Suspense requirement and any SSR hydration mismatch).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "1" || params.get("email")) {
+      setEmail(params.get("email") || DEMO_EMAIL);
+      setNotice("บัญชีทดลอง: กรอกรหัสผ่านที่ผู้ดูแลให้ไว้เพื่อเข้าสู่ระบบ");
+    }
+    if (window.sessionStorage.getItem("devpulse_session_expired")) {
+      window.sessionStorage.removeItem("devpulse_session_expired");
+      setError("เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง");
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
 
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +81,13 @@ export default function LoginPage() {
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700">
               <TriangleAlert className="size-4 flex-none" />
               {error}
+            </div>
+          )}
+
+          {notice && !error && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-[12.5px] text-teal-800">
+              <Info className="size-4 flex-none" />
+              {notice}
             </div>
           )}
 

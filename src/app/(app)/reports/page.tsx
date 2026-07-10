@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, X, Pencil, Trash2, FileText } from "lucide-react";
+import { Plus, X, Pencil, Trash2, FileText, Download } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -21,6 +21,7 @@ import { useCurrentUser } from "@/lib/use-current-user";
 import { isManagerOrAdmin } from "@/lib/permissions";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
+import { downloadCsv, todayStamp } from "@/lib/csv";
 import { REPORT_STATUS_OPTIONS, type Report } from "@/lib/mock-data";
 
 const TEMPLATE = "80px 160px 130px minmax(200px,1fr) 96px 128px";
@@ -69,16 +70,34 @@ export default function ReportsPage() {
     setStatus("all");
   }
 
+  function exportCsv() {
+    downloadCsv(
+      `daily-reports-${todayStamp()}.csv`,
+      ["วันที่", "ผู้เขียน", "โปรเจกต์", "สิ่งที่ทำ", "แผนถัดไป", "อุปสรรค", "สถานะ"],
+      filtered.map((r) => [r.date, r.name, r.proj, r.did, r.plan, r.blockers, r.status])
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 px-7 py-6">
       <PageHeader
         eyebrow="DAILY REPORTS"
         title="รายงานประจำวัน"
         actions={
-          <Link href="/reports/new" className={buttonVariants()}>
-            <Plus className="size-3.5" strokeWidth={2.4} />
-            สร้างรายงาน
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportCsv}
+              disabled={filtered.length === 0}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download className="size-3.5" />
+              ส่งออก CSV
+            </button>
+            <Link href="/reports/new" className={buttonVariants()}>
+              <Plus className="size-3.5" strokeWidth={2.4} />
+              สร้างรายงาน
+            </Link>
+          </div>
         }
       />
 

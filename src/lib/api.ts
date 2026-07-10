@@ -35,10 +35,13 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  // Session expired / invalid — clear and bounce to login.
+  // Session expired / invalid — clear and bounce to login with a flag so the
+  // login page can explain why the user landed there.
   if (res.status === 401 && typeof window !== "undefined") {
+    const hadToken = !!getToken();
     clearSession();
     if (!window.location.pathname.startsWith("/login")) {
+      if (hadToken) window.sessionStorage.setItem("devpulse_session_expired", "1");
       window.location.href = "/login";
     }
   }

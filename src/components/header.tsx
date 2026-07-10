@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, Bell, LogOut, User as UserIcon } from "lucide-react";
+import { Search, LogOut, User as UserIcon } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/notification-bell";
 import { CURRENT_USER, PAGE_TITLES } from "@/lib/mock-data";
-import { toast } from "@/components/ui/toaster";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { clearSession } from "@/lib/auth";
 
@@ -52,14 +52,7 @@ export function Header() {
       </div>
 
       {/* Notifications */}
-      <button
-        onClick={() => toast("ไม่มีการแจ้งเตือนใหม่")}
-        className="relative flex size-[34px] items-center justify-center rounded-lg border border-zinc-200 bg-white transition-colors hover:bg-zinc-100"
-        aria-label="การแจ้งเตือน"
-      >
-        <Bell className="size-4 text-zinc-600" strokeWidth={1.8} />
-        <span className="absolute right-2 top-[7px] size-[7px] rounded-full border-[1.5px] border-white bg-rose-600" />
-      </button>
+      <NotificationBell />
 
       {/* Account menu */}
       <div className="relative" ref={menuRef}>

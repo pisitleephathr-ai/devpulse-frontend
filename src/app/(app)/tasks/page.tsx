@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, Paperclip, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, Paperclip, ExternalLink, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
+import { downloadCsv, todayStamp } from "@/lib/csv";
 import { KanbanBoard } from "@/components/kanban-board";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -144,18 +145,47 @@ export default function TasksPage() {
     setDueF("all");
   }
 
+  function exportCsv() {
+    const nameByKey = new Map(users.map((u) => [u.key, u.name]));
+    const nameByCode = new Map(projects.map((p) => [p.code, p.name]));
+    downloadCsv(
+      `tasks-${todayStamp()}.csv`,
+      ["ชื่องาน", "รายละเอียด", "โปรเจกต์", "ผู้รับผิดชอบ", "สถานะ", "ความสำคัญ", "กำหนดส่ง", "จำนวนลิงก์"],
+      filtered.map((t) => [
+        t.title,
+        t.description,
+        nameByCode.get(t.proj) ?? t.proj,
+        nameByKey.get(t.key) ?? "—",
+        t.status,
+        t.pri,
+        t.dueISO ?? "",
+        t.linkCount,
+      ])
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-4 px-7 py-6">
       <PageHeader
         eyebrow="TASK BOARD"
         title="บอร์ดงาน"
         actions={
-          canManage ? (
-            <Button onClick={() => setCreateStatus("Todo")}>
-              <Plus className="size-3.5" strokeWidth={2.4} />
-              สร้างงานใหม่
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportCsv}
+              disabled={filtered.length === 0}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download className="size-3.5" />
+              ส่งออก CSV
+            </button>
+            {canManage && (
+              <Button onClick={() => setCreateStatus("Todo")}>
+                <Plus className="size-3.5" strokeWidth={2.4} />
+                สร้างงานใหม่
+              </Button>
+            )}
+          </div>
         }
       />
 
