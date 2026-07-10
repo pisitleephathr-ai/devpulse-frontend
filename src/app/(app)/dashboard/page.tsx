@@ -255,8 +255,9 @@ export default function DashboardPage() {
       )}
 
       {/* Main area */}
-      <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:1.7fr_1fr]">
-        {/* Left: team workload */}
+      <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:1.6fr_1fr]">
+        {/* Left column: workload + recently completed */}
+        <div className="flex flex-col gap-4">
         <Card>
           <CardHeader>
             <CardTitle>ภาระงานของทีม</CardTitle>
@@ -282,7 +283,33 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        {/* Right: report status + blockers */}
+          {/* Recently completed */}
+          <Card>
+            <CardHeader>
+              <CardTitle>งานที่เพิ่งเสร็จ</CardTitle>
+            </CardHeader>
+            <div className="flex flex-col">
+              {loading && !insights ? (
+                <RowSkeleton rows={4} />
+              ) : insights && insights.recentlyCompleted.length === 0 ? (
+                <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีงานที่เสร็จ</div>
+              ) : (
+                (insights?.recentlyCompleted ?? []).map((c) => (
+                  <div key={c.id} className="flex items-center gap-2.5 border-b border-hairline-soft px-[18px] py-2.5 last:border-b-0">
+                    <CheckCircle2 className="size-4 flex-none text-emerald-500" />
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-700 dark:text-zinc-200">{c.title}</span>
+                    <span className="flex-none rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold" style={{ background: `${c.project.color}22`, color: c.project.color }}>
+                      {c.project.code}
+                    </span>
+                    {c.assignee && <Avatar userKey={c.assignee.avatarKey} size={20} fontSize={8.5} />}
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Right column: report status + blockers + activity */}
         <div className="flex flex-col gap-4">
           {/* Report status */}
           <Card>
@@ -356,28 +383,42 @@ export default function DashboardPage() {
               )}
             </div>
           </Card>
+
+          {/* Recent activity */}
+          <Card>
+            <div className="flex items-center gap-2 border-b border-hairline px-[18px] py-3.5 text-[14px] font-semibold">
+              <Clock className="size-4 text-muted-foreground" />
+              กิจกรรมของทีม
+            </div>
+            {loading && !summary ? (
+              <RowSkeleton rows={4} />
+            ) : activityItems.length > 0 ? (
+              <ActivityFeed items={activityItems} />
+            ) : (
+              <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีกิจกรรม</div>
+            )}
+          </Card>
         </div>
       </div>
 
-      {/* Lower area — project progress · recently completed · activity */}
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {/* Project progress */}
-        <Card>
-          <CardHeader>
-            <CardTitle>ความคืบหน้าโปรเจกต์</CardTitle>
-            <Link href="/projects" className="text-[12.5px] font-medium text-teal-600 hover:underline">โปรเจกต์</Link>
-          </CardHeader>
-          <div className="flex flex-col gap-3.5 px-[18px] py-4">
-            {loading && !summary ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-6 animate-pulse rounded bg-muted" />)}
-              </div>
-            ) : summary && summary.projectProgress.length === 0 ? (
-              <div className="flex items-center gap-2 py-2 text-[13px] text-muted-foreground">
-                <FolderKanban className="size-4" /> ยังไม่มีโปรเจกต์
-              </div>
-            ) : (
-              (summary?.projectProgress ?? []).slice(0, 5).map((p) => (
+      {/* Project progress — full width */}
+      <Card>
+        <CardHeader>
+          <CardTitle>ความคืบหน้าโปรเจกต์</CardTitle>
+          <Link href="/projects" className="text-[12.5px] font-medium text-teal-600 hover:underline">โปรเจกต์</Link>
+        </CardHeader>
+        <div className="px-[18px] py-4">
+          {loading && !summary ? (
+            <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-6 animate-pulse rounded bg-muted" />)}
+            </div>
+          ) : summary && summary.projectProgress.length === 0 ? (
+            <div className="flex items-center gap-2 py-2 text-[13px] text-muted-foreground">
+              <FolderKanban className="size-4" /> ยังไม่มีโปรเจกต์
+            </div>
+          ) : (
+            <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(summary?.projectProgress ?? []).map((p) => (
                 <div key={p.id}>
                   <div className="mb-1 flex items-baseline justify-between gap-2">
                     <span className="truncate text-[12.5px] font-medium">{p.name}</span>
@@ -387,51 +428,11 @@ export default function DashboardPage() {
                     <div className="h-full rounded-full bg-teal-500" style={{ width: `${p.percent}%` }} />
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </Card>
-
-        {/* Recently completed */}
-        <Card>
-          <CardHeader>
-            <CardTitle>งานที่เพิ่งเสร็จ</CardTitle>
-          </CardHeader>
-          <div className="flex flex-col">
-            {loading && !insights ? (
-              <RowSkeleton rows={4} />
-            ) : insights && insights.recentlyCompleted.length === 0 ? (
-              <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีงานที่เสร็จ</div>
-            ) : (
-              (insights?.recentlyCompleted ?? []).map((c) => (
-                <div key={c.id} className="flex items-center gap-2.5 border-b border-hairline-soft px-[18px] py-2.5 last:border-b-0">
-                  <CheckCircle2 className="size-4 flex-none text-emerald-500" />
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-700 dark:text-zinc-200">{c.title}</span>
-                  <span className="flex-none rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold" style={{ background: `${c.project.color}22`, color: c.project.color }}>
-                    {c.project.code}
-                  </span>
-                  {c.assignee && <Avatar userKey={c.assignee.avatarKey} size={20} fontSize={8.5} />}
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-
-        {/* Recent activity */}
-        <Card className="md:col-span-2 xl:col-span-1">
-          <div className="flex items-center gap-2 border-b border-hairline px-[18px] py-3.5 text-[14px] font-semibold">
-            <Clock className="size-4 text-muted-foreground" />
-            กิจกรรมของทีม
-          </div>
-          {loading && !summary ? (
-            <RowSkeleton rows={4} />
-          ) : activityItems.length > 0 ? (
-            <ActivityFeed items={activityItems} />
-          ) : (
-            <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีกิจกรรม</div>
+              ))}
+            </div>
           )}
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 }
