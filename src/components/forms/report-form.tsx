@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FormActions } from "@/components/form-card";
 import { useData } from "@/lib/store";
+import { bangkokDateISO } from "@/lib/thai-datetime";
 import {
   REPORT_STATUS_ENUM_OPTIONS,
   TH_TO_REPORT_STATUS,
@@ -36,7 +37,9 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
 
   const [values, setValues] = useState<Values>(() => ({
     projectId: "",
-    date: "2026-07-09",
+    // Filled on mount with today's Asia/Bangkok date (see effect below) so a
+    // static prerender can't lock in a build-time day and shift it backward.
+    date: "",
     did: report?.did ?? "",
     blockers: report && report.blockers !== "ไม่มี" ? report.blockers : "",
     plan: report && report.plan !== "—" ? report.plan : "",
@@ -44,6 +47,14 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
   }));
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Default the report date to today in Asia/Bangkok, computed after mount to
+  // stay hydration-safe. Only when creating and the user hasn't picked a date.
+  useEffect(() => {
+    if (mode !== "create") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValues((v) => (v.date ? v : { ...v, date: bangkokDateISO() }));
+  }, [mode]);
 
   // Default/prefill the project once the projects list is available.
   useEffect(() => {

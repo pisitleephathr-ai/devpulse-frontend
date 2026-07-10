@@ -47,7 +47,7 @@ function hasBlocker(s: string) {
 }
 
 export default function ReportsPage() {
-  const { reports, users, projects, updateReport, deleteReport, loading, error, refresh } =
+  const { reports, users, projects, addReport, updateReport, deleteReport, loading, error, refresh } =
     useData();
   const me = useCurrentUser();
   const canEditReport = (r: Report) =>
@@ -60,6 +60,7 @@ export default function ReportsPage() {
   const [project, setProject] = useState("all");
   const [status, setStatus] = useState("all");
 
+  const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<Report | null>(null);
   const [editing, setEditing] = useState<Report | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Report | null>(null);
@@ -118,10 +119,10 @@ export default function ReportsPage() {
               <Download className="size-3.5" />
               ส่งออก CSV
             </button>
-            <Link href="/reports/new" className={buttonVariants()}>
+            <button onClick={() => setCreating(true)} className={buttonVariants()}>
               <Plus className="size-3.5" strokeWidth={2.4} />
               สร้างรายงาน
-            </Link>
+            </button>
           </div>
         }
       />
@@ -278,6 +279,26 @@ export default function ReportsPage() {
           ))}
         </CardGrid>
       )}
+
+      {/* Create */}
+      <Dialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="สร้างรายงานประจำวัน"
+        description="ใช้เวลาประมาณ 2 นาที · หัวหน้าทีมอ่านรายงานเหล่านี้ทุกเช้า"
+      >
+        {creating && (
+          <ReportForm
+            mode="create"
+            onSubmit={(data) => {
+              addReport(data);
+              setCreating(false);
+              toast(data.status === "DRAFT" ? "บันทึกฉบับร่างแล้ว" : "ส่งรายงานแล้ว");
+            }}
+            onCancel={() => setCreating(false)}
+          />
+        )}
+      </Dialog>
 
       {/* View */}
       {viewing && <ReportModal report={viewing} onClose={() => setViewing(null)} />}
