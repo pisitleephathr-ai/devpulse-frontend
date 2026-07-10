@@ -22,7 +22,7 @@ import {
   type Leave,
 } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
-import { canApproveLeave } from "@/lib/permissions";
+import { canApproveLeave, isAdmin } from "@/lib/permissions";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { X } from "lucide-react";
@@ -33,6 +33,9 @@ export default function LeavesPage() {
   const { leaves, users, loading, setLeaveStatus } = useData();
   const me = useCurrentUser();
   const canApprove = canApproveLeave(me);
+  // A user can't approve/reject their own leave (admins may override).
+  const canDecide = (l: Leave) =>
+    canApprove && (isAdmin(me) || l.key !== me?.avatarKey);
 
   const [search, setSearch] = useState("");
   const [member, setMember] = useState("all");
@@ -183,7 +186,7 @@ export default function LeavesPage() {
                 >
                   ดู
                 </button>
-                {canApprove && l.status === "รออนุมัติ" && (
+                {canDecide(l) && l.status === "รออนุมัติ" && (
                   <>
                     <button
                       onClick={() => decide(l, "อนุมัติแล้ว")}
@@ -212,7 +215,7 @@ export default function LeavesPage() {
         onClose={() => setViewing(null)}
         title="รายละเอียดคำขอลา"
         footer={
-          viewing && canApprove && viewing.status === "รออนุมัติ" ? (
+          viewing && canDecide(viewing) && viewing.status === "รออนุมัติ" ? (
             <>
               <button
                 onClick={() => {
