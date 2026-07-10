@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   TriangleAlert,
@@ -10,20 +10,26 @@ import {
   KanbanSquare,
   CheckCircle2,
   Clock,
-  ListTodo,
   RefreshCw,
+  ClipboardCheck,
+  Loader2,
+  AlarmClock,
+  Plane,
+  Stamp,
+  FolderKanban,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { StatCard } from "@/components/stat-card";
 import { ActivityFeed } from "@/components/activity-feed";
 import { api } from "@/lib/api";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { canManageTasks } from "@/lib/permissions";
-import { relativeTimeTh } from "@/lib/utils";
-import { getThaiGreeting, formatThaiDateFull } from "@/lib/thai-datetime";
+import { relativeTimeTh, cn } from "@/lib/utils";
+import { getThaiGreeting, formatThaiDateFull, bangkokDateISO } from "@/lib/thai-datetime";
 import type { ApiActivity, ApiUserMini } from "@/lib/mappers";
 import { CURRENT_USER } from "@/lib/mock-data";
+
+type Proj = { name: string; code: string; color: string };
 
 type Insights = {
   tasks: {
@@ -44,13 +50,7 @@ type Insights = {
     submitted: ApiUserMini[];
     missing: ApiUserMini[];
   };
-  topBlockers: {
-    id: string;
-    text: string;
-    author: ApiUserMini;
-    project: { name: string; code: string; color: string };
-    date: string;
-  }[];
+  topBlockers: { id: string; text: string; author: ApiUserMini; project: Proj; date: string }[];
   workload: {
     id: string;
     name: string;
@@ -66,7 +66,7 @@ type Insights = {
     id: string;
     title: string;
     assignee: ApiUserMini | null;
-    project: { name: string; code: string; color: string };
+    project: Proj;
     updatedAt: string;
   }[];
 };
@@ -74,12 +74,22 @@ type Insights = {
 type Summary = {
   stats: { pendingLeaves: number };
   recentActivity: ApiActivity[];
+  projectProgress: { id: string; name: string; done: number; total: number; percent: number }[];
+  upcomingLeaves: {
+    id: string;
+    user: ApiUserMini;
+    type: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+  }[];
 };
 
 const ACTION_DOT: Record<string, string> = {
   "task.status": "#7c3aed",
   "task.create": "#3b82f6",
   "task.update": "#3b82f6",
+  "task.assignees": "#3b82f6",
   "report.create": "#0d9488",
   "report.update": "#0d9488",
   "leave.create": "#f59e0b",
@@ -90,20 +100,16 @@ const ACTION_DOT: Record<string, string> = {
   "role.create": "#8b5cf6",
   "profile.update": "#a1a1aa",
   "password.change": "#a1a1aa",
+  "comment.create": "#0ea5e9",
 };
 
 export default function DashboardPage() {
   const me = useCurrentUser();
-  const displayName =
-    me?.name?.trim() || me?.email?.split("@")[0] || CURRENT_USER.name;
+  const displayName = me?.name?.trim() || me?.email?.split("@")[0] || CURRENT_USER.name;
   const firstName = displayName.split(" ")[0];
   const canCreateTask = canManageTasks(me);
 
-  // Greeting/date depend on the current Bangkok time — compute after mount so
-  // the static prerender doesn't lock in a build-time value (hydration-safe).
-  const [clock, setClock] = useState<{ greeting: string; date: string } | null>(
-    null
-  );
+  const [clock, setClock] = useState<{ greeting: string; date: string } | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setClock({ greeting: getThaiGreeting(), date: formatThaiDateFull() });
@@ -128,7 +134,6 @@ export default function DashboardPage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }
-
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
@@ -137,278 +142,413 @@ export default function DashboardPage() {
   const t = insights?.tasks;
   const r = insights?.reports;
 
-  const stats = [
-    { label: "งานทั้งหมด", value: t ? String(t.total) : "—", sub: `เสร็จแล้ว ${t?.completionRate ?? 0}%`, dot: "#3b82f6" },
-    { label: "งานที่เสร็จแล้ว", value: t ? String(t.done) : "—", sub: "ทั้งหมด", dot: "#10b981" },
-    { label: "งานกำลังทำ", value: t ? String(t.inProgress) : "—", sub: `รอตรวจ ${t?.review ?? 0}`, dot: "#7c3aed" },
-    { label: "งานเกินกำหนด", value: t ? String(t.overdue) : "—", sub: `ครบกำหนดวันนี้ ${t?.dueToday ?? 0}`, dot: "#e11d48" },
-    { label: "รายงานวันนี้", value: r ? `${r.submittedCount}/${r.totalMembers}` : "—", sub: "ส่งแล้ววันนี้", dot: "#0d9488" },
-    { label: "อุปสรรค", value: insights ? String(insights.topBlockers.length) : "—", sub: "ต้องการความช่วยเหลือ", dot: "#f59e0b" },
+  // Derived per-user status (report submitted / has blocker) for the workload.
+  const submittedIds = useMemo(
+    () => new Set((r?.submitted ?? []).map((u) => u.id)),
+    [r]
+  );
+  const blockerAuthorIds = useMemo(
+    () => new Set((insights?.topBlockers ?? []).map((b) => b.author.id)),
+    [insights]
+  );
+
+  const onLeaveToday = useMemo(() => {
+    const today = bangkokDateISO();
+    return (summary?.upcomingLeaves ?? []).filter(
+      (l) => l.status === "APPROVED" && l.startDate.slice(0, 10) <= today && l.endDate.slice(0, 10) >= today
+    );
+  }, [summary]);
+
+  const kpis = [
+    { label: "งานทั้งหมด", value: t?.total, sub: `${t?.completionRate ?? 0}% เสร็จ`, icon: <KanbanSquare className="size-[18px]" />, color: "#3b82f6" },
+    { label: "กำลังทำ", value: t?.inProgress, sub: `รอตรวจ ${t?.review ?? 0}`, icon: <Loader2 className="size-[18px]" />, color: "#7c3aed" },
+    { label: "เสร็จแล้ว", value: t?.done, sub: "งานที่ปิดแล้ว", icon: <CheckCircle2 className="size-[18px]" />, color: "#10b981" },
+    { label: "เกินกำหนด", value: t?.overdue, sub: `วันนี้ ${t?.dueToday ?? 0}`, icon: <AlarmClock className="size-[18px]" />, color: "#e11d48" },
+    { label: "รายงานวันนี้", value: r ? `${r.submittedCount}/${r.totalMembers}` : undefined, sub: "ส่งแล้ว", icon: <ClipboardCheck className="size-[18px]" />, color: "#0d9488" },
+    { label: "อุปสรรค", value: insights?.topBlockers.length, sub: "ต้องช่วยแก้", icon: <TriangleAlert className="size-[18px]" />, color: "#f59e0b" },
+    { label: "ลาวันนี้", value: onLeaveToday.length, sub: "อนุมัติแล้ว", icon: <Plane className="size-[18px]" />, color: "#f97316" },
+    { label: "รออนุมัติลา", value: summary?.stats.pendingLeaves, sub: "คำขอค้าง", icon: <Stamp className="size-[18px]" />, color: "#6366f1" },
   ];
 
   const activityItems = (summary?.recentActivity ?? []).map((a) => ({
     who: a.user.name,
-    what: a.message.startsWith(a.user.name)
-      ? a.message.slice(a.user.name.length).trim()
-      : a.message,
+    what: a.message.startsWith(a.user.name) ? a.message.slice(a.user.name.length).trim() : a.message,
     time: relativeTimeTh(a.createdAt),
     dot: ACTION_DOT[a.action] ?? "#a1a1aa",
   }));
 
   return (
-    <div className="flex flex-col gap-5 px-7 py-6">
+    <div className="flex flex-col gap-5 px-4 py-6 sm:px-7">
       {/* Greeting */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="mb-1 font-mono text-[10.5px] font-semibold tracking-[0.1em] text-teal-600">
-            DASHBOARD · {clock?.date ?? " "}
+          <div className="mb-1 font-mono text-[10.5px] font-semibold tracking-[0.12em] text-teal-600">
+            DASHBOARD · {clock?.date ?? " "}
           </div>
-          <div className="flex items-baseline gap-2.5">
-            <h1 className="text-[19px] font-bold tracking-[-0.02em]">
-              {clock?.greeting ?? "สวัสดี"} คุณ{firstName}
-            </h1>
-            <span className="text-[13px] text-zinc-500">
-              นี่คือภาพรวมงานของทีมวันนี้
-            </span>
-          </div>
+          <h1 className="text-[22px] font-bold tracking-[-0.02em]">
+            {clock?.greeting ?? "สวัสดี"} คุณ{firstName}
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            นี่คือภาพรวมงานของทีมวันนี้
+          </p>
         </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px] text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
-        >
-          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-          รีเฟรช
-        </button>
+        <div className="flex items-center gap-2">
+          {onLeaveToday.length > 0 && (
+            <div className="hidden items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 sm:flex">
+              <Plane className="size-3.5 text-orange-500" />
+              <span className="text-[12px] text-muted-foreground">ลาวันนี้</span>
+              <div className="flex -space-x-1.5">
+                {onLeaveToday.slice(0, 4).map((l) => (
+                  <span key={l.id} className="rounded-full ring-2 ring-[color:var(--card)]" title={l.user.name}>
+                    <Avatar userKey={l.user.avatarKey} size={20} fontSize={8} />
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-muted dark:text-zinc-300"
+          >
+            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+            รีเฟรช
+          </button>
+        </div>
       </div>
 
       {/* Quick actions */}
-      <div className="flex flex-wrap gap-2.5">
-        {canCreateTask && (
-          <QuickAction href="/tasks" icon={<KanbanSquare className="size-4" />} label="สร้างงาน" />
-        )}
+      <div className="flex flex-wrap gap-2">
+        {canCreateTask && <QuickAction href="/tasks" icon={<KanbanSquare className="size-4" />} label="สร้างงาน" />}
         <QuickAction href="/reports/new" icon={<Plus className="size-4" />} label="เขียนรายงาน" />
         <QuickAction href="/leaves/new" icon={<CalendarClock className="size-4" />} label="ขอลา" />
+        <QuickAction href="/standup" icon={<ClipboardCheck className="size-4" />} label="ประชุมเช้า" />
         <QuickAction href="/reports" icon={<FileText className="size-4" />} label="ดูรายงาน" />
       </div>
 
-      {/* Error */}
       {error && !insights && (
-        <div className="flex items-center justify-between gap-3 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3">
-          <span className="text-[13px] text-red-800">โหลดข้อมูลแดชบอร์ดไม่สำเร็จ</span>
-          <button
-            onClick={load}
-            className="rounded-[7px] border border-red-300 px-2.5 py-[5px] text-[12.5px] font-semibold text-red-700 hover:bg-red-100"
-          >
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/50 dark:bg-red-950/30">
+          <span className="text-[13px] text-red-800 dark:text-red-300">โหลดข้อมูลแดชบอร์ดไม่สำเร็จ</span>
+          <button onClick={load} className="rounded-lg border border-red-300 px-2.5 py-[5px] text-[12.5px] font-semibold text-red-700 hover:bg-red-100 dark:text-red-300">
             ลองใหม่
           </button>
         </div>
       )}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-6">
-        {stats.map((st) => (
-          <StatCard key={st.label} {...st} />
+      {/* KPI grid — compact + informative */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+        {kpis.map((k) => (
+          <Kpi key={k.label} {...k} loading={!insights} />
         ))}
       </div>
 
       {/* Overdue banner */}
       {!!t?.overdue && (
-        <div className="flex items-center gap-3 rounded-[10px] border border-red-200 bg-red-50 px-4 py-[11px]">
-          <TriangleAlert className="size-4 flex-none text-red-700" strokeWidth={2} />
-          <span className="flex-1 text-[13px] text-red-900">
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-[11px] dark:border-red-900/50 dark:bg-red-950/30">
+          <TriangleAlert className="size-4 flex-none text-red-600" strokeWidth={2} />
+          <span className="flex-1 text-[13px] leading-relaxed text-red-900 dark:text-red-200">
             <strong>มีงานเกินกำหนด {t.overdue} งาน</strong> — ควรติดตามหรือปรับกำหนดส่ง
           </span>
-          <Link
-            href="/tasks"
-            className="rounded-[7px] border border-red-300 px-2.5 py-[5px] text-[12.5px] font-semibold text-red-700 transition-colors hover:bg-red-100"
-          >
+          <Link href="/tasks" className="flex-none rounded-lg border border-red-300 px-2.5 py-[5px] text-[12.5px] font-semibold text-red-700 transition-colors hover:bg-red-100 dark:text-red-300">
             เปิดบอร์ดงาน
           </Link>
         </div>
       )}
 
-      {/* Two-column body */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:[grid-template-columns:1.6fr_1fr]">
-        {/* Left column */}
-        <div className="flex flex-col gap-4">
-          {/* Workload by person */}
-          <Card>
-            <CardHeader>
-              <CardTitle>ภาระงานของทีม</CardTitle>
-              <Link href="/tasks" className="text-[12.5px] font-medium text-teal-600 hover:underline">
-                เปิดบอร์ดงาน
-              </Link>
-            </CardHeader>
-            <div className="flex flex-col">
-              {(insights?.workload ?? []).map((w) => (
-                <div
+      {/* Main area */}
+      <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:1.7fr_1fr]">
+        {/* Left: team workload */}
+        <Card>
+          <CardHeader>
+            <CardTitle>ภาระงานของทีม</CardTitle>
+            <Link href="/tasks" className="text-[12.5px] font-medium text-teal-600 hover:underline">
+              เปิดบอร์ดงาน
+            </Link>
+          </CardHeader>
+          <div className="flex flex-col">
+            {loading && !insights ? (
+              <RowSkeleton rows={5} />
+            ) : insights && insights.workload.length === 0 ? (
+              <div className="px-[18px] py-8 text-center text-[13px] text-muted-foreground">ยังไม่มีข้อมูลภาระงาน</div>
+            ) : (
+              (insights?.workload ?? []).map((w) => (
+                <WorkloadRow
                   key={w.id}
-                  className="flex items-center gap-3 border-b border-hairline-soft px-[18px] py-2.5 last:border-b-0"
-                >
-                  <Avatar userKey={w.avatarKey} size={28} fontSize={10.5} />
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                    {w.name}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <WorkloadPill count={w.inProgress} label="กำลังทำ" tone="violet" />
-                    <WorkloadPill count={w.todo} label="รอทำ" tone="zinc" />
-                    <WorkloadPill count={w.review} label="รอตรวจ" tone="amber" />
-                  </div>
-                  {w.open === 0 ? (
-                    <span className="w-[52px] text-right text-[11.5px] font-medium text-emerald-600">
-                      ว่าง
-                    </span>
-                  ) : (
-                    <span className="w-[52px] text-right text-[11.5px] text-zinc-400">
-                      {w.open} งาน
-                    </span>
-                  )}
-                </div>
-              ))}
-              {insights && insights.workload.length === 0 && (
-                <div className="px-[18px] py-6 text-center text-[12.5px] text-zinc-400">
-                  ยังไม่มีข้อมูลภาระงาน
-                </div>
-              )}
-              {loading && !insights && <RowSkeleton rows={4} />}
-            </div>
-          </Card>
+                  w={w}
+                  submitted={submittedIds.has(w.id)}
+                  hasBlocker={blockerAuthorIds.has(w.id)}
+                />
+              ))
+            )}
+          </div>
+        </Card>
 
-          {/* Recently completed */}
-          <Card>
-            <CardHeader>
-              <CardTitle>งานที่เพิ่งเสร็จ</CardTitle>
-            </CardHeader>
-            <div className="flex flex-col">
-              {(insights?.recentlyCompleted ?? []).map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center gap-3 border-b border-hairline-soft px-[18px] py-2.5 last:border-b-0"
-                >
-                  <CheckCircle2 className="size-4 flex-none text-emerald-500" />
-                  <span className="min-w-0 flex-1 truncate text-[13px]">{c.title}</span>
-                  <span
-                    className="rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold"
-                    style={{ background: `${c.project.color}22`, color: c.project.color }}
-                  >
-                    {c.project.code}
-                  </span>
-                  {c.assignee && <Avatar userKey={c.assignee.avatarKey} size={22} fontSize={9} />}
-                </div>
-              ))}
-              {insights && insights.recentlyCompleted.length === 0 && (
-                <div className="px-[18px] py-6 text-center text-[12.5px] text-zinc-400">
-                  ยังไม่มีงานที่เสร็จ
-                </div>
-              )}
-              {loading && !insights && <RowSkeleton rows={3} />}
-            </div>
-          </Card>
-        </div>
-
-        {/* Right column */}
+        {/* Right: report status + blockers */}
         <div className="flex flex-col gap-4">
-          {/* Daily report status */}
+          {/* Report status */}
           <Card>
             <CardHeader>
               <CardTitle>สถานะรายงานวันนี้</CardTitle>
-              <Link href="/reports" className="text-[12.5px] font-medium text-teal-600 hover:underline">
-                ดูทั้งหมด
+              <Link href="/standup" className="text-[12.5px] font-medium text-teal-600 hover:underline">
+                ประชุมเช้า
               </Link>
             </CardHeader>
-            <div className="px-[18px] py-3">
-              <div className="mb-2.5 flex items-center gap-2 text-[12px] text-zinc-500">
-                <ListTodo className="size-3.5" />
-                ส่งแล้ว {r?.submittedCount ?? 0}/{r?.totalMembers ?? 0} คน
+            <div className="px-[18px] py-3.5">
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                <MiniStat label="ส่งแล้ว" value={r?.submittedCount ?? 0} total={r?.totalMembers} tone="emerald" />
+                <MiniStat label="ยังไม่ส่ง" value={r?.missing.length ?? 0} tone="amber" />
               </div>
               {r && r.missing.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {r.missing.map((u) => (
-                    <span
-                      key={u.id}
-                      className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-0.5 pl-0.5 pr-2 text-[11.5px] text-amber-800"
-                    >
-                      <Avatar userKey={u.avatarKey} size={18} fontSize={8} />
-                      {u.name.split(" ")[0]}
-                    </span>
-                  ))}
+                <div>
+                  <div className="mb-1.5 text-[11.5px] font-medium text-muted-foreground">ยังไม่ส่ง</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {r.missing.map((u) => (
+                      <span key={u.id} className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-0.5 pl-0.5 pr-2 text-[11.5px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                        <Avatar userKey={u.avatarKey} size={18} fontSize={8} />
+                        {u.name.split(" ")[0]}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 r && (
-                  <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-600">
-                    <CheckCircle2 className="size-4" />
-                    ทุกคนส่งรายงานแล้ว
+                  <div className="flex items-center gap-1.5 text-[13px] font-medium text-emerald-600">
+                    <CheckCircle2 className="size-4" /> ทุกคนส่งรายงานแล้ว
                   </div>
                 )
               )}
-              {loading && !insights && <RowSkeleton rows={2} />}
+              {loading && !insights && <div className="h-16 animate-pulse rounded-lg bg-muted" />}
             </div>
           </Card>
 
-          {/* Top blockers */}
+          {/* Blockers */}
           <Card>
             <CardHeader>
               <CardTitle>อุปสรรคล่าสุด</CardTitle>
+              {!!insights?.topBlockers.length && (
+                <Link href="/reports" className="text-[12.5px] font-medium text-teal-600 hover:underline">ดูรายงาน</Link>
+              )}
             </CardHeader>
             <div className="flex flex-col">
-              {(insights?.topBlockers ?? []).map((b) => (
-                <div
-                  key={b.id}
-                  className="border-b border-hairline-soft px-[18px] py-2.5 last:border-b-0"
-                >
-                  <div className="flex items-start gap-2">
-                    <TriangleAlert className="mt-0.5 size-3.5 flex-none text-amber-500" />
-                    <p className="flex-1 text-[12.5px] leading-snug text-zinc-700">{b.text}</p>
-                  </div>
-                  <div className="mt-1 flex items-center gap-1.5 pl-[22px] text-[11px] text-zinc-400">
-                    <Avatar userKey={b.author.avatarKey} size={16} fontSize={7.5} />
-                    {b.author.name} · {b.project.name}
-                  </div>
+              {loading && !insights ? (
+                <RowSkeleton rows={3} />
+              ) : insights && insights.topBlockers.length === 0 ? (
+                <div className="flex items-center gap-2 px-[18px] py-6 text-[13px] font-medium text-emerald-600">
+                  <CheckCircle2 className="size-4" /> ไม่มีอุปสรรคที่ค้างอยู่
                 </div>
-              ))}
-              {insights && insights.topBlockers.length === 0 && (
-                <div className="flex items-center gap-2 px-[18px] py-6 text-[12.5px] text-emerald-600">
-                  <CheckCircle2 className="size-4" />
-                  ไม่มีอุปสรรคที่ค้างอยู่
-                </div>
+              ) : (
+                (insights?.topBlockers ?? []).map((b) => (
+                  <Link key={b.id} href="/reports" className="border-b border-hairline-soft px-[18px] py-3 transition-colors last:border-b-0 hover:bg-muted/40">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 flex size-5 flex-none items-center justify-center rounded-md bg-amber-100 text-amber-600 dark:bg-amber-950/50">
+                        <TriangleAlert className="size-3" />
+                      </span>
+                      <p className="flex-1 text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{b.text}</p>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5 pl-7 text-[11.5px] text-muted-foreground">
+                      <Avatar userKey={b.author.avatarKey} size={16} fontSize={7.5} />
+                      {b.author.name}
+                      <span className="rounded-[4px] px-1 py-px text-[10px] font-semibold" style={{ background: `${b.project.color}22`, color: b.project.color }}>
+                        {b.project.code}
+                      </span>
+                    </div>
+                  </Link>
+                ))
               )}
-              {loading && !insights && <RowSkeleton rows={3} />}
             </div>
           </Card>
+        </div>
+      </div>
 
-          {/* Team activity */}
-          <Card>
-            <div className="flex items-center gap-2 border-b border-hairline px-[18px] py-3.5 text-[13.5px] font-semibold">
-              <Clock className="size-4 text-zinc-400" />
-              กิจกรรมของทีม
-            </div>
-            {activityItems.length > 0 ? (
-              <ActivityFeed items={activityItems} />
-            ) : (
-              <div className="px-[18px] py-6 text-center text-[12.5px] text-zinc-400">
-                {loading ? "กำลังโหลด…" : "ยังไม่มีกิจกรรม"}
+      {/* Lower area — project progress · recently completed · activity */}
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {/* Project progress */}
+        <Card>
+          <CardHeader>
+            <CardTitle>ความคืบหน้าโปรเจกต์</CardTitle>
+            <Link href="/projects" className="text-[12.5px] font-medium text-teal-600 hover:underline">โปรเจกต์</Link>
+          </CardHeader>
+          <div className="flex flex-col gap-3.5 px-[18px] py-4">
+            {loading && !summary ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-6 animate-pulse rounded bg-muted" />)}
               </div>
+            ) : summary && summary.projectProgress.length === 0 ? (
+              <div className="flex items-center gap-2 py-2 text-[13px] text-muted-foreground">
+                <FolderKanban className="size-4" /> ยังไม่มีโปรเจกต์
+              </div>
+            ) : (
+              (summary?.projectProgress ?? []).slice(0, 5).map((p) => (
+                <div key={p.id}>
+                  <div className="mb-1 flex items-baseline justify-between gap-2">
+                    <span className="truncate text-[12.5px] font-medium">{p.name}</span>
+                    <span className="flex-none text-[11.5px] text-muted-foreground tabular-nums">{p.done}/{p.total} · {p.percent}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-teal-500" style={{ width: `${p.percent}%` }} />
+                  </div>
+                </div>
+              ))
             )}
-          </Card>
+          </div>
+        </Card>
+
+        {/* Recently completed */}
+        <Card>
+          <CardHeader>
+            <CardTitle>งานที่เพิ่งเสร็จ</CardTitle>
+          </CardHeader>
+          <div className="flex flex-col">
+            {loading && !insights ? (
+              <RowSkeleton rows={4} />
+            ) : insights && insights.recentlyCompleted.length === 0 ? (
+              <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีงานที่เสร็จ</div>
+            ) : (
+              (insights?.recentlyCompleted ?? []).map((c) => (
+                <div key={c.id} className="flex items-center gap-2.5 border-b border-hairline-soft px-[18px] py-2.5 last:border-b-0">
+                  <CheckCircle2 className="size-4 flex-none text-emerald-500" />
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-700 dark:text-zinc-200">{c.title}</span>
+                  <span className="flex-none rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold" style={{ background: `${c.project.color}22`, color: c.project.color }}>
+                    {c.project.code}
+                  </span>
+                  {c.assignee && <Avatar userKey={c.assignee.avatarKey} size={20} fontSize={8.5} />}
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        {/* Recent activity */}
+        <Card className="md:col-span-2 xl:col-span-1">
+          <div className="flex items-center gap-2 border-b border-hairline px-[18px] py-3.5 text-[14px] font-semibold">
+            <Clock className="size-4 text-muted-foreground" />
+            กิจกรรมของทีม
+          </div>
+          {loading && !summary ? (
+            <RowSkeleton rows={4} />
+          ) : activityItems.length > 0 ? (
+            <ActivityFeed items={activityItems} />
+          ) : (
+            <div className="px-[18px] py-6 text-center text-[13px] text-muted-foreground">ยังไม่มีกิจกรรม</div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ pieces --------------------------------- */
+
+function Kpi({
+  icon,
+  label,
+  value,
+  sub,
+  color,
+  loading,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string | undefined;
+  sub: string;
+  color: string;
+  loading: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <span className="flex size-9 flex-none items-center justify-center rounded-lg" style={{ background: `${color}1f`, color }}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <div className="truncate text-[11.5px] font-medium text-muted-foreground">{label}</div>
+        {loading ? (
+          <div className="mt-1 h-4 w-10 animate-pulse rounded bg-muted" />
+        ) : (
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[19px] font-bold leading-none tabular-nums">{value ?? "—"}</span>
+            <span className="truncate text-[11px] text-muted-foreground">{sub}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const MINI_TONE: Record<string, string> = {
+  emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
+  amber: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300",
+};
+
+function MiniStat({ label, value, total, tone }: { label: string; value: number; total?: number; tone: string }) {
+  return (
+    <div className={cn("rounded-lg border px-3 py-2", MINI_TONE[tone])}>
+      <div className="text-[11px] font-medium opacity-80">{label}</div>
+      <div className="text-[18px] font-bold leading-tight tabular-nums">
+        {value}
+        {total !== undefined && <span className="text-[12px] font-medium opacity-60">/{total}</span>}
+      </div>
+    </div>
+  );
+}
+
+const PILLS = [
+  { key: "inProgress", label: "กำลังทำ", cls: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
+  { key: "review", label: "รอตรวจ", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
+  { key: "todo", label: "รอทำ", cls: "bg-muted text-zinc-600 dark:text-zinc-300" },
+] as const;
+
+function WorkloadRow({
+  w,
+  submitted,
+  hasBlocker,
+}: {
+  w: Insights["workload"][number];
+  submitted: boolean;
+  hasBlocker: boolean;
+}) {
+  const percent = w.total ? Math.round((w.done / w.total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3 border-b border-hairline-soft px-4 py-2.5 last:border-b-0">
+      <Avatar userKey={w.avatarKey} size={30} fontSize={11} />
+      <div className="w-[128px] min-w-0 flex-none">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] font-semibold">{w.name}</span>
+          {hasBlocker && <TriangleAlert className="size-3 flex-none text-amber-500" aria-label="มีอุปสรรค" />}
+        </div>
+        <div className="flex items-center gap-1 text-[10.5px]">
+          <span className={cn("size-1.5 rounded-full", submitted ? "bg-emerald-500" : "bg-amber-400")} />
+          <span className={submitted ? "text-emerald-600" : "text-amber-600"}>
+            {submitted ? "ส่งรายงานแล้ว" : "ยังไม่ส่ง"}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-1 flex-wrap items-center gap-1">
+        {PILLS.map((p) =>
+          w[p.key] ? (
+            <span key={p.key} className={cn("rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold", p.cls)} title={p.label}>
+              {w[p.key]} {p.label}
+            </span>
+          ) : null
+        )}
+        {w.open === 0 && <span className="text-[11.5px] font-medium text-emerald-600">ว่าง</span>}
+      </div>
+      <div className="hidden w-[86px] flex-none sm:block">
+        <div className="mb-0.5 flex justify-between text-[10px] text-muted-foreground tabular-nums">
+          <span>{w.done}/{w.total}</span>
+          <span>{percent}%</span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-teal-500" style={{ width: `${percent}%` }} />
         </div>
       </div>
     </div>
   );
 }
 
-function QuickAction({
-  href,
-  icon,
-  label,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-}) {
+function QuickAction({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-[13px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+      className="flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-[13px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 dark:text-zinc-200 dark:hover:bg-teal-950/40 dark:hover:text-teal-300"
     >
       <span className="text-teal-600">{icon}</span>
       {label}
@@ -416,39 +556,13 @@ function QuickAction({
   );
 }
 
-const PILL_TONE: Record<string, string> = {
-  violet: "bg-violet-50 text-violet-700",
-  zinc: "bg-zinc-100 text-zinc-600",
-  amber: "bg-amber-50 text-amber-700",
-};
-
-function WorkloadPill({
-  count,
-  label,
-  tone,
-}: {
-  count: number;
-  label: string;
-  tone: string;
-}) {
-  if (!count) return null;
-  return (
-    <span
-      className={`rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold ${PILL_TONE[tone]}`}
-      title={label}
-    >
-      {count}
-    </span>
-  );
-}
-
 function RowSkeleton({ rows }: { rows: number }) {
   return (
     <div className="flex flex-col">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 px-[18px] py-2.5">
-          <div className="size-7 flex-none animate-pulse rounded-full bg-zinc-100" />
-          <div className="h-3 flex-1 animate-pulse rounded bg-zinc-100" />
+        <div key={i} className="flex items-center gap-3 px-[18px] py-3">
+          <div className="size-7 flex-none animate-pulse rounded-full bg-muted" />
+          <div className="h-3 flex-1 animate-pulse rounded bg-muted" />
         </div>
       ))}
     </div>

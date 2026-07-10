@@ -353,34 +353,37 @@ function ReportCard({
     (r.did?.length ?? 0) + (r.plan?.length ?? 0) + (r.blockers?.length ?? 0) > 320;
 
   return (
-    <article className="dp-card-hover flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <article className="dp-card-hover flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
-        <Avatar userKey={r.key} size={34} fontSize={13} />
+        <Avatar userKey={r.key} size={36} fontSize={13.5} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-[13.5px] font-semibold">{r.name}</span>
+            <span className="truncate text-[14px] font-semibold">{r.name}</span>
             {role && (
-              <span className="rounded-[5px] bg-zinc-100 px-1.5 py-px text-[10.5px] font-medium text-zinc-500">
+              <span className="flex-none rounded-[5px] bg-muted px-1.5 py-px text-[10.5px] font-medium text-muted-foreground">
                 {role}
               </span>
             )}
           </div>
-          <div className="truncate text-[11.5px] text-zinc-400">
-            {r.proj} · {r.date}
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+            <span className="truncate font-medium text-zinc-500 dark:text-zinc-400">{r.proj}</span>
+            <span className="size-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            <span className="flex-none">{r.date}</span>
           </div>
         </div>
         <StatusBadge label={r.status} />
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col gap-3 px-4 py-3.5">
-        <CardSection label="งานที่ทำ" text={r.did} clamp={!expanded} />
-        <CardSection label="แผนงาน" text={r.plan} clamp={!expanded} />
+      <div className="flex flex-1 flex-col gap-3.5 px-4 py-4">
+        <CardSection label="งานที่ทำเมื่อวาน" text={r.did} clamp={!expanded} accent="#0d9488" />
+        <CardSection label="แผนงานวันนี้" text={r.plan} clamp={!expanded} accent="#2563eb" />
         <CardSection
           label="ปัญหา / อุปสรรค"
           text={r.blockers}
           clamp={!expanded}
+          accent="#f59e0b"
           highlight={blocker}
         />
         {longContent && (
@@ -428,11 +431,13 @@ function CardSection({
   label,
   text,
   clamp,
+  accent,
   highlight,
 }: {
   label: string;
   text: string;
   clamp: boolean;
+  accent: string;
   highlight?: boolean;
 }) {
   const isEmpty = !text?.trim();
@@ -440,23 +445,27 @@ function CardSection({
   return (
     <div
       className={
-        highlight ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2" : ""
+        highlight
+          ? "rounded-r-lg border-l-[3px] border-amber-400 bg-amber-50 py-2 pl-3 pr-3 dark:bg-amber-950/25"
+          : "border-l-[3px] pl-3"
       }
+      style={highlight ? undefined : { borderColor: accent }}
     >
       <div
-        className={`mb-1 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] ${
-          highlight ? "text-amber-700" : "text-zinc-400"
+        className={`mb-1 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.05em] ${
+          highlight ? "text-amber-700 dark:text-amber-400" : ""
         }`}
+        style={highlight ? undefined : { color: accent }}
       >
         {highlight && <TriangleAlert className="size-3" />}
         {label}
       </div>
       {isEmpty ? (
-        <p className="text-[12.5px] italic text-zinc-300">—</p>
+        <p className="text-[13px] italic text-zinc-300 dark:text-zinc-600">—</p>
       ) : (
         <p
-          className={`whitespace-pre-line text-[12.5px] leading-relaxed ${
-            highlight ? "text-amber-900" : "text-zinc-700"
+          className={`whitespace-pre-line text-[13px] leading-relaxed ${
+            highlight ? "text-amber-900 dark:text-amber-100" : "text-zinc-700 dark:text-zinc-200"
           } ${clamp ? "line-clamp-4" : ""}`}
         >
           {text}

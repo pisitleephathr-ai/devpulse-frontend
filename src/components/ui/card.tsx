@@ -37,7 +37,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn("text-[13.5px] font-semibold text-foreground", className)}
+      className={cn("text-[14px] font-semibold tracking-[-0.01em] text-foreground", className)}
       {...props}
     />
   );
