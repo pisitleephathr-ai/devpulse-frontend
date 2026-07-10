@@ -18,34 +18,48 @@ import {
   LEAVE_TYPE_COLORS,
   LEAVE_TYPES_FORM,
   LEAVE_STATUS_OPTIONS,
-  TEAM_MEMBERS,
   type Leave,
 } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { canApproveLeave } from "@/lib/permissions";
+import { SearchInput } from "@/components/search-input";
+import { matchesSearch } from "@/lib/filters";
+import { X } from "lucide-react";
 
 const TEMPLATE = "160px 96px 150px 64px minmax(170px,1fr) 104px 172px";
 
 export default function LeavesPage() {
-  const { leaves, setLeaveStatus } = useData();
+  const { leaves, users, setLeaveStatus } = useData();
   const me = useCurrentUser();
   const canApprove = canApproveLeave(me);
 
+  const [search, setSearch] = useState("");
   const [member, setMember] = useState("all");
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
   const [viewing, setViewing] = useState<Leave | null>(null);
 
+  const filtersActive =
+    !!search || member !== "all" || type !== "all" || status !== "all";
+
   const filtered = useMemo(
     () =>
       leaves.filter(
         (l) =>
+          matchesSearch([l.name, l.reason, l.type], search) &&
           (member === "all" || l.name === member) &&
           (type === "all" || l.type === type) &&
           (status === "all" || l.status === status)
       ),
-    [leaves, member, type, status]
+    [leaves, search, member, type, status]
   );
+
+  function clearFilters() {
+    setSearch("");
+    setMember("all");
+    setType("all");
+    setStatus("all");
+  }
 
   function decide(l: Leave, next: "อนุมัติแล้ว" | "ปฏิเสธ") {
     setLeaveStatus(l.id, next);
@@ -67,15 +81,20 @@ export default function LeavesPage() {
       />
 
       <FilterBar trailing={`${filtered.length} คำขอ`}>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="ค้นหาชื่อ เหตุผล…"
+        />
         <Select
           className="w-auto py-[7px] text-[12.5px]"
           value={member}
           onChange={(e) => setMember(e.target.value)}
         >
           <option value="all">สมาชิกทั้งหมด</option>
-          {TEAM_MEMBERS.map((m) => (
-            <option key={m.key} value={m.name}>
-              {m.name}
+          {users.map((u) => (
+            <option key={u.id} value={u.name}>
+              {u.name}
             </option>
           ))}
         </Select>
@@ -99,6 +118,15 @@ export default function LeavesPage() {
             <option key={s}>{s}</option>
           ))}
         </Select>
+        {filtersActive && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px] text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
+          >
+            <X className="size-3" />
+            ล้างตัวกรอง
+          </button>
+        )}
       </FilterBar>
 
       <DataTable

@@ -8,6 +8,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
+import { SearchInput } from "@/components/search-input";
+import { matchesSearch } from "@/lib/filters";
 import { KanbanBoard } from "@/components/kanban-board";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -102,12 +104,9 @@ export default function TasksPage() {
     dueF !== "all";
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return tasks.filter(
       (t) =>
-        (!q ||
-          t.title.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q)) &&
+        matchesSearch([t.title, t.description], search) &&
         (statusF === "all" || t.status === statusF) &&
         (priorityF === "all" || t.pri === priorityF) &&
         (assigneeF === "all" || t.key === assigneeF) &&
@@ -161,14 +160,11 @@ export default function TasksPage() {
       />
 
       <FilterBar trailing={`${filtered.length} งาน`}>
-        <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px]">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ค้นหาชื่องาน / รายละเอียด…"
-            className="w-[180px] border-none bg-transparent p-0 text-[12.5px] outline-none placeholder:text-zinc-400"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="ค้นหาชื่องาน / รายละเอียด…"
+        />
         <Select
           className="w-auto py-[7px] text-[12.5px]"
           value={statusF}

@@ -19,12 +19,9 @@ import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { isManagerOrAdmin } from "@/lib/permissions";
-import {
-  PROJECTS,
-  REPORT_STATUS_OPTIONS,
-  TEAM_MEMBERS,
-  type Report,
-} from "@/lib/mock-data";
+import { SearchInput } from "@/components/search-input";
+import { matchesSearch } from "@/lib/filters";
+import { REPORT_STATUS_OPTIONS, type Report } from "@/lib/mock-data";
 
 const TEMPLATE = "80px 160px 130px minmax(200px,1fr) 96px 128px";
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -34,11 +31,12 @@ function isoToThai(iso: string) {
 }
 
 export default function ReportsPage() {
-  const { reports, updateReport, deleteReport } = useData();
+  const { reports, users, projects, updateReport, deleteReport } = useData();
   const me = useCurrentUser();
   const canEditReport = (r: Report) =>
     isManagerOrAdmin(me) || (!!me && r.key === me.avatarKey);
 
+  const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [member, setMember] = useState("all");
   const [project, setProject] = useState("all");
@@ -48,16 +46,28 @@ export default function ReportsPage() {
   const [editing, setEditing] = useState<Report | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Report | null>(null);
 
+  const filtersActive =
+    !!search || !!date || member !== "all" || project !== "all" || status !== "all";
+
   const filtered = useMemo(() => {
     const dateLabel = date ? isoToThai(date) : null;
     return reports.filter(
       (r) =>
+        matchesSearch([r.did, r.plan, r.blockers, r.summary, r.name, r.proj], search) &&
         (!dateLabel || r.date === dateLabel) &&
         (member === "all" || r.name === member) &&
         (project === "all" || r.proj === project) &&
         (status === "all" || r.status === status)
     );
-  }, [reports, date, member, project, status]);
+  }, [reports, search, date, member, project, status]);
+
+  function clearFilters() {
+    setSearch("");
+    setDate("");
+    setMember("all");
+    setProject("all");
+    setStatus("all");
+  }
 
   return (
     <div className="flex flex-col gap-4 px-7 py-6">
@@ -73,6 +83,11 @@ export default function ReportsPage() {
       />
 
       <FilterBar trailing={`${filtered.length} รายงาน`}>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="ค้นหางาน แผน อุปสรรค…"
+        />
         <Input
           type="date"
           value={date}
@@ -85,9 +100,9 @@ export default function ReportsPage() {
           onChange={(e) => setMember(e.target.value)}
         >
           <option value="all">สมาชิกทั้งหมด</option>
-          {TEAM_MEMBERS.map((m) => (
-            <option key={m.key} value={m.name}>
-              {m.name}
+          {users.map((u) => (
+            <option key={u.id} value={u.name}>
+              {u.name}
             </option>
           ))}
         </Select>
@@ -97,8 +112,10 @@ export default function ReportsPage() {
           onChange={(e) => setProject(e.target.value)}
         >
           <option value="all">โปรเจกต์ทั้งหมด</option>
-          {PROJECTS.map((p) => (
-            <option key={p}>{p}</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.name}>
+              {p.name}
+            </option>
           ))}
         </Select>
         <Select
@@ -111,6 +128,15 @@ export default function ReportsPage() {
             <option key={s}>{s}</option>
           ))}
         </Select>
+        {filtersActive && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px] text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
+          >
+            <X className="size-3" />
+            ล้างตัวกรอง
+          </button>
+        )}
       </FilterBar>
 
       <DataTable

@@ -7,11 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, FormActions } from "@/components/form-card";
 import { PageHeader } from "@/components/page-header";
+import { FilterBar } from "@/components/filter-bar";
+import { SearchInput } from "@/components/search-input";
 import { DataTable, DataTableRow } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
+import { matchesSearch } from "@/lib/filters";
 import type { ApiRole } from "@/lib/mappers";
 
 const TEMPLATE = "minmax(160px,1fr) 130px 90px 110px 150px";
@@ -21,6 +24,9 @@ export default function RolesPage() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ApiRole | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ApiRole | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = roles.filter((r) => matchesSearch([r.name, r.code], search));
 
   return (
     <div className="flex flex-col gap-4 px-7 py-6">
@@ -36,12 +42,25 @@ export default function RolesPage() {
         }
       />
 
+      <FilterBar trailing={`${filtered.length} บทบาท`}>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="ค้นหาบทบาท / รหัส…"
+        />
+      </FilterBar>
+
       <DataTable
         template={TEMPLATE}
         minWidth={720}
         headers={["บทบาท", "รหัส", "ผู้ใช้", "สถานะ", ""]}
       >
-        {roles.map((r) => (
+        {filtered.length === 0 && (
+          <div className="px-[22px] py-6 text-center text-[12.5px] text-zinc-400">
+            ไม่พบบทบาท
+          </div>
+        )}
+        {filtered.map((r) => (
           <DataTableRow key={r.id}>
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex size-7 flex-none items-center justify-center rounded-md bg-teal-50 text-teal-600">
