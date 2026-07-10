@@ -48,19 +48,20 @@ const EN_MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY
 // "Today" from the app's context date (2026-07-10), kept deterministic.
 const TODAY_YEAR = 2026, TODAY_MONTH = 7, TODAY_DAY = 10;
 
-type Cell = { day: number | null; today: boolean; weekend: boolean };
+type Cell = { day: number | null; today: boolean; offday: boolean };
 
-function buildCells(year: number, month: number): Cell[] {
+/** `working` = set of weekday numbers (0=Sun…6=Sat) that ARE working days. */
+function buildCells(year: number, month: number, working: Set<number>): Cell[] {
   const leadingBlanks = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const isCurrent = year === TODAY_YEAR && month === TODAY_MONTH;
   const cells: Cell[] = [];
-  for (let i = 0; i < leadingBlanks; i++) cells.push({ day: null, today: false, weekend: false });
+  for (let i = 0; i < leadingBlanks; i++) cells.push({ day: null, today: false, offday: false });
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(Date.UTC(year, month - 1, d)).getUTCDay();
-    cells.push({ day: d, today: isCurrent && d === TODAY_DAY, weekend: dow === 0 || dow === 6 });
+    cells.push({ day: d, today: isCurrent && d === TODAY_DAY, offday: !working.has(dow) });
   }
-  while (cells.length % 7 !== 0) cells.push({ day: null, today: false, weekend: false });
+  while (cells.length % 7 !== 0) cells.push({ day: null, today: false, offday: false });
   return cells;
 }
 
@@ -87,6 +88,7 @@ export default function CalendarPage() {
   const [typeF, setTypeF] = useState<"all" | CalType>("all");
   const [projectF, setProjectF] = useState("all");
   const [items, setItems] = useState<CalItem[]>([]);
+  const [workingDays, setWorkingDays] = useState("1,2,3,4,5");
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [openDay, setOpenDay] = useState<number | null>(null);
@@ -96,10 +98,11 @@ export default function CalendarPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(false);
     api
-      .get<{ items: CalItem[] }>(`/api/calendar?year=${year}&month=${month}`)
+      .get<{ items: CalItem[]; workingDays?: string }>(`/api/calendar?year=${year}&month=${month}`)
       .then((r) => {
         if (!active) return;
         setItems(r.items ?? []);
+        if (r.workingDays) setWorkingDays(r.workingDays);
         setError(false);
         setLoaded(true);
       })
@@ -130,8 +133,12 @@ export default function CalendarPage() {
     [items, typeF, projectF]
   );
 
+  const workingSet = useMemo(
+    () => new Set(workingDays.split(",").filter(Boolean).map(Number)),
+    [workingDays]
+  );
   const dayMap = useMemo(() => toDayMap(visible, year, month), [visible, year, month]);
-  const cells = useMemo(() => buildCells(year, month), [year, month]);
+  const cells = useMemo(() => buildCells(year, month, workingSet), [year, month, workingSet]);
   const hasItems = visible.length > 0;
 
   function step(delta: number) {
@@ -198,7 +205,7 @@ export default function CalendarPage() {
         ))}
         <span className="flex items-center gap-1.5">
           <span className="size-2 rounded-[3px] bg-rose-100 ring-1 ring-rose-300 dark:bg-rose-950/40" />
-          เสาร์ / อาทิตย์ (วันหยุด)
+          วันหยุด (นอกวันทำงาน)
         </span>
       </div>
 
@@ -231,7 +238,7 @@ export default function CalendarPage() {
             const hasHoliday = dayItems.some((it) => it.type === "HOLIDAY");
             const shown = dayItems.slice(0, 3);
             const extra = dayItems.length - shown.length;
-            const nonWorking = cell.weekend || hasHoliday;
+            const nonWorking = cell.offday || hasHoliday;
             return (
               <div
                 key={i}
@@ -251,7 +258,7 @@ export default function CalendarPage() {
                         className={`flex size-6 items-center justify-center rounded-full text-xs ${
                           cell.today
                             ? "font-bold text-white"
-                            : cell.weekend
+                            : cell.offday
                             ? "font-medium text-rose-500 dark:text-rose-400"
                             : "text-zinc-700 dark:text-zinc-200"
                         }`}
