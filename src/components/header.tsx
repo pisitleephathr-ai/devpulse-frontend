@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { GlobalSearch } from "@/components/global-search";
 import { NotificationBell } from "@/components/notification-bell";
 import { CURRENT_USER, PAGE_TITLES } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -39,17 +40,8 @@ export function Header() {
       </div>
       <div className="flex-1" />
 
-      {/* Search */}
-      <div className="hidden w-[220px] items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-100 px-2.5 py-1.5 sm:flex">
-        <Search className="size-3.5 text-zinc-400" strokeWidth={2} />
-        <input
-          placeholder="ค้นหา…"
-          className="min-w-0 flex-1 border-none bg-transparent p-0 text-[13px] outline-none placeholder:text-zinc-400"
-        />
-        <span className="rounded border border-zinc-200 bg-white px-[5px] py-px font-mono text-[10.5px] text-zinc-400">
-          ⌘K
-        </span>
-      </div>
+      {/* Global search (Cmd/Ctrl+K) */}
+      <GlobalSearch />
 
       {/* Notifications */}
       <NotificationBell />
