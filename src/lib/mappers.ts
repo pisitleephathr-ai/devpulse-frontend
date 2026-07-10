@@ -54,6 +54,17 @@ export type ApiProject = {
   name: string;
   code: string;
   color: string;
+  description?: string;
+  status?: string;
+  isArchived?: boolean;
+  archivedAt?: string | null;
+  stats?: {
+    totalTasks: number;
+    completedTasks: number;
+    activeTasks: number;
+    members: number;
+  };
+  _count?: { tasks: number; reports: number };
 };
 export type ApiReport = {
   id: string;

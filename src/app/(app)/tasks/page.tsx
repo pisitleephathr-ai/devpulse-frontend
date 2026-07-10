@@ -11,6 +11,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { downloadCsv, todayStamp } from "@/lib/csv";
+import { TaskComments } from "@/components/task-comments";
 import { KanbanBoard } from "@/components/kanban-board";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -462,6 +463,11 @@ export default function TasksPage() {
                 </div>
               </div>
             )}
+
+            {/* Comments */}
+            <div className="border-t border-hairline pt-4">
+              <TaskComments taskId={detail.id} />
+            </div>
           </div>
         )}
       </Dialog>

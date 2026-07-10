@@ -15,6 +15,7 @@ const MENU_ACCESS: Record<string, string[]> = {
   tasks: ALL_ROLES,
   leaves: ALL_ROLES,
   calendar: ALL_ROLES,
+  projects: ["ADMIN", "MANAGER"],
   activity: ["ADMIN", "MANAGER"],
   users: ["ADMIN", "MANAGER"],
   roles: ["ADMIN"],
@@ -65,6 +66,17 @@ export const canApproveLeave = isManagerOrAdmin;
 export const canManageSettings = isManagerOrAdmin;
 /** create / delete tasks (edit-any is also manager/admin). */
 export const canManageTasks = isManagerOrAdmin;
+/** create / edit / archive projects. */
+export const canManageProjects = isManagerOrAdmin;
+export const canArchiveProject = isManagerOrAdmin;
+/** hard-delete a project (admin only). */
+export const canDeleteProject = isAdmin;
+/** view the activity/audit log. */
+export const canViewActivity = isManagerOrAdmin;
+/** any authenticated user may comment on tasks they can access. */
+export function canCommentTask(user: AuthUser | null): boolean {
+  return !!user;
+}
 
 /** A user may edit a task if manager/admin, or it is assigned to them. */
 export function canEditTask(
