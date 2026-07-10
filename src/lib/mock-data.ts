@@ -203,6 +203,16 @@ export const TEAM_ACTIVITY: ActivityItem[] = [
 
 export type ReportStatus = "ส่งแล้ว" | "ฉบับร่าง" | "ส่งช้า";
 
+/** Compact task reference optionally linked to a report. */
+export type RelatedTask = {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  pri: Priority;
+  proj: string;
+  projColor: string;
+};
+
 export type Report = {
   id: string;
   date: string;
@@ -214,6 +224,8 @@ export type Report = {
   did: string;
   blockers: string;
   plan: string;
+  /** optional board tasks the author linked to this report */
+  relatedTasks?: RelatedTask[];
 };
 
 const REPORTS_SEED: Omit<Report, "id">[] = [
