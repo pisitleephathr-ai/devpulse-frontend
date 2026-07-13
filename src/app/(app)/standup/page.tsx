@@ -19,6 +19,7 @@ import {
   UserPlus,
   ClipboardList,
   AlarmClock,
+  CalendarOff,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -47,6 +48,8 @@ type Report = {
 };
 type Standup = {
   date: string;
+  isWorkingDay?: boolean;
+  holiday?: { name: string; type: string } | null;
   stats: {
     submitted: number;
     missing: number;
@@ -176,6 +179,12 @@ function Overview({
 
   return (
     <div className="flex flex-col gap-4">
+      {data.isWorkingDay === false && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50/60 px-4 py-3 text-[13.5px] font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/25 dark:text-rose-300">
+          <CalendarOff className="size-5 flex-none" />
+          <span>วันนี้เป็นวันหยุด{data.holiday ? ` · ${data.holiday.name}` : ""} — ไม่ต้องส่งรายงานประจำวัน</span>
+        </div>
+      )}
       {/* KPI row (no exempt) */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="ส่งรายงานแล้ว" value={`${s.submitted}/${s.totalRequired}`} sub="ของผู้ที่ต้องส่ง" icon={<CheckCircle2 className="size-[18px]" />} color="#0d9488" />
@@ -241,7 +250,11 @@ function Overview({
               )}
             </CardHeader>
             <div className="overflow-y-auto px-[18px] py-3">
-              {data.missingUsers.length === 0 ? (
+              {data.isWorkingDay === false ? (
+                <div className="flex items-center gap-1.5 text-[13px] font-medium text-rose-600 dark:text-rose-400">
+                  <CalendarOff className="size-4" /> วันหยุด — ไม่ต้องส่งรายงาน
+                </div>
+              ) : data.missingUsers.length === 0 ? (
                 <div className="flex items-center gap-1.5 text-[13px] font-medium text-emerald-600">
                   <CheckCircle2 className="size-4" /> ทุกคนส่งรายงานแล้ว
                 </div>

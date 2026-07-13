@@ -17,6 +17,7 @@ import {
   Plane,
   Stamp,
   FolderKanban,
+  CalendarOff,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -45,6 +46,8 @@ type Insights = {
   };
   reports: {
     date: string;
+    isWorkingDay?: boolean;
+    holiday?: { name: string; type: string } | null;
     submittedCount: number;
     totalMembers: number;
     submitted: ApiUserMini[];
@@ -324,7 +327,12 @@ export default function DashboardPage() {
                 <MiniStat label="ส่งแล้ว" value={r?.submittedCount ?? 0} total={r?.totalMembers} tone="emerald" />
                 <MiniStat label="ยังไม่ส่ง" value={r?.missing.length ?? 0} tone="amber" />
               </div>
-              {r && r.missing.length > 0 ? (
+              {r?.isWorkingDay === false ? (
+                <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-2 text-[12.5px] font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/25 dark:text-rose-300">
+                  <CalendarOff className="mt-0.5 size-4 flex-none" />
+                  <span>วันนี้เป็นวันหยุด{r.holiday ? ` · ${r.holiday.name}` : ""} — ไม่ต้องส่งรายงาน</span>
+                </div>
+              ) : r && r.missing.length > 0 ? (
                 <div>
                   <div className="mb-1.5 text-[11.5px] font-medium text-muted-foreground">ยังไม่ส่ง</div>
                   <div className="flex flex-wrap gap-1.5">
