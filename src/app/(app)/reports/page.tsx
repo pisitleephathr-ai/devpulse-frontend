@@ -399,7 +399,7 @@ function ReportCard({
 
       {/* Content */}
       <div className="flex flex-1 flex-col gap-3.5 px-4 py-4">
-        <CardSection label="งานที่ทำเมื่อวาน" text={r.did} clamp={!expanded} accent="#0d9488" />
+        <CardSection label="งานที่ทำล่าสุด" text={r.did} clamp={!expanded} accent="#0d9488" />
         <CardSection label="แผนงานวันนี้" text={r.plan} clamp={!expanded} accent="#2563eb" />
         <CardSection
           label="ปัญหา / อุปสรรค"

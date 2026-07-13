@@ -342,7 +342,7 @@ function ReportRow({ r }: { r: Report }) {
         )}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="เมื่อวาน" text={r.did} />
+        <Field label="ที่ทำแล้ว" text={r.did} />
         <Field label="วันนี้" text={r.plan} />
       </div>
       {hasBlocker && (
@@ -562,7 +562,7 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
             </div>
           ) : (
             <div className="mt-6 grid flex-1 grid-cols-1 gap-4 lg:grid-cols-2 lg:content-start">
-              <StageSection title="เมื่อวานทำอะไร" text={r.did} tone="neutral" />
+              <StageSection title="งานที่ทำล่าสุด" text={r.did} tone="neutral" />
               <StageSection title="วันนี้จะทำอะไร" text={r.plan} tone="neutral" />
               <div className="lg:col-span-2">
                 {hasBlocker ? (
