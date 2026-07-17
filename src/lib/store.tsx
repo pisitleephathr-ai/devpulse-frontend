@@ -206,11 +206,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (id: string, statusLabel: TaskStatus) =>
       run(async () => {
         const status = LABEL_TO_TASK_STATUS[statusLabel];
-        const { task } = await api.patch<{ task: ApiTask }>(
-          `/api/tasks/${id}/status`,
-          { status }
-        );
-        setTasks((prev) => prev.map((t) => (t.id === id ? mapTask(task) : t)));
+        // Optimistic: move the card immediately, snapshot for rollback.
+        let snapshot: Task[] = [];
+        setTasks((prev) => {
+          snapshot = prev;
+          return prev.map((t) => (t.id === id ? { ...t, status: statusLabel } : t));
+        });
+        try {
+          const { task } = await api.patch<{ task: ApiTask }>(
+            `/api/tasks/${id}/status`,
+            { status }
+          );
+          setTasks((prev) => prev.map((t) => (t.id === id ? mapTask(task) : t)));
+        } catch (err) {
+          setTasks(snapshot); // revert on failure
+          throw err; // let run() surface the error toast
+        }
       }),
     [run]
   );

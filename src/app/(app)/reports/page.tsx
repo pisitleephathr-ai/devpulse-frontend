@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -562,27 +562,50 @@ function ReportModal({
   report: Report;
   onClose: () => void;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+      previouslyFocused?.focus?.();
+    };
+  }, [onClose]);
+
   return (
     <div
       onMouseDown={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-6"
+      className="dp-scrim fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-6"
     >
       <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
-        className="max-h-[85vh] w-[560px] max-w-full overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]"
+        className="dp-pop max-h-[85vh] w-[560px] max-w-full overflow-hidden rounded-[14px] bg-card shadow-[0_20px_50px_rgba(0,0,0,0.2)] outline-none"
       >
         <div className="flex items-center gap-[11px] border-b border-hairline px-[22px] py-[18px]">
           <Avatar userKey={report.key} size={30} fontSize={11} />
           <div className="flex-1">
-            <div className="text-[14px] font-semibold">{report.name}</div>
-            <div className="text-xs text-zinc-400">
+            <div id={titleId} className="text-[14px] font-semibold">{report.name}</div>
+            <div className="text-xs text-muted-foreground">
               {report.proj} · {report.date}
             </div>
           </div>
           <StatusBadge label={report.status} />
           <button
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-[7px] text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+            className="flex size-7 items-center justify-center rounded-[7px] text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
             aria-label="ปิด"
           >
             <X className="size-4" />
@@ -594,7 +617,7 @@ function ReportModal({
           <Section label="แผนงาน" text={report.plan} />
           {report.relatedTasks && report.relatedTasks.length > 0 && (
             <div>
-              <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] text-zinc-500">
+              <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground">
                 <ListChecks className="size-3" />
                 งานที่เกี่ยวข้อง ({report.relatedTasks.length})
               </div>
@@ -602,7 +625,7 @@ function ReportModal({
                 {report.relatedTasks.map((t) => (
                   <span
                     key={t.id}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[12px] text-zinc-700"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-[12px] text-zinc-700 dark:text-zinc-200"
                     title={t.title}
                   >
                     <span
@@ -612,7 +635,7 @@ function ReportModal({
                       {t.proj}
                     </span>
                     <span className="max-w-[220px] truncate">{t.title}</span>
-                    <span className="flex-none text-[10.5px] text-zinc-400">{t.status}</span>
+                    <span className="flex-none text-[10.5px] text-muted-foreground">{t.status}</span>
                   </span>
                 ))}
               </div>
@@ -634,10 +657,10 @@ function Section({
   highlight?: boolean;
 }) {
   return (
-    <div className={highlight ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5" : ""}>
+    <div className={highlight ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/25" : ""}>
       <div
         className={`mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] ${
-          highlight ? "text-amber-700" : "text-zinc-500"
+          highlight ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"
         }`}
       >
         {highlight && <TriangleAlert className="size-3" />}
@@ -646,13 +669,13 @@ function Section({
       {text?.trim() ? (
         <div
           className={`whitespace-pre-line text-[13px] leading-relaxed ${
-            highlight ? "text-amber-900" : "text-zinc-700"
+            highlight ? "text-amber-900 dark:text-amber-100" : "text-zinc-700 dark:text-zinc-200"
           }`}
         >
           {text}
         </div>
       ) : (
-        <div className="text-[13px] italic text-zinc-300">—</div>
+        <div className="text-[13px] italic text-zinc-300 dark:text-zinc-600">—</div>
       )}
     </div>
   );
