@@ -11,6 +11,7 @@ import {
   type TaskStatus,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { dueUrgency } from "@/lib/thai-datetime";
 
 type KanbanBoardProps = {
   columns: KanbanColumn[];
@@ -186,7 +187,33 @@ export function KanbanBoard({
                   </div>
                 )}
                 <div className="flex-1" />
-                <span className="text-[11px] text-zinc-400">{card.due}</span>
+                {(() => {
+                  // Flag overdue / due-soon dates so managers spot risk at a glance
+                  // (done cards never look overdue).
+                  const urgency =
+                    card.status === "Done" ? null : dueUrgency(card.dueISO);
+                  return (
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        urgency === "overdue"
+                          ? "font-semibold text-red-600"
+                          : urgency === "soon"
+                            ? "font-medium text-amber-600"
+                            : "text-zinc-400"
+                      )}
+                      title={
+                        urgency === "overdue"
+                          ? "เลยกำหนดแล้ว"
+                          : urgency === "soon"
+                            ? "ใกล้ครบกำหนด"
+                            : undefined
+                      }
+                    >
+                      {card.due}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
             );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, Paperclip, ExternalLink, Download, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -69,12 +70,12 @@ export default function TasksPage() {
     !!me && t.assignees.some((a) => a.key === me.avatarKey);
   const canEdit = (t: Task) => isManagerOrAdmin(me) || ownsTask(t);
 
-  const [search, setSearch] = useState("");
-  const [statusF, setStatusF] = useState("all");
-  const [priorityF, setPriorityF] = useState("all");
-  const [assigneeF, setAssigneeF] = useState("all");
-  const [projectF, setProjectF] = useState("all");
-  const [dueF, setDueF] = useState("all");
+  const [search, setSearch] = usePersistedState("tasks.search", "");
+  const [statusF, setStatusF] = usePersistedState("tasks.status", "all");
+  const [priorityF, setPriorityF] = usePersistedState("tasks.priority", "all");
+  const [assigneeF, setAssigneeF] = usePersistedState("tasks.assignee", "all");
+  const [projectF, setProjectF] = usePersistedState("tasks.project", "all");
+  const [dueF, setDueF] = usePersistedState("tasks.due", "all");
 
   const [createStatus, setCreateStatus] = useState<TaskStatus | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);

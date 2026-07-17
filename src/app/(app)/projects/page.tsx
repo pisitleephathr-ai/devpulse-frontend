@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import {
   Plus,
   X,
@@ -50,9 +51,12 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const [search, setSearch] = useState("");
-  const [statusF, setStatusF] = useState("all");
-  const [archF, setArchF] = useState<"active" | "archived" | "all">("active");
+  const [search, setSearch] = usePersistedState("projects.search", "");
+  const [statusF, setStatusF] = usePersistedState("projects.status", "all");
+  const [archF, setArchF] = usePersistedState<"active" | "archived" | "all">(
+    "projects.arch",
+    "active"
+  );
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ApiProject | null>(null);

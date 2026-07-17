@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import Link from "next/link";
 import { Plus, CalendarClock } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -37,10 +38,10 @@ export default function LeavesPage() {
   const canDecide = (l: Leave) =>
     canApprove && (isAdmin(me) || l.key !== me?.avatarKey);
 
-  const [search, setSearch] = useState("");
-  const [member, setMember] = useState("all");
-  const [type, setType] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [search, setSearch] = usePersistedState("leaves.search", "");
+  const [member, setMember] = usePersistedState("leaves.member", "all");
+  const [type, setType] = usePersistedState("leaves.type", "all");
+  const [status, setStatus] = usePersistedState("leaves.status", "all");
   const [viewing, setViewing] = useState<Leave | null>(null);
 
   const filtersActive =

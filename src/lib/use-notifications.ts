@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { getToken } from "./auth";
+import { toast } from "@/components/ui/toaster";
 
 export type ApiNotification = {
   id: string;
@@ -41,6 +42,8 @@ export function useNotifications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const loadedOnce = useRef(false);
+  // Notification ids seen on a prior poll — used to toast only genuinely new ones.
+  const seenIds = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     if (!getToken()) return;
@@ -49,6 +52,17 @@ export function useNotifications() {
         api.get<{ notifications: ApiNotification[] }>("/api/notifications"),
         api.get<{ count: number }>("/api/notifications/unread-count"),
       ]);
+      // After the first load, surface newly-arrived unread notifications as a
+      // toast so users notice them without opening the bell.
+      if (loadedOnce.current) {
+        const fresh = list.notifications.filter(
+          (n) => !n.isRead && !seenIds.current.has(n.id)
+        );
+        if (fresh.length === 1) toast(fresh[0].title);
+        else if (fresh.length > 1)
+          toast(`มีการแจ้งเตือนใหม่ ${fresh.length} รายการ`);
+      }
+      seenIds.current = new Set(list.notifications.map((n) => n.id));
       setItems(list.notifications);
       setUnread(count.count);
       setError(false);
