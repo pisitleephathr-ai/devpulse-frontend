@@ -10,14 +10,9 @@ import {
   Plane,
   Bell,
   CalendarOff,
-  ListOrdered,
-  ChevronUp,
-  ChevronDown,
-  Lock,
-  RotateCcw,
-  GripVertical,
   Clock,
   ClipboardList,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,9 +26,6 @@ import { TASK_STATUS_ENUM_OPTIONS } from "@/lib/mappers";
 import { toast } from "@/components/ui/toaster";
 import { api, ApiError } from "@/lib/api";
 import { thaiDateShortFromISO, nextMonthFirstThai } from "@/lib/thai-datetime";
-import { useCurrentUser } from "@/lib/use-current-user";
-import { isAdmin } from "@/lib/permissions";
-import { resolveMenu, MENU_UPDATED_EVENT, type MenuConfigItem } from "@/lib/menu";
 
 type Setting = {
   teamName: string;
@@ -56,7 +48,6 @@ type Setting = {
 };
 type LeaveType = { id: string; name: string; daysLabel: string; color: string; autoApprove: boolean; sortOrder: number };
 type Holiday = { id: string; name: string; date: string; description: string; type: string; isActive: boolean };
-type MenuEdit = { key: string; label: string; defaultLabel: string; href: string; isVisible: boolean; isLocked: boolean };
 
 const REMINDER_OPTIONS = ["16:30 น.", "17:00 น.", "17:30 น."];
 const WEEKDAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
@@ -87,22 +78,16 @@ const pickSetting = (s: Record<string, unknown>): Setting =>
   Object.fromEntries(SETTING_KEYS.map((k) => [k, s[k]])) as Setting;
 
 export default function SettingsPage() {
-  const me = useCurrentUser();
-  const admin = isAdmin(me);
 
   const [setting, setSetting] = useState<Setting>(DEFAULT_SETTING);
   const [baseline, setBaseline] = useState<Setting>(DEFAULT_SETTING);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [menu, setMenu] = useState<MenuEdit[]>([]);
-  const [menuBaseline, setMenuBaseline] = useState<string>("[]");
   const [saving, setSaving] = useState(false);
-  const [savingMenu, setSavingMenu] = useState(false);
   const [addLeaveOpen, setAddLeaveOpen] = useState(false);
   const [addHolidayOpen, setAddHolidayOpen] = useState(false);
   const [pendingLeaveDelete, setPendingLeaveDelete] = useState<LeaveType | null>(null);
   const [pendingHolidayDelete, setPendingHolidayDelete] = useState<Holiday | null>(null);
-  const [confirmMenuReset, setConfirmMenuReset] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [lineStatus, setLineStatus] = useState<{
     enabled: boolean;
@@ -114,17 +99,6 @@ export default function SettingsPage() {
       remaining: number | null;
     } | null;
   } | null>(null);
-
-  function toMenuEdit(config: MenuConfigItem[]): MenuEdit[] {
-    return resolveMenu(config).map((m) => ({
-      key: m.key,
-      label: m.label,
-      defaultLabel: m.defaultLabel,
-      href: m.href,
-      isVisible: m.isVisible,
-      isLocked: m.isLocked,
-    }));
-  }
 
   useEffect(() => {
     Promise.all([
@@ -150,11 +124,6 @@ export default function SettingsPage() {
         }),
       api.get<{ leaveTypes: LeaveType[] }>("/api/settings/leave-types").then((r) => setLeaveTypes(r.leaveTypes)),
       api.get<{ holidays: Holiday[] }>("/api/settings/holidays").then((r) => setHolidays(r.holidays)),
-      api.get<{ menu: MenuConfigItem[] }>("/api/settings/menu").then((r) => {
-        const m = toMenuEdit(r.menu);
-        setMenu(m);
-        setMenuBaseline(JSON.stringify(m));
-      }),
     ])
       .catch(() => {})
       .finally(() => setLoaded(true));
@@ -162,7 +131,6 @@ export default function SettingsPage() {
 
   const set = <K extends keyof Setting>(k: K, v: Setting[K]) => setSetting((s) => ({ ...s, [k]: v }));
   const dirty = useMemo(() => JSON.stringify(setting) !== JSON.stringify(baseline), [setting, baseline]);
-  const menuDirty = useMemo(() => JSON.stringify(menu) !== menuBaseline, [menu, menuBaseline]);
 
   const workingSet = new Set(setting.workingDays.split(",").filter(Boolean).map(Number));
   function toggleWorkingDay(d: number) {
@@ -210,65 +178,10 @@ export default function SettingsPage() {
     }
   }
 
-  /* ---- menu customization ---- */
-  function moveMenu(i: number, dir: -1 | 1) {
-    setMenu((prev) => {
-      const j = i + dir;
-      if (j < 0 || j >= prev.length) return prev;
-      const next = [...prev];
-      [next[i], next[j]] = [next[j], next[i]];
-      return next;
-    });
-  }
-  const setMenuLabel = (i: number, v: string) => setMenu((prev) => prev.map((m, k) => (k === i ? { ...m, label: v } : m)));
-  const toggleMenuVisible = (i: number) => setMenu((prev) => prev.map((m, k) => (k === i ? { ...m, isVisible: !m.isVisible } : m)));
-  const resetMenuLabel = (i: number) => setMenu((prev) => prev.map((m, k) => (k === i ? { ...m, label: m.defaultLabel } : m)));
-
-  async function saveMenu() {
-    if (menu.some((m) => !m.label.trim())) {
-      toast("ชื่อเมนูห้ามว่าง");
-      return;
-    }
-    setSavingMenu(true);
-    try {
-      const config = menu.map((m, i) => ({
-        key: m.key,
-        customLabel: m.label.trim() === m.defaultLabel ? null : m.label.trim(),
-        order: i,
-        isVisible: m.isLocked ? true : m.isVisible,
-      }));
-      const r = await api.patch<{ menu: MenuConfigItem[] }>("/api/settings/menu", { menu: config });
-      const m = toMenuEdit(r.menu);
-      setMenu(m);
-      setMenuBaseline(JSON.stringify(m));
-      window.dispatchEvent(new Event(MENU_UPDATED_EVENT));
-      toast("บันทึกการตั้งค่าเมนูแล้ว");
-    } catch (err) {
-      toast(err instanceof ApiError ? err.message : "บันทึกเมนูไม่สำเร็จ");
-    } finally {
-      setSavingMenu(false);
-    }
-  }
-  async function resetMenu() {
-    setSavingMenu(true);
-    try {
-      const r = await api.post<{ menu: MenuConfigItem[] }>("/api/settings/menu/reset", {});
-      const m = toMenuEdit(r.menu);
-      setMenu(m);
-      setMenuBaseline(JSON.stringify(m));
-      window.dispatchEvent(new Event(MENU_UPDATED_EVENT));
-      toast("รีเซ็ตเมนูเป็นค่าเริ่มต้นแล้ว");
-    } catch (err) {
-      toast(err instanceof ApiError ? err.message : "รีเซ็ตไม่สำเร็จ");
-    } finally {
-      setSavingMenu(false);
-    }
-  }
-
   return (
     <div className="px-4 py-6 sm:px-7">
       <div className="mx-auto w-full max-w-6xl">
-        <PageHeader eyebrow="SETTINGS" title="ตั้งค่าองค์กร" description="กำหนดค่าองค์กร นโยบายการลา วันหยุด และเมนู" />
+        <PageHeader eyebrow="SETTINGS" title="ตั้งค่าองค์กร" description="กำหนดค่าองค์กร นโยบายการลา และวันหยุด" />
 
         {!loaded ? (
           <div className="mt-4">
@@ -335,16 +248,20 @@ export default function SettingsPage() {
                   </div>
                 </Section>
 
-                <Section icon={<Bell className="size-4" />} title="การแจ้งเตือน" desc="เลือกการแจ้งเตือนที่ต้องการเปิดใช้งาน">
+                <Section icon={<Bell className="size-4" />} title="การแจ้งเตือนระบบ" desc="การแจ้งเตือนภายในแอป">
                   <div className="divide-y divide-hairline-soft">
                     <SwitchRow label="แจ้งเตือนให้ส่งรายงานประจำวัน" checked={setting.notifyReportReminder} onChange={(v) => set("notifyReportReminder", v)} />
                     <SwitchRow label="แจ้งเตือนการอนุมัติคำขอลา" checked={setting.notifyLeaveApproval} onChange={(v) => set("notifyLeaveApproval", v)} />
                     <SwitchRow label="แจ้งเตือนงานที่ใกล้ครบกำหนด" checked={setting.notifyTaskDue} onChange={(v) => set("notifyTaskDue", v)} />
-                    {lineStatus && (
-                      <>
+                  </div>
+                </Section>
+
+                {lineStatus && (
+                  <Section icon={<MessageCircle className="size-4" />} title="แจ้งเตือน LINE OA" desc="ส่งการ์ดแจ้งเตือนเข้ากลุ่ม LINE ของทีม">
+                    <div className="divide-y divide-hairline-soft">
                       <div className="flex items-center justify-between py-2.5">
                         <div className="min-w-0">
-                          <div className="text-[13px] font-medium">แจ้งเตือนงานเข้ากลุ่ม LINE</div>
+                          <div className="text-[13px] font-medium">สถานะการเชื่อมต่อ</div>
                           <div className="text-[11.5px] text-muted-foreground">
                             {!lineStatus.enabled
                               ? "ยังไม่เปิดใช้งาน (ตั้งค่าที่เซิร์ฟเวอร์)"
@@ -491,10 +408,9 @@ export default function SettingsPage() {
                           </div>
                         </div>
                       )}
-                      </>
-                    )}
-                  </div>
-                </Section>
+                    </div>
+                  </Section>
+                )}
               </div>
 
               {/* Right column */}
@@ -567,66 +483,6 @@ export default function SettingsPage() {
                     {holidays.length === 0 && <div className="px-3.5 py-6 text-center text-[12.5px] text-muted-foreground">ยังไม่มีวันหยุดบริษัท</div>}
                   </div>
                 </Section>
-
-                {/* Menu customization */}
-                <Section
-                  icon={<ListOrdered className="size-4" />}
-                  title="ตั้งค่าเมนู"
-                  desc="จัดลำดับและกำหนดชื่อเมนูที่แสดงในแถบด้านข้าง"
-                  action={
-                    admin ? (
-                      <button onClick={() => setConfirmMenuReset(true)} disabled={savingMenu} className="flex flex-none items-center gap-1 rounded-[7px] border border-border px-[11px] py-[5px] text-[12.5px] font-semibold text-zinc-600 transition-colors hover:bg-muted disabled:opacity-50 dark:text-zinc-300">
-                        <RotateCcw className="size-3.5" /> รีเซ็ต
-                      </button>
-                    ) : undefined
-                  }
-                >
-                  {!admin && <div className="mb-2 text-[12px] text-muted-foreground">เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขได้</div>}
-                  <div className="divide-y divide-hairline-soft overflow-hidden rounded-lg border border-border">
-                    {menu.map((m, i) => (
-                      <div key={m.key} className="flex items-center gap-2 px-2.5 py-2">
-                        <div className="flex flex-none flex-col">
-                          <button onClick={() => moveMenu(i, -1)} disabled={!admin || i === 0} className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="เลื่อนขึ้น">
-                            <ChevronUp className="size-3.5" />
-                          </button>
-                          <button onClick={() => moveMenu(i, 1)} disabled={!admin || i === menu.length - 1} className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="เลื่อนลง">
-                            <ChevronDown className="size-3.5" />
-                          </button>
-                        </div>
-                        <GripVertical className="size-3.5 flex-none text-zinc-300 dark:text-zinc-600" />
-                        <div className="min-w-0 flex-1">
-                          <input
-                            value={m.label}
-                            onChange={(e) => setMenuLabel(i, e.target.value)}
-                            disabled={!admin}
-                            className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[13px] font-medium outline-none hover:border-border focus:border-teal-500 focus:bg-card disabled:cursor-default"
-                            aria-label={`ชื่อเมนู ${m.defaultLabel}`}
-                          />
-                          <div className="truncate px-1.5 text-[10.5px] text-muted-foreground">{m.href}</div>
-                        </div>
-                        {admin && m.label.trim() !== m.defaultLabel && (
-                          <button onClick={() => resetMenuLabel(i)} className="flex-none rounded p-1 text-muted-foreground hover:bg-muted" aria-label="คืนชื่อเดิม" title={`คืนเป็น "${m.defaultLabel}"`}>
-                            <RotateCcw className="size-3.5" />
-                          </button>
-                        )}
-                        {m.isLocked ? (
-                          <span className="flex size-7 flex-none items-center justify-center text-zinc-400" title="เมนูระบบ ซ่อนไม่ได้">
-                            <Lock className="size-3.5" />
-                          </span>
-                        ) : (
-                          <Switch checked={m.isVisible} onChange={() => admin && toggleMenuVisible(i)} disabled={!admin} label={`แสดงเมนู ${m.label}`} />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {admin && (
-                    <div className="mt-3 flex justify-end">
-                      <Button type="button" onClick={saveMenu} disabled={savingMenu || !menuDirty}>
-                        {savingMenu ? "กำลังบันทึก…" : "บันทึกเมนู"}
-                      </Button>
-                    </div>
-                  )}
-                </Section>
               </div>
             </div>
 
@@ -666,14 +522,6 @@ export default function SettingsPage() {
         message={`ต้องการลบ "${pendingHolidayDelete?.name}" ออกจากปฏิทินใช่หรือไม่`}
         confirmLabel="ลบวันหยุด"
         destructive
-      />
-      <ConfirmDialog
-        open={confirmMenuReset}
-        onClose={() => setConfirmMenuReset(false)}
-        onConfirm={resetMenu}
-        title="รีเซ็ตเมนูเป็นค่าเริ่มต้น?"
-        message="ชื่อและลำดับเมนูทั้งหมดจะกลับเป็นค่าเริ่มต้น"
-        confirmLabel="รีเซ็ต"
       />
     </div>
   );
@@ -737,18 +585,24 @@ function TimedSummaryRow({
         </span>
         <Switch checked={enabled} onChange={() => onToggle(!enabled)} label={label} />
       </div>
-      {enabled && (
-        <div className="flex items-center gap-2 border-t border-hairline-soft py-2">
-          <Clock className="size-3.5 flex-none text-muted-foreground" />
-          <span className="text-[12px] text-muted-foreground">ส่งเวลา</span>
-          <Input
-            type="time"
-            value={time}
-            onChange={(e) => onTime(e.target.value)}
-            className="h-8 w-[104px] text-[13px]"
-          />
-        </div>
-      )}
+      {/* Time is always visible so the send time is clear even before enabling;
+          it's just dimmed/disabled until the summary is turned on. */}
+      <div
+        className={`flex items-center gap-2 border-t border-hairline-soft py-2 transition-opacity ${
+          enabled ? "" : "opacity-50"
+        }`}
+      >
+        <Clock className="size-3.5 flex-none text-muted-foreground" />
+        <span className="text-[12px] text-muted-foreground">ส่งเวลา</span>
+        <Input
+          type="time"
+          value={time}
+          onChange={(e) => onTime(e.target.value)}
+          disabled={!enabled}
+          className="h-8 w-[104px] text-[13px]"
+        />
+        {!enabled && <span className="text-[11px] text-muted-foreground">(เปิดสวิตช์เพื่อใช้งาน)</span>}
+      </div>
     </div>
   );
 }
