@@ -28,7 +28,7 @@ import { FormSkeleton } from "@/components/skeletons";
 import { TASK_STATUS_ENUM_OPTIONS } from "@/lib/mappers";
 import { toast } from "@/components/ui/toaster";
 import { api, ApiError } from "@/lib/api";
-import { thaiDateShortFromISO } from "@/lib/thai-datetime";
+import { thaiDateShortFromISO, nextMonthFirstThai } from "@/lib/thai-datetime";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { isAdmin } from "@/lib/permissions";
 import { resolveMenu, MENU_UPDATED_EVENT, type MenuConfigItem } from "@/lib/menu";
@@ -395,6 +395,9 @@ export default function SettingsPage() {
                                       width: `${Math.min(100, value > 0 ? (q.used / value) * 100 : 0)}%`,
                                     }}
                                   />
+                                </div>
+                                <div className="mt-1.5 text-[11px] text-muted-foreground">
+                                  รีเซ็ตโควตาอีกครั้ง {nextMonthFirstThai()}
                                 </div>
                               </div>
                             );

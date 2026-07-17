@@ -91,3 +91,15 @@ export function thaiDateShortFromISO(iso: string): string {
   // Append midday to avoid any zone rollover when constructing the Date.
   return formatThaiDateShort(new Date(`${iso}T12:00:00+07:00`));
 }
+
+/**
+ * First day of next month (Bangkok) as a short Thai date, e.g. "1 ส.ค. 2569".
+ * LINE's quota API returns no reset date, but the free monthly quota resets on
+ * the 1st of each calendar month — this is what we show as the next reset day.
+ */
+export function nextMonthFirstThai(date: Date = new Date()): string {
+  const [y, m] = bangkokDateISO(date).split("-").map(Number);
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  return thaiDateShortFromISO(`${nextY}-${String(nextM).padStart(2, "0")}-01`);
+}
