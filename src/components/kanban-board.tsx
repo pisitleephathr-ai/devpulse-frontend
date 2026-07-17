@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, FileText, Link2, Paperclip } from "lucide-react";
+import { Plus, FileText, Link2, Paperclip, Check } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -21,6 +21,10 @@ type KanbanBoardProps = {
   showAdd?: boolean;
   /** whether a given card may be dragged (RBAC). Defaults to always. */
   canDrag?: (task: Task) => boolean;
+  /** multi-select mode: cards become checkboxes and drag is disabled. */
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 };
 
 /** Kanban with HTML5 drag-and-drop between columns + click-to-open cards. */
@@ -31,9 +35,13 @@ export function KanbanBoard({
   onAddInColumn,
   showAdd = true,
   canDrag,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
 }: KanbanBoardProps) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<TaskStatus | null>(null);
+  const selecting = !!selectMode;
 
   return (
     <div className="grid flex-1 items-start gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(4,minmax(230px,1fr))]">
@@ -81,7 +89,8 @@ export function KanbanBoard({
           </div>
 
           {col.cards.map((card) => {
-            const draggable = canDrag ? canDrag(card) : true;
+            const draggable = (canDrag ? canDrag(card) : true) && !selecting;
+            const selected = selectedIds?.has(card.id) ?? false;
             return (
             <div
               key={card.id}
@@ -96,13 +105,28 @@ export function KanbanBoard({
                 setDragId(null);
                 setOverCol(null);
               }}
-              onClick={() => onCardClick(card)}
+              onClick={() =>
+                selecting ? onToggleSelect?.(card.id) : onCardClick(card)
+              }
               className={cn(
                 "rounded-[10px] border border-zinc-200 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:border-zinc-300 hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]",
                 draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
-                dragId === card.id && "opacity-50"
+                dragId === card.id && "opacity-50",
+                selecting && selected && "border-teal-500 ring-2 ring-teal-500"
               )}
             >
+              {selecting && (
+                <div
+                  className={cn(
+                    "mb-2 flex size-4 items-center justify-center rounded border",
+                    selected
+                      ? "border-teal-600 bg-teal-600 text-white"
+                      : "border-zinc-300 bg-white"
+                  )}
+                >
+                  {selected && <Check className="size-3" strokeWidth={3} />}
+                </div>
+              )}
               <div
                 className="mb-1.5 font-mono text-[11px] font-semibold"
                 style={{ color: card.projFg }}

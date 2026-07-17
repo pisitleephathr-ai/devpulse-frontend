@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, Paperclip, ExternalLink, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, Paperclip, ExternalLink, Download, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
@@ -85,6 +85,38 @@ export default function TasksPage() {
     attachments: TaskAttachmentInput[];
   }>({ links: [], attachments: [] });
   const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
+
+  // Bulk-select mode (managers): pick multiple cards, then move/delete together.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const exitSelect = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+  async function bulkMove(status: TaskStatus) {
+    const ids = [...selectedIds];
+    const results = await Promise.all(ids.map((id) => moveTask(id, status)));
+    const okCount = results.filter(Boolean).length;
+    if (okCount) toast(`ย้าย ${okCount} งานไป ${status}`);
+    exitSelect();
+  }
+  async function bulkDelete() {
+    const ids = [...selectedIds];
+    const results = await Promise.all(ids.map((id) => deleteTask(id)));
+    const okCount = results.filter(Boolean).length;
+    if (okCount) toast(`ลบ ${okCount} งานแล้ว`);
+    setConfirmBulkDelete(false);
+    exitSelect();
+  }
 
   function openEdit(t: Task) {
     setEditInitial({
@@ -182,6 +214,15 @@ export default function TasksPage() {
               <Download className="size-3.5" />
               ส่งออก Excel
             </button>
+            {canManage && !selectMode && (
+              <button
+                onClick={() => setSelectMode(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+              >
+                <CheckSquare className="size-3.5" />
+                เลือกหลายรายการ
+              </button>
+            )}
             {canManage && (
               <Button onClick={() => setCreateStatus("Todo")}>
                 <Plus className="size-3.5" strokeWidth={2.4} />
@@ -277,6 +318,39 @@ export default function TasksPage() {
         )}
       </FilterBar>
 
+      {selectMode && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2.5 dark:border-teal-900/50 dark:bg-teal-950/25">
+          <span className="text-[13px] font-semibold text-teal-800 dark:text-teal-200">
+            เลือก {selectedIds.size} งาน
+          </span>
+          <div className="flex-1" />
+          <span className="text-[12px] text-teal-700 dark:text-teal-300">ย้ายไป:</span>
+          {TASK_STATUSES.map((s) => (
+            <button
+              key={s}
+              disabled={selectedIds.size === 0}
+              onClick={() => bulkMove(s)}
+              className="rounded-lg border border-teal-300 bg-white px-2.5 py-1 text-[12px] font-medium text-teal-700 transition-colors hover:bg-teal-100 disabled:opacity-40 dark:bg-transparent dark:text-teal-200"
+            >
+              {s}
+            </button>
+          ))}
+          <button
+            disabled={selectedIds.size === 0}
+            onClick={() => setConfirmBulkDelete(true)}
+            className="flex items-center gap-1 rounded-lg border border-red-300 bg-white px-2.5 py-1 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40 dark:bg-transparent"
+          >
+            <Trash2 className="size-3.5" /> ลบ
+          </button>
+          <button
+            onClick={exitSelect}
+            className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
+          >
+            <X className="size-3.5" /> เสร็จ
+          </button>
+        </div>
+      )}
+
       {loading && tasks.length === 0 ? (
         <KanbanSkeleton />
       ) : filtered.length === 0 ? (
@@ -308,8 +382,21 @@ export default function TasksPage() {
             }
           }}
           onAddInColumn={(status) => setCreateStatus(status)}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={() => void bulkDelete()}
+        title={`ลบ ${selectedIds.size} งาน?`}
+        message="ต้องการลบงานที่เลือกทั้งหมดออกจากบอร์ดใช่หรือไม่ — การกระทำนี้ย้อนกลับไม่ได้"
+        confirmLabel="ลบงานที่เลือก"
+        destructive
+      />
 
       {/* Create */}
       <Dialog
