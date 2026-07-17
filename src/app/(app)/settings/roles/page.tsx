@@ -89,7 +89,14 @@ export default function RolesPage() {
                 <ShieldCheck className="size-4" />
               </span>
               <div className="min-w-0">
-                <div className="truncate text-[13px] font-medium">{r.name}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-[13px] font-medium">{r.name}</span>
+                  {r.assignable === false && (
+                    <span className="flex-none rounded bg-zinc-100 px-1.5 py-px text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                      ไม่อยู่ในบอร์ด
+                    </span>
+                  )}
+                </div>
                 {r.isSystem ? (
                   <div className="text-[11px] text-zinc-400">บทบาทระบบ</div>
                 ) : r.permissions && r.permissions.length > 0 ? (
@@ -182,6 +189,9 @@ export default function RolesPage() {
               const ok = await updateRole(editing.id, {
                 name: data.name,
                 description: data.description,
+                // "Appears on board" is a team-membership flag, editable for
+                // every role — including system roles.
+                assignable: data.assignable,
                 // System-role permissions are fixed (backend rejects edits).
                 ...(editing.isSystem ? {} : { permissions: data.permissions }),
               });
@@ -224,6 +234,7 @@ function RoleForm({
     code: string;
     description: string;
     permissions: string[];
+    assignable: boolean;
   }) => void | Promise<boolean | void>;
   onCancel: () => void;
 }) {
@@ -231,6 +242,7 @@ function RoleForm({
   const [code, setCode] = useState(role?.code ?? "");
   const [description, setDescription] = useState(role?.description ?? "");
   const [permissions, setPermissions] = useState<string[]>(role?.permissions ?? []);
+  const [assignable, setAssignable] = useState(role?.assignable !== false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = !!role;
   // System roles have fixed capabilities — the backend rejects permission edits.
@@ -250,6 +262,7 @@ function RoleForm({
       code: code.trim().toUpperCase(),
       description: description.trim(),
       permissions,
+      assignable,
     });
   }
 
@@ -294,6 +307,24 @@ function RoleForm({
             </label>
           ))}
         </div>
+      </Field>
+      <Field label="การแสดงในบอร์ดงาน">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border px-3 py-2 hover:bg-muted/50">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 accent-teal-600"
+            checked={assignable}
+            onChange={(e) => setAssignable(e.target.checked)}
+          />
+          <span className="min-w-0">
+            <span className="block text-[13px] font-medium">
+              แสดงในบอร์ดงาน / มอบหมายงานได้
+            </span>
+            <span className="block text-[11.5px] text-muted-foreground">
+              ถ้าปิด ผู้ใช้บทบาทนี้จะไม่ถูกมอบหมายงาน และไม่แสดงในภาระงานของทีมบนแดชบอร์ด (เหมาะกับผู้ดูแลระบบ)
+            </span>
+          </span>
+        </label>
       </Field>
       <FormActions>
         <Button type="button" variant="secondary" onClick={onCancel}>

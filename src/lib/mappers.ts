@@ -34,6 +34,8 @@ export type ApiRole = {
   isActive: boolean;
   /** capability grants, e.g. ["TEAM_MANAGE","ADMIN_FULL"] */
   permissions?: string[];
+  /** whether this role appears on the task board (assignable + in workload) */
+  assignable?: boolean;
   _count?: { users: number };
 };
 
@@ -378,10 +380,12 @@ export type RoleInput = {
   code: string;
   description?: string;
   permissions?: string[];
+  assignable?: boolean;
 };
 export type RoleUpdateInput = Partial<{
   name: string;
   description: string;
   isActive: boolean;
   permissions: string[];
+  assignable: boolean;
 }>;
