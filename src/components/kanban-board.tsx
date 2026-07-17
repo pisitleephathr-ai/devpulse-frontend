@@ -45,7 +45,7 @@ export function KanbanBoard({
   const selecting = !!selectMode;
 
   return (
-    <div className="grid flex-1 items-start gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(4,minmax(230px,1fr))]">
+    <div className="grid flex-1 items-start gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(5,minmax(220px,1fr))]">
       {columns.map((col) => (
         <div
           key={col.name}
@@ -62,7 +62,9 @@ export function KanbanBoard({
             setDragId(null);
           }}
           className={cn(
-            "flex flex-col gap-2.5 rounded-xl bg-zinc-100 p-2.5 transition-colors",
+            // Fixed height: empty columns stay tall (easy drop target) and full
+            // columns scroll their cards internally instead of growing the page.
+            "flex h-[calc(100vh-15rem)] min-h-[320px] flex-col gap-2.5 rounded-xl bg-zinc-100 p-2.5 transition-colors",
             overCol === col.name && "bg-teal-50 ring-1 ring-teal-200"
           )}
         >
@@ -89,6 +91,9 @@ export function KanbanBoard({
             )}
           </div>
 
+          {/* Scrolls within the column; fills the height so empty columns are a
+              full drop target. */}
+          <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
           {col.cards.map((card) => {
             const draggable = (canDrag ? canDrag(card) : true) && !selecting;
             const selected = selectedIds?.has(card.id) ?? false;
@@ -232,6 +237,7 @@ export function KanbanBoard({
             </div>
             );
           })}
+          </div>
         </div>
       ))}
     </div>

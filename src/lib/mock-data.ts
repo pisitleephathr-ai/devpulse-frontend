@@ -333,7 +333,7 @@ export const REPORT_STATUS_OPTIONS: ReportStatus[] = ["ส่งแล้ว", "
 /* Task board                                                          */
 /* ------------------------------------------------------------------ */
 
-export type TaskStatus = "Todo" | "In Progress" | "Review" | "Done";
+export type TaskStatus = "Todo" | "In Progress" | "Review" | "Ready to Test" | "Done";
 export type Priority = "High" | "Medium" | "Low";
 
 export type Task = {
@@ -367,6 +367,7 @@ export const TASK_STATUS_META: { name: TaskStatus; dot: string }[] = [
   { name: "Todo", dot: "#a1a1aa" },
   { name: "In Progress", dot: "#3b82f6" },
   { name: "Review", dot: "#8b5cf6" },
+  { name: "Ready to Test", dot: "#06b6d4" },
   { name: "Done", dot: "#10b981" },
 ];
 

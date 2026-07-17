@@ -28,7 +28,7 @@ export default function AnalyticsPage() {
   }, []);
 
   const statusCounts = useMemo(() => {
-    const order = ["Todo", "In Progress", "Review", "Done"];
+    const order = ["Todo", "In Progress", "Review", "Ready to Test", "Done"];
     const m = new Map<string, number>();
     for (const t of tasks) m.set(t.status, (m.get(t.status) ?? 0) + 1);
     return order.map((label) => ({ label, value: m.get(label) ?? 0 }));

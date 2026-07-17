@@ -17,7 +17,7 @@ import type {
 
 export type RoleEnum = "MANAGER" | "ADMIN" | "DEVELOPER" | "QA";
 export type ReportStatusEnum = "SUBMITTED" | "DRAFT" | "LATE";
-export type TaskStatusEnum = "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+export type TaskStatusEnum = "TODO" | "IN_PROGRESS" | "REVIEW" | "READY_TO_TEST" | "DONE";
 export type PriorityEnum = "HIGH" | "MEDIUM" | "LOW";
 export type LeaveTypeEnum = "VACATION" | "SICK" | "PERSONAL" | "PARENTAL";
 export type LeaveStatusEnum = "PENDING" | "APPROVED" | "REJECTED";
@@ -184,6 +184,7 @@ export const TASK_STATUS_TO_LABEL: Record<TaskStatusEnum, TaskStatus> = {
   TODO: "Todo",
   IN_PROGRESS: "In Progress",
   REVIEW: "Review",
+  READY_TO_TEST: "Ready to Test",
   DONE: "Done",
 };
 export const PRIORITY_TO_LABEL: Record<PriorityEnum, Priority> = {
