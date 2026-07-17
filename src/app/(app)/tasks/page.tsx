@@ -289,8 +289,8 @@ export default function TasksPage() {
           onDropTask={(id, status) => {
             const task = tasks.find((t) => t.id === id);
             if (task && task.status !== status) {
+              // Optimistic move handles the UI; the store toasts on failure.
               moveTask(id, status);
-              toast(`ย้าย "${task.title}" ไป ${status}`);
             }
           }}
           onAddInColumn={(status) => setCreateStatus(status)}
@@ -403,8 +403,8 @@ export default function TasksPage() {
                 value={detail.status}
                 disabled={!canEdit(detail)}
                 onChange={(e) => {
+                  // Optimistic update handles the UI; the store toasts on failure.
                   moveTask(detail.id, e.target.value as TaskStatus);
-                  toast("อัปเดตสถานะงานแล้ว");
                 }}
               >
                 {TASK_STATUSES.map((s) => (
