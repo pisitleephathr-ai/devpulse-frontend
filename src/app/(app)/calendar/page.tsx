@@ -229,13 +229,13 @@ export default function CalendarPage() {
       {!loaded ? (
         <CalendarSkeleton />
       ) : (
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-        <div className="grid grid-cols-7 border-b border-hairline">
+      <div className="flex h-[calc(100vh-13rem)] min-h-[540px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="grid flex-none grid-cols-7 border-b border-hairline">
           {WEEKDAYS.map((w) => (
             <div key={w} className="p-2.5 text-center text-[11.5px] font-semibold text-muted-foreground">{w}</div>
           ))}
         </div>
-        <div className="grid grid-cols-7">
+        <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7">
           {cells.map((cell, i) => {
             const dayItems = cell.day ? dayMap[cell.day] ?? [] : [];
             const hasHoliday = dayItems.some((it) => it.type === "HOLIDAY");
@@ -252,7 +252,7 @@ export default function CalendarPage() {
             return (
               <div
                 key={i}
-                className={`min-h-[104px] lg:min-h-[132px] xl:min-h-[148px] border-b border-r border-hairline-soft p-2 ${
+                className={`flex min-h-0 flex-col overflow-hidden border-b border-r border-hairline-soft p-2 ${
                   !cell.day
                     ? "bg-muted/40"
                     : nonWorking

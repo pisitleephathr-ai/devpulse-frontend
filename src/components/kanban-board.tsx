@@ -65,7 +65,8 @@ export function KanbanBoard({
             // Fixed height: empty columns stay tall (easy drop target) and full
             // columns scroll their cards internally instead of growing the page.
             "flex h-[calc(100vh-15rem)] min-h-[320px] flex-col gap-2.5 rounded-xl bg-zinc-100 p-2.5 transition-colors",
-            overCol === col.name && "bg-teal-50 ring-1 ring-teal-200"
+            overCol === col.name &&
+              "bg-teal-50 ring-1 ring-teal-200 dark:bg-teal-950/50 dark:ring-teal-800"
           )}
         >
           <div className="flex items-center gap-2 px-1.5 py-0.5">
@@ -74,7 +75,7 @@ export function KanbanBoard({
               style={{ background: col.dot }}
               aria-hidden
             />
-            <span className="flex-1 text-[12.5px] font-semibold text-zinc-900">
+            <span className="flex-1 text-[12.5px] font-semibold text-zinc-900 dark:text-zinc-100">
               {col.name}
             </span>
             <span className="rounded-full border border-zinc-200 bg-white px-2 py-px text-[11.5px] font-semibold text-zinc-500">
