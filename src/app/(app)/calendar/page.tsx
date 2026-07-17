@@ -35,6 +35,9 @@ const TYPE_META: Record<CalType, { label: string; cls: string; dot: string; href
   EVENT: { label: "กิจกรรม", cls: "cal-pill-event", dot: "#7c3aed", href: "/calendar" },
 };
 
+/** Flag a day when this many distinct people (or more) are on leave. */
+const LEAVE_OVERLAP_THRESHOLD = 2;
+
 const HALF_LABEL: Record<string, string> = { MORNING: "ครึ่งเช้า", AFTERNOON: "ครึ่งบ่าย" };
 /** Label a leave / half-day / holiday item for display. */
 function itemLabel(it: CalItem): string {
@@ -236,6 +239,13 @@ export default function CalendarPage() {
           {cells.map((cell, i) => {
             const dayItems = cell.day ? dayMap[cell.day] ?? [] : [];
             const hasHoliday = dayItems.some((it) => it.type === "HOLIDAY");
+            // Count distinct people on leave so we can warn about overlaps.
+            const leaveCount = new Set(
+              dayItems
+                .filter((it) => it.type === "LEAVE")
+                .map((it) => it.user?.id ?? it.entityId)
+            ).size;
+            const leaveOverlap = leaveCount >= LEAVE_OVERLAP_THRESHOLD;
             const shown = dayItems.slice(0, 3);
             const extra = dayItems.length - shown.length;
             const nonWorking = cell.offday || hasHoliday;
@@ -266,9 +276,19 @@ export default function CalendarPage() {
                       >
                         {cell.day}
                       </div>
-                      {nonWorking && !cell.today && (
-                        <span className="text-[9.5px] font-semibold text-rose-500/80 dark:text-rose-400/80">หยุด</span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {leaveOverlap && (
+                          <span
+                            className="rounded-full bg-amber-100 px-1.5 text-[9.5px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                            title={`${leaveCount} คนลาในวันนี้ — ระวังคนทำงานไม่พอ`}
+                          >
+                            ⚠ {leaveCount} ลา
+                          </span>
+                        )}
+                        {nonWorking && !cell.today && (
+                          <span className="text-[9.5px] font-semibold text-rose-500/80 dark:text-rose-400/80">หยุด</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col gap-[3px]">
                       {shown.map((it) => (
