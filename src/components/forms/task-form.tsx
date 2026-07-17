@@ -31,6 +31,13 @@ function thaiToIso(due: string): string {
   if (idx < 0) return "";
   return `2026-${String(idx + 1).padStart(2, "0")}-${m[1].padStart(2, "0")}`;
 }
+/** Default due date for a new task: a few days out (Bangkok), never in the past. */
+function defaultDueIso(): string {
+  const daysAhead = 2;
+  return new Date(Date.now() + 7 * 3_600_000 + daysAhead * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
 function isValidUrl(s: string): boolean {
   try {
     const u = new URL(s);
@@ -100,7 +107,7 @@ export function TaskForm({
       : defaultStatus
         ? LABEL_TO_TASK_STATUS[defaultStatus]
         : "TODO",
-    dueDate: task ? thaiToIso(task.due) : "2026-07-15",
+    dueDate: task ? thaiToIso(task.due) : defaultDueIso(),
     description: task?.description ?? "",
   }));
   const [links, setLinks] = useState<LinkRow[]>(
