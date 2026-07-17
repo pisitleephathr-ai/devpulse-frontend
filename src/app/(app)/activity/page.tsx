@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import { Activity as ActivityIcon, X, RefreshCw } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -66,12 +67,12 @@ function exactTime(iso: string) {
 export default function ActivityPage() {
   const { users } = useData();
 
-  const [search, setSearch] = useState("");
-  const [userId, setUserId] = useState("all");
-  const [action, setAction] = useState("all");
-  const [entityType, setEntityType] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [search, setSearch] = usePersistedState("activity.search", "");
+  const [userId, setUserId] = usePersistedState("activity.user", "all");
+  const [action, setAction] = usePersistedState("activity.action", "all");
+  const [entityType, setEntityType] = usePersistedState("activity.entity", "all");
+  const [dateFrom, setDateFrom] = usePersistedState("activity.dateFrom", "");
+  const [dateTo, setDateTo] = usePersistedState("activity.dateTo", "");
 
   const [items, setItems] = useState<ApiActivity[]>([]);
   const [actions, setActions] = useState<string[]>([]);

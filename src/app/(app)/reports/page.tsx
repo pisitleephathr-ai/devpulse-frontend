@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import Link from "next/link";
 import {
   Plus,
@@ -67,11 +68,12 @@ export default function ReportsPage() {
     isManagerOrAdmin(me) || (!!me && r.key === me.avatarKey);
 
   // Default the date filter to today's Bangkok date (reduces noise on open).
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistedState("reports.search", "");
+  // Date is intentionally NOT persisted — it should default to today each visit.
   const [date, setDate] = useState(() => bangkokDateISO());
-  const [member, setMember] = useState("all");
-  const [project, setProject] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [member, setMember] = usePersistedState("reports.member", "all");
+  const [project, setProject] = usePersistedState("reports.project", "all");
+  const [status, setStatus] = usePersistedState("reports.status", "all");
 
   const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<Report | null>(null);

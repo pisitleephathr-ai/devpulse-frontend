@@ -49,6 +49,22 @@ export function formatThaiDateFull(date: Date = new Date()): string {
   }).format(date);
 }
 
+/**
+ * Urgency of a due date relative to today (Bangkok): "overdue" if before today,
+ * "soon" if within the next 2 days, otherwise null. Callers should skip done
+ * tasks. `dueISO` may be a full ISO string or YYYY-MM-DD.
+ */
+export function dueUrgency(dueISO: string | null): "overdue" | "soon" | null {
+  if (!dueISO) return null;
+  const today = bangkokDateISO();
+  const due = dueISO.slice(0, 10);
+  if (due < today) return "overdue";
+  const t = new Date(`${today}T00:00:00+07:00`).getTime();
+  const d = new Date(`${due}T00:00:00+07:00`).getTime();
+  const days = Math.round((d - t) / 86_400_000);
+  return days <= 2 ? "soon" : null;
+}
+
 /** Current Bangkok wall-clock time, 24h, e.g. "16:04:32". */
 export function formatThaiTime(date: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-GB", {

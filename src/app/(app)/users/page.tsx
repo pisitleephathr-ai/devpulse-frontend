@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import { Plus, Users as UsersIcon, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -36,9 +37,9 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [pendingDelete, setPendingDelete] = useState<User | null>(null);
 
-  const [search, setSearch] = useState("");
-  const [roleF, setRoleF] = useState("all");
-  const [statusF, setStatusF] = useState("all");
+  const [search, setSearch] = usePersistedState("users.search", "");
+  const [roleF, setRoleF] = usePersistedState("users.role", "all");
+  const [statusF, setStatusF] = usePersistedState("users.status", "all");
   const filtersActive = !!search || roleF !== "all" || statusF !== "all";
 
   const filtered = useMemo(
