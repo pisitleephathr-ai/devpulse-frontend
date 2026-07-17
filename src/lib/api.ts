@@ -20,6 +20,30 @@ type Options = {
   auth?: boolean;
 };
 
+const TIMEOUT_MS = 20_000;
+
+/** fetch with an abort-based timeout so a hung connection can't spin forever. */
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Normalize a fetch/timeout failure (no HTTP response) into an ApiError. */
+function networkError(err: unknown): ApiError {
+  const aborted = err instanceof DOMException && err.name === "AbortError";
+  return new ApiError(
+    aborted
+      ? "การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง"
+      : "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต",
+    0
+  );
+}
+
 async function request<T>(path: string, opts: Options = {}): Promise<T> {
   const { method = "GET", body, auth = true } = opts;
 
@@ -29,11 +53,28 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const url = `${API_URL}${path}`;
+  const init: RequestInit = {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  };
+
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url, init);
+  } catch (err) {
+    // Retry idempotent GETs once on a network failure / timeout.
+    if (method === "GET") {
+      try {
+        res = await fetchWithTimeout(url, init);
+      } catch {
+        throw networkError(err);
+      }
+    } else {
+      throw networkError(err);
+    }
+  }
 
   // Session expired / invalid — clear and bounce to login with a flag so the
   // login page can explain why the user landed there.

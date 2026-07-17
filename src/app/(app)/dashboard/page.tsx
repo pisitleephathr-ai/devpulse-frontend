@@ -28,7 +28,6 @@ import { canManageTasks } from "@/lib/permissions";
 import { relativeTimeTh, cn } from "@/lib/utils";
 import { getThaiGreeting, formatThaiDateFull, bangkokDateISO } from "@/lib/thai-datetime";
 import type { ApiActivity, ApiUserMini } from "@/lib/mappers";
-import { CURRENT_USER } from "@/lib/mock-data";
 
 type Proj = { name: string; code: string; color: string };
 
@@ -108,7 +107,7 @@ const ACTION_DOT: Record<string, string> = {
 
 export default function DashboardPage() {
   const me = useCurrentUser();
-  const displayName = me?.name?.trim() || me?.email?.split("@")[0] || CURRENT_USER.name;
+  const displayName = me?.name?.trim() || me?.email?.split("@")[0] || "";
   const firstName = displayName.split(" ")[0];
   const canCreateTask = canManageTasks(me);
 
