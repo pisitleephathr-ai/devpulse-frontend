@@ -7,7 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { CURRENT_USER, PAGE_TITLES } from "@/lib/mock-data";
+import { PAGE_TITLES } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { clearSession } from "@/lib/auth";
 
@@ -15,9 +15,9 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const me = useCurrentUser();
-  const meKey = me?.avatarKey ?? CURRENT_USER.key;
-  const meName = me?.name ?? CURRENT_USER.name;
-  const meEmail = me?.email ?? CURRENT_USER.email;
+  const meKey = me?.avatarKey ?? "?";
+  const meName = me?.name ?? "…";
+  const meEmail = me?.email ?? "";
   const segment = pathname.split("/")[1] || "dashboard";
   const title = PAGE_TITLES[segment] ?? "DevPulse";
 

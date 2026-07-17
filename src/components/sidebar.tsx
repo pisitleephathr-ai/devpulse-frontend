@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { canAccessMenu, isCommonMenu } from "@/lib/permissions";
 import { Avatar } from "@/components/ui/avatar";
-import { CURRENT_USER } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { roleNameOf } from "@/lib/mappers";
@@ -56,9 +55,10 @@ export function Sidebar({
   const pathname = usePathname();
   const { pendingLeaveCount: pending } = useData();
   const me = useCurrentUser();
-  const meKey = me?.avatarKey ?? CURRENT_USER.key;
-  const meName = me?.name ?? CURRENT_USER.name;
-  const meRole = me ? roleNameOf(me.role) : CURRENT_USER.role;
+  // Neutral placeholders before the real user loads (avoid flashing a fake name).
+  const meKey = me?.avatarKey ?? "?";
+  const meName = me?.name ?? "…";
+  const meRole = me ? roleNameOf(me.role) : "";
 
   // Menu items resolved from the saved config (falls back to code defaults).
   const [menu, setMenu] = useState<ResolvedMenuItem[]>(() => resolveMenu([]));
