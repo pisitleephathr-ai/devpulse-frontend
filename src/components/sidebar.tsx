@@ -15,6 +15,7 @@ import {
   Users,
   ShieldCheck,
   SlidersHorizontal,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 import { canAccessMenu, isCommonMenu } from "@/lib/permissions";
@@ -43,6 +44,7 @@ const ICONS: Record<string, LucideIcon> = {
   Users,
   ShieldCheck,
   SlidersHorizontal,
+  BarChart3,
 };
 
 export function Sidebar({
