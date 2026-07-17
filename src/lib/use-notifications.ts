@@ -20,7 +20,8 @@ export type ApiNotification = {
 export function notificationHref(n: ApiNotification): string | null {
   switch (n.entityType) {
     case "task":
-      return "/tasks";
+      // Deep-link straight to the task's card on the board.
+      return n.entityId ? `/tasks?task=${n.entityId}` : "/tasks";
     case "leave":
       return "/leaves";
     case "report":

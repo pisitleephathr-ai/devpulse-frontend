@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { usePersistedState } from "@/lib/use-persisted-state";
 import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, Paperclip, ExternalLink, Download, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,26 @@ export default function TasksPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailData, setDetailData] = useState<ApiTaskDetail | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
+
+  const router = useRouter();
+  const pathname = usePathname();
+  // Open/close the detail card while keeping the URL in sync, so a card is
+  // deep-linkable and shareable (?task=<id>) — e.g. from notifications.
+  const openTask = (id: string) => {
+    setDetailId(id);
+    router.replace(`${pathname}?task=${id}`, { scroll: false });
+  };
+  const closeTask = () => {
+    setDetailId(null);
+    router.replace(pathname, { scroll: false });
+  };
+  // On first load, open the card named in ?task=<id> (read after mount to
+  // avoid useSearchParams' Suspense requirement, matching the login page).
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("task");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (id) setDetailId(id);
+  }, []);
   const [editInitial, setEditInitial] = useState<{
     links: TaskLinkInput[];
     attachments: TaskAttachmentInput[];
@@ -129,7 +150,7 @@ export default function TasksPage() {
       })),
     });
     setEditTask(t);
-    setDetailId(null);
+    closeTask();
   }
 
   const filtersActive =
@@ -374,7 +395,7 @@ export default function TasksPage() {
           columns={columns}
           showAdd={canManage}
           canDrag={(t) => canEdit(t)}
-          onCardClick={(t) => setDetailId(t.id)}
+          onCardClick={(t) => openTask(t.id)}
           onDropTask={(id, status) => {
             const task = tasks.find((t) => t.id === id);
             if (task && task.status !== status) {
@@ -426,7 +447,7 @@ export default function TasksPage() {
       {/* Detail */}
       <Dialog
         open={detail !== null}
-        onClose={() => setDetailId(null)}
+        onClose={() => closeTask()}
         title="รายละเอียดงาน"
         footer={
           detail ? (
@@ -436,7 +457,7 @@ export default function TasksPage() {
                   variant="danger"
                   onClick={() => {
                     setPendingDelete(detail);
-                    setDetailId(null);
+                    closeTask();
                   }}
                 >
                   <Trash2 className="size-3.5" />
