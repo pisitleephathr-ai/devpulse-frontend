@@ -25,6 +25,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field } from "@/components/form-card";
 import { PageHeader } from "@/components/page-header";
 import { FormSkeleton } from "@/components/skeletons";
+import { TASK_STATUS_ENUM_OPTIONS } from "@/lib/mappers";
 import { toast } from "@/components/ui/toaster";
 import { api, ApiError } from "@/lib/api";
 import { thaiDateShortFromISO } from "@/lib/thai-datetime";
@@ -43,6 +44,8 @@ type Setting = {
   notifyReportReminder: boolean;
   notifyLeaveApproval: boolean;
   notifyTaskDue: boolean;
+  lineNotifyNewTask: boolean;
+  lineNotifyStatuses: string[];
 };
 type LeaveType = { id: string; name: string; daysLabel: string; color: string; autoApprove: boolean; sortOrder: number };
 type Holiday = { id: string; name: string; date: string; description: string; type: string; isActive: boolean };
@@ -64,6 +67,8 @@ const DEFAULT_SETTING: Setting = {
   notifyReportReminder: true,
   notifyLeaveApproval: true,
   notifyTaskDue: true,
+  lineNotifyNewTask: true,
+  lineNotifyStatuses: ["TODO", "DONE"],
 };
 const SETTING_KEYS = Object.keys(DEFAULT_SETTING) as (keyof Setting)[];
 const pickSetting = (s: Record<string, unknown>): Setting =>
@@ -395,6 +400,49 @@ export default function SettingsPage() {
                             );
                           })()
                         ) : null)}
+                      {lineStatus.enabled && (
+                        <div className="flex flex-col gap-2.5 py-2.5">
+                          <SwitchRow
+                            label="แจ้ง “งานใหม่” เข้ากลุ่ม LINE"
+                            checked={setting.lineNotifyNewTask}
+                            onChange={(v) => set("lineNotifyNewTask", v)}
+                          />
+                          <div>
+                            <div className="mb-1.5 text-[13px] font-medium">
+                              แจ้ง LINE เมื่อย้ายงานไปสถานะ
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {TASK_STATUS_ENUM_OPTIONS.map((o) => {
+                                const on = setting.lineNotifyStatuses.includes(o.value);
+                                return (
+                                  <button
+                                    key={o.value}
+                                    type="button"
+                                    onClick={() =>
+                                      set(
+                                        "lineNotifyStatuses",
+                                        on
+                                          ? setting.lineNotifyStatuses.filter((s) => s !== o.value)
+                                          : [...setting.lineNotifyStatuses, o.value]
+                                      )
+                                    }
+                                    className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ${
+                                      on
+                                        ? "border-teal-300 bg-teal-50 text-teal-700 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300"
+                                        : "border-border text-zinc-500 hover:bg-muted dark:text-zinc-400"
+                                    }`}
+                                  >
+                                    {o.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                              ยิ่งเลือกน้อย ยิ่งประหยัดโควตาข้อความ
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       </>
                     )}
                   </div>
