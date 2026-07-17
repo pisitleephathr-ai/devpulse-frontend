@@ -20,6 +20,24 @@ import type { ApiRole } from "@/lib/mappers";
 
 const TEMPLATE = "minmax(160px,1fr) 130px 90px 110px 150px";
 
+/** Capability grants a role can hold (mirrors the backend PERMISSIONS taxonomy). */
+const PERMISSION_OPTIONS = [
+  {
+    value: "TEAM_MANAGE",
+    label: "จัดการทีม",
+    hint: "โปรเจกต์ · อนุมัติการลา · แก้ไขงาน/รายงานของทีม",
+  },
+  {
+    value: "ADMIN_FULL",
+    label: "ผู้ดูแลระบบเต็ม",
+    hint: "ผู้ใช้ · บทบาท · ตั้งค่า · การลบ",
+  },
+] as const;
+
+const PERMISSION_LABEL: Record<string, string> = Object.fromEntries(
+  PERMISSION_OPTIONS.map((p) => [p.value, p.label])
+);
+
 export default function RolesPage() {
   const { roles, loading, addRole, updateRole, deleteRole } = useData();
   const [adding, setAdding] = useState(false);
@@ -72,8 +90,21 @@ export default function RolesPage() {
               </span>
               <div className="min-w-0">
                 <div className="truncate text-[13px] font-medium">{r.name}</div>
-                {r.isSystem && (
+                {r.isSystem ? (
                   <div className="text-[11px] text-zinc-400">บทบาทระบบ</div>
+                ) : r.permissions && r.permissions.length > 0 ? (
+                  <div className="mt-0.5 flex flex-wrap gap-1">
+                    {r.permissions.map((p) => (
+                      <span
+                        key={p}
+                        className="rounded bg-teal-50 px-1.5 py-px text-[10px] font-medium text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"
+                      >
+                        {PERMISSION_LABEL[p] ?? p}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-zinc-400">ไม่มีสิทธิ์พิเศษ</div>
                 )}
               </div>
             </div>
@@ -145,7 +176,12 @@ export default function RolesPage() {
           <RoleForm
             role={editing}
             onSubmit={(data) => {
-              updateRole(editing.id, { name: data.name, description: data.description });
+              updateRole(editing.id, {
+                name: data.name,
+                description: data.description,
+                // System-role permissions are fixed (backend rejects edits).
+                ...(editing.isSystem ? {} : { permissions: data.permissions }),
+              });
               setEditing(null);
               toast("บันทึกบทบาทแล้ว");
             }}
@@ -178,20 +214,38 @@ function RoleForm({
   onCancel,
 }: {
   role?: ApiRole;
-  onSubmit: (data: { name: string; code: string; description: string }) => void;
+  onSubmit: (data: {
+    name: string;
+    code: string;
+    description: string;
+    permissions: string[];
+  }) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(role?.name ?? "");
   const [code, setCode] = useState(role?.code ?? "");
   const [description, setDescription] = useState(role?.description ?? "");
+  const [permissions, setPermissions] = useState<string[]>(role?.permissions ?? []);
   const [error, setError] = useState<string | null>(null);
   const isEdit = !!role;
+  // System roles have fixed capabilities — the backend rejects permission edits.
+  const canEditPerms = !role?.isSystem;
+
+  const togglePerm = (p: string) =>
+    setPermissions((cur) =>
+      cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]
+    );
 
   function submit() {
     if (!name.trim()) return setError("กรุณากรอกชื่อบทบาท");
     if (!isEdit && !/^[A-Za-z0-9_-]{2,24}$/.test(code.trim()))
       return setError("รหัสต้องเป็นตัวอักษร/ตัวเลข/ขีด 2–24 ตัว");
-    onSubmit({ name: name.trim(), code: code.trim().toUpperCase(), description: description.trim() });
+    onSubmit({
+      name: name.trim(),
+      code: code.trim().toUpperCase(),
+      description: description.trim(),
+      permissions,
+    });
   }
 
   return (
@@ -211,6 +265,30 @@ function RoleForm({
       </Field>
       <Field label="คำอธิบาย" hint="ไม่บังคับ">
         <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+      </Field>
+      <Field label="สิทธิ์การเข้าถึง" hint={canEditPerms ? "ไม่บังคับ" : "บทบาทระบบ — แก้ไขไม่ได้"}>
+        <div className="flex flex-col gap-1.5">
+          {PERMISSION_OPTIONS.map((p) => (
+            <label
+              key={p.value}
+              className={`flex items-start gap-2.5 rounded-lg border border-border px-3 py-2 ${
+                canEditPerms ? "cursor-pointer hover:bg-muted/50" : "opacity-60"
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-teal-600"
+                checked={permissions.includes(p.value)}
+                disabled={!canEditPerms}
+                onChange={() => togglePerm(p.value)}
+              />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium">{p.label}</span>
+                <span className="block text-[11.5px] text-muted-foreground">{p.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
       </Field>
       <FormActions>
         <Button type="button" variant="secondary" onClick={onCancel}>
