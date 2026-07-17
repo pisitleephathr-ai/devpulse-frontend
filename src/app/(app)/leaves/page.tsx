@@ -28,7 +28,7 @@ import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { X } from "lucide-react";
 
-const TEMPLATE = "160px 96px 150px 64px minmax(170px,1fr) 104px 172px";
+const TEMPLATE = "160px 96px 150px 92px minmax(170px,1fr) 104px 172px";
 
 export default function LeavesPage() {
   const { leaves, users, loading, setLeaveStatus } = useData();
@@ -173,10 +173,10 @@ export default function LeavesPage() {
                 />
               </span>
               <span className="text-[12.5px] text-zinc-700">{l.dates}</span>
-              <span className="text-[12.5px] text-zinc-500">
-                {l.days} วัน
+              <span className="flex flex-col items-start gap-1 text-[12.5px] text-zinc-500">
+                <span className="whitespace-nowrap">{l.days} วัน</span>
                 {l.halfDayPeriod ? (
-                  <span className="ml-1 rounded-[4px] bg-amber-50 px-1 py-px text-[10.5px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                  <span className="whitespace-nowrap rounded-[4px] bg-amber-50 px-1.5 py-px text-[10.5px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                     {l.halfDayPeriod === "MORNING" ? "ครึ่งเช้า" : "ครึ่งบ่าย"}
                   </span>
                 ) : null}

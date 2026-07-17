@@ -13,6 +13,7 @@ import {
   Clock,
   ClipboardList,
   MessageCircle,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,7 @@ export default function SettingsPage() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [saving, setSaving] = useState(false);
   const [addLeaveOpen, setAddLeaveOpen] = useState(false);
+  const [editingLeave, setEditingLeave] = useState<LeaveType | null>(null);
   const [addHolidayOpen, setAddHolidayOpen] = useState(false);
   const [pendingLeaveDelete, setPendingLeaveDelete] = useState<LeaveType | null>(null);
   const [pendingHolidayDelete, setPendingHolidayDelete] = useState<Holiday | null>(null);
@@ -248,6 +250,81 @@ export default function SettingsPage() {
                   </div>
                 </Section>
 
+                <Section
+                  icon={<Plane className="size-4" />}
+                  title="การลา"
+                  desc="เปิด/ปิดการลาครึ่งวัน และจัดการประเภทการลา"
+                  action={
+                    <button onClick={() => setAddLeaveOpen(true)} className="flex flex-none items-center gap-1 rounded-[7px] border border-border px-[11px] py-[5px] text-[12.5px] font-semibold text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 dark:hover:bg-teal-950/40">
+                      <Plus className="size-3.5" /> เพิ่มประเภท
+                    </button>
+                  }
+                >
+                  <div className="divide-y divide-hairline-soft">
+                    <SwitchRow label="อนุญาตการลาครึ่งวัน (เช้า / บ่าย)" checked={setting.allowHalfDayLeave} onChange={(v) => set("allowHalfDayLeave", v)} />
+                  </div>
+                  <div className="mt-3 divide-y divide-hairline-soft overflow-hidden rounded-lg border border-border">
+                    {leaveTypes.map((lt) => (
+                      <div key={lt.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
+                        <span className="size-2.5 flex-none rounded-[3px]" style={{ background: lt.color }} />
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{lt.name}</span>
+                        <span className="hidden flex-none text-[12px] text-muted-foreground sm:block">{lt.daysLabel}</span>
+                        <span
+                          className="flex-none rounded-full px-[9px] py-0.5 text-[11px] font-semibold"
+                          style={lt.autoApprove ? { background: "#dcfce7", color: "#15803d" } : { background: "#fef3c7", color: "#b45309" }}
+                        >
+                          {lt.autoApprove ? "อัตโนมัติ" : "ขออนุมัติ"}
+                        </span>
+                        <button onClick={() => setEditingLeave(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-zinc-500 transition-colors hover:bg-muted" aria-label={`แก้ไขประเภทการลา ${lt.name}`}>
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button onClick={() => setPendingLeaveDelete(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40" aria-label={`ลบประเภทการลา ${lt.name}`}>
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {leaveTypes.length === 0 && <div className="px-3.5 py-6 text-center text-[12.5px] text-muted-foreground">ยังไม่มีประเภทการลา</div>}
+                  </div>
+                </Section>
+
+                <Section
+                  icon={<CalendarOff className="size-4" />}
+                  title="วันหยุดบริษัท"
+                  desc="วันหยุดจะแสดงบนปฏิทิน แยกจากงาน/รายงาน/การลา"
+                  action={
+                    <button onClick={() => setAddHolidayOpen(true)} className="flex flex-none items-center gap-1 rounded-[7px] border border-border px-[11px] py-[5px] text-[12.5px] font-semibold text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 dark:hover:bg-teal-950/40">
+                      <Plus className="size-3.5" /> เพิ่มวันหยุด
+                    </button>
+                  }
+                >
+                  <div className="max-h-[280px] divide-y divide-hairline-soft overflow-y-auto overflow-x-hidden rounded-lg border border-border">
+                    {holidays.map((h) => (
+                      <div key={h.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
+                        <span className="flex size-8 flex-none items-center justify-center rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-950/40">
+                          <CalendarOff className="size-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13px] font-medium">{h.name}</div>
+                          <div className="truncate text-[11.5px] text-muted-foreground">
+                            {thaiDateShortFromISO(h.date.slice(0, 10))}
+                            {h.description ? ` · ${h.description}` : ""}
+                          </div>
+                        </div>
+                        <span className="hidden flex-none rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground sm:block">
+                          {HOLIDAY_TYPE_LABEL[h.type] ?? h.type}
+                        </span>
+                        <button onClick={() => setPendingHolidayDelete(h)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40" aria-label={`ลบวันหยุด ${h.name}`}>
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {holidays.length === 0 && <div className="px-3.5 py-6 text-center text-[12.5px] text-muted-foreground">ยังไม่มีวันหยุดบริษัท</div>}
+                  </div>
+                </Section>
+              </div>
+
+              {/* Right column: notifications */}
+              <div className="flex flex-col gap-4">
                 <Section icon={<Bell className="size-4" />} title="การแจ้งเตือนระบบ" desc="การแจ้งเตือนภายในแอป">
                   <div className="divide-y divide-hairline-soft">
                     <SwitchRow label="แจ้งเตือนให้ส่งรายงานประจำวัน" checked={setting.notifyReportReminder} onChange={(v) => set("notifyReportReminder", v)} />
@@ -412,78 +489,6 @@ export default function SettingsPage() {
                   </Section>
                 )}
               </div>
-
-              {/* Right column */}
-              <div className="flex flex-col gap-4">
-                <Section
-                  icon={<Plane className="size-4" />}
-                  title="การลา"
-                  desc="เปิด/ปิดการลาครึ่งวัน และจัดการประเภทการลา"
-                  action={
-                    <button onClick={() => setAddLeaveOpen(true)} className="flex flex-none items-center gap-1 rounded-[7px] border border-border px-[11px] py-[5px] text-[12.5px] font-semibold text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 dark:hover:bg-teal-950/40">
-                      <Plus className="size-3.5" /> เพิ่มประเภท
-                    </button>
-                  }
-                >
-                  <div className="divide-y divide-hairline-soft">
-                    <SwitchRow label="อนุญาตการลาครึ่งวัน (เช้า / บ่าย)" checked={setting.allowHalfDayLeave} onChange={(v) => set("allowHalfDayLeave", v)} />
-                  </div>
-                  <div className="mt-3 divide-y divide-hairline-soft overflow-hidden rounded-lg border border-border">
-                    {leaveTypes.map((lt) => (
-                      <div key={lt.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
-                        <span className="size-2.5 flex-none rounded-[3px]" style={{ background: lt.color }} />
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{lt.name}</span>
-                        <span className="hidden flex-none text-[12px] text-muted-foreground sm:block">{lt.daysLabel}</span>
-                        <span
-                          className="flex-none rounded-full px-[9px] py-0.5 text-[11px] font-semibold"
-                          style={lt.autoApprove ? { background: "#dcfce7", color: "#15803d" } : { background: "#fef3c7", color: "#b45309" }}
-                        >
-                          {lt.autoApprove ? "อัตโนมัติ" : "ขออนุมัติ"}
-                        </span>
-                        <button onClick={() => setPendingLeaveDelete(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40" aria-label={`ลบประเภทการลา ${lt.name}`}>
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    {leaveTypes.length === 0 && <div className="px-3.5 py-6 text-center text-[12.5px] text-muted-foreground">ยังไม่มีประเภทการลา</div>}
-                  </div>
-                </Section>
-
-                <Section
-                  icon={<CalendarOff className="size-4" />}
-                  title="วันหยุดบริษัท"
-                  desc="วันหยุดจะแสดงบนปฏิทิน แยกจากงาน/รายงาน/การลา"
-                  action={
-                    <button onClick={() => setAddHolidayOpen(true)} className="flex flex-none items-center gap-1 rounded-[7px] border border-border px-[11px] py-[5px] text-[12.5px] font-semibold text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 dark:hover:bg-teal-950/40">
-                      <Plus className="size-3.5" /> เพิ่มวันหยุด
-                    </button>
-                  }
-                >
-                  <div className="max-h-[280px] divide-y divide-hairline-soft overflow-y-auto overflow-x-hidden rounded-lg border border-border">
-                    {holidays.map((h) => (
-                      <div key={h.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
-                        <span className="flex size-8 flex-none items-center justify-center rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-950/40">
-                          <CalendarOff className="size-4" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[13px] font-medium">{h.name}</div>
-                          <div className="truncate text-[11.5px] text-muted-foreground">
-                            {thaiDateShortFromISO(h.date.slice(0, 10))}
-                            {h.description ? ` · ${h.description}` : ""}
-                          </div>
-                        </div>
-                        <span className="hidden flex-none rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground sm:block">
-                          {HOLIDAY_TYPE_LABEL[h.type] ?? h.type}
-                        </span>
-                        <button onClick={() => setPendingHolidayDelete(h)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40" aria-label={`ลบวันหยุด ${h.name}`}>
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    {holidays.length === 0 && <div className="px-3.5 py-6 text-center text-[12.5px] text-muted-foreground">ยังไม่มีวันหยุดบริษัท</div>}
-                  </div>
-                </Section>
-              </div>
             </div>
 
             {/* Sticky save bar for org settings (shown only when there are changes) */}
@@ -502,7 +507,8 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <AddLeaveTypeDialog open={addLeaveOpen} onClose={() => setAddLeaveOpen(false)} onCreated={(lt) => setLeaveTypes((prev) => [...prev, lt].sort((a, b) => a.sortOrder - b.sortOrder))} nextOrder={leaveTypes.length} />
+      <LeaveTypeDialog open={addLeaveOpen} onClose={() => setAddLeaveOpen(false)} onSaved={(lt) => setLeaveTypes((prev) => [...prev, lt].sort((a, b) => a.sortOrder - b.sortOrder))} nextOrder={leaveTypes.length} />
+      <LeaveTypeDialog open={editingLeave !== null} editing={editingLeave} onClose={() => setEditingLeave(null)} onSaved={(lt) => setLeaveTypes((prev) => prev.map((x) => (x.id === lt.id ? lt : x)).sort((a, b) => a.sortOrder - b.sortOrder))} nextOrder={leaveTypes.length} />
       <AddHolidayDialog open={addHolidayOpen} onClose={() => setAddHolidayOpen(false)} onCreated={(h) => setHolidays((prev) => [...prev, h].sort((a, b) => a.date.localeCompare(b.date)))} />
 
       <ConfirmDialog
@@ -629,13 +635,23 @@ function Switch({ checked, onChange, disabled, label }: { checked: boolean; onCh
   );
 }
 
-function AddLeaveTypeDialog({ open, onClose, onCreated, nextOrder }: { open: boolean; onClose: () => void; onCreated: (lt: LeaveType) => void; nextOrder: number }) {
+function LeaveTypeDialog({ open, onClose, onSaved, nextOrder, editing }: { open: boolean; onClose: () => void; onSaved: (lt: LeaveType) => void; nextOrder: number; editing?: LeaveType | null }) {
   const [name, setName] = useState("");
   const [daysLabel, setDaysLabel] = useState("");
   const [color, setColor] = useState("#0d9488");
   const [autoApprove, setAutoApprove] = useState("false");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Reset/prefill the form each time the dialog opens (blank for add, current values for edit).
+  useEffect(() => {
+    if (!open) return;
+    setError(null);
+    setName(editing?.name ?? "");
+    setDaysLabel(editing?.daysLabel ?? "");
+    setColor(editing?.color ?? "#0d9488");
+    setAutoApprove(editing?.autoApprove ? "true" : "false");
+  }, [open, editing]);
 
   async function submit() {
     if (!name.trim() || !daysLabel.trim()) {
@@ -644,22 +660,24 @@ function AddLeaveTypeDialog({ open, onClose, onCreated, nextOrder }: { open: boo
     }
     setSaving(true);
     try {
-      const { leaveType } = await api.post<{ leaveType: LeaveType }>("/api/settings/leave-types", {
+      const body = {
         name: name.trim(),
         daysLabel: daysLabel.trim(),
         color,
         autoApprove: autoApprove === "true",
-        sortOrder: nextOrder,
-      });
-      onCreated(leaveType);
-      toast("เพิ่มประเภทการลาแล้ว");
-      setName("");
-      setDaysLabel("");
-      setColor("#0d9488");
-      setAutoApprove("false");
+      };
+      if (editing) {
+        const { leaveType } = await api.patch<{ leaveType: LeaveType }>(`/api/settings/leave-types/${editing.id}`, body);
+        onSaved(leaveType);
+        toast("บันทึกประเภทการลาแล้ว");
+      } else {
+        const { leaveType } = await api.post<{ leaveType: LeaveType }>("/api/settings/leave-types", { ...body, sortOrder: nextOrder });
+        onSaved(leaveType);
+        toast("เพิ่มประเภทการลาแล้ว");
+      }
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "เพิ่มไม่สำเร็จ");
+      setError(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ");
     } finally {
       setSaving(false);
     }
@@ -669,11 +687,11 @@ function AddLeaveTypeDialog({ open, onClose, onCreated, nextOrder }: { open: boo
     <Dialog
       open={open}
       onClose={onClose}
-      title="เพิ่มประเภทการลา"
+      title={editing ? "แก้ไขประเภทการลา" : "เพิ่มประเภทการลา"}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={saving}>ยกเลิก</Button>
-          <Button onClick={submit} disabled={saving}>{saving ? "กำลังเพิ่ม…" : "เพิ่มประเภท"}</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "กำลังบันทึก…" : editing ? "บันทึก" : "เพิ่มประเภท"}</Button>
         </>
       }
     >
