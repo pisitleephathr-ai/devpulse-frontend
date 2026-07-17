@@ -48,8 +48,20 @@ function hasBlocker(s: string) {
 }
 
 export default function ReportsPage() {
-  const { reports, users, projects, addReport, updateReport, deleteReport, loading, error, refresh } =
-    useData();
+  const {
+    reports,
+    users,
+    projects,
+    addReport,
+    updateReport,
+    deleteReport,
+    loading,
+    error,
+    refresh,
+    reportsHasMore,
+    loadingMoreReports,
+    loadMoreReports,
+  } = useData();
   const me = useCurrentUser();
   const canEditReport = (r: Report) =>
     isManagerOrAdmin(me) || (!!me && r.key === me.avatarKey);
@@ -280,6 +292,18 @@ export default function ReportsPage() {
             />
           ))}
         </CardGrid>
+      )}
+
+      {reportsHasMore && !loading && (
+        <div className="flex justify-center pt-1">
+          <button
+            onClick={() => loadMoreReports()}
+            disabled={loadingMoreReports}
+            className="rounded-lg border border-border bg-card px-4 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-200"
+          >
+            {loadingMoreReports ? "กำลังโหลด…" : "โหลดเพิ่ม"}
+          </button>
+        </div>
       )}
 
       {/* Create */}

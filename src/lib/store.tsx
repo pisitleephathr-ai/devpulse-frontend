@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -53,6 +54,11 @@ type DataContextValue = {
   pendingLeaveCount: number;
   refresh: () => Promise<void>;
 
+  /** reports are paginated (load-more); these drive the "โหลดเพิ่ม" control. */
+  reportsHasMore: boolean;
+  loadingMoreReports: boolean;
+  loadMoreReports: () => Promise<void>;
+
   addReport: (data: ReportInput) => Promise<boolean>;
   updateReport: (id: string, data: Partial<ReportInput>) => Promise<boolean>;
   deleteReport: (id: string) => Promise<boolean>;
@@ -76,6 +82,9 @@ type DataContextValue = {
   deleteRole: (id: string) => Promise<boolean>;
 };
 
+/** Reports are loaded a page at a time (they accumulate daily). */
+const REPORT_PAGE_SIZE = 40;
+
 const DataContext = createContext<DataContextValue | null>(null);
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -87,6 +96,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<ApiRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reportsHasMore, setReportsHasMore] = useState(false);
+  const [loadingMoreReports, setLoadingMoreReports] = useState(false);
+  const reportsPageRef = useRef(1);
 
   const refresh = useCallback(async () => {
     if (!getToken()) {
@@ -99,13 +111,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const [u, p, r, t, l] = await Promise.all([
         api.get<{ users: ApiUser[] }>("/api/users"),
         api.get<{ projects: ApiProject[] }>("/api/projects"),
-        api.get<{ reports: ApiReport[] }>("/api/reports"),
+        api.get<{ reports: ApiReport[]; hasMore?: boolean }>(
+          `/api/reports?limit=${REPORT_PAGE_SIZE}&page=1`
+        ),
         api.get<{ tasks: ApiTask[] }>("/api/tasks"),
         api.get<{ leaves: ApiLeave[] }>("/api/leaves"),
       ]);
       setUsers(u.users.map(mapUser));
       setProjects(p.projects);
       setReports(r.reports.map(mapReport));
+      reportsPageRef.current = 1;
+      // Older backends ignore the params and return everything → no "more".
+      setReportsHasMore(r.hasMore ?? false);
       setTasks(t.tasks.map(mapTask));
       setLeaves(l.leaves.map(mapLeave));
       // Roles are non-critical (and may 404 on an older backend) — never let
@@ -146,6 +163,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* ------------------------------ Reports --------------------------- */
+  const loadMoreReports = useCallback(async () => {
+    setLoadingMoreReports(true);
+    try {
+      const next = reportsPageRef.current + 1;
+      const r = await api.get<{ reports: ApiReport[]; hasMore?: boolean }>(
+        `/api/reports?limit=${REPORT_PAGE_SIZE}&page=${next}`
+      );
+      setReports((prev) => {
+        const seen = new Set(prev.map((x) => x.id));
+        const more = r.reports.map(mapReport).filter((x) => !seen.has(x.id));
+        return [...prev, ...more];
+      });
+      reportsPageRef.current = next;
+      setReportsHasMore(r.hasMore ?? false);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "โหลดเพิ่มไม่สำเร็จ");
+    } finally {
+      setLoadingMoreReports(false);
+    }
+  }, []);
+
   const addReport = useCallback(
     (data: ReportInput) =>
       run(async () => {
@@ -332,6 +370,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       error,
       pendingLeaveCount,
       refresh,
+      reportsHasMore,
+      loadingMoreReports,
+      loadMoreReports,
       addReport,
       updateReport,
       deleteReport,
@@ -359,6 +400,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       error,
       pendingLeaveCount,
       refresh,
+      reportsHasMore,
+      loadingMoreReports,
+      loadMoreReports,
       addReport,
       updateReport,
       deleteReport,
