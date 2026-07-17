@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { CalendarSkeleton } from "@/components/skeletons";
 import { WEEKDAYS } from "@/lib/mock-data";
+import { bangkokDateISO } from "@/lib/thai-datetime";
 
 type CalType = "TASK" | "REPORT" | "LEAVE" | "EVENT" | "HOLIDAY";
 
@@ -48,8 +49,8 @@ function itemLabel(it: CalItem): string {
 const TH_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 const EN_MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 
-// "Today" from the app's context date (2026-07-10), kept deterministic.
-const TODAY_YEAR = 2026, TODAY_MONTH = 7, TODAY_DAY = 10;
+// "Today" in Asia/Bangkok, resolved at load so the current day is always right.
+const [TODAY_YEAR, TODAY_MONTH, TODAY_DAY] = bangkokDateISO().split("-").map(Number);
 
 type Cell = { day: number | null; today: boolean; offday: boolean };
 
