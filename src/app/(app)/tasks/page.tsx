@@ -14,6 +14,7 @@ import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { downloadExcel, todayStamp } from "@/lib/excel";
 import { TaskComments } from "@/components/task-comments";
+import { TaskChecklist } from "@/components/task-checklist";
 import { KanbanSkeleton } from "@/components/skeletons";
 import { KanbanBoard } from "@/components/kanban-board";
 import { StatusBadge } from "@/components/status-badge";
@@ -603,6 +604,18 @@ export default function TasksPage() {
                     )
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Checklist / subtasks — mount once the detail (with items) loads */}
+            {detailData?.id === detail.id && (
+              <div className="border-t border-hairline pt-4">
+                <TaskChecklist
+                  key={detail.id}
+                  taskId={detail.id}
+                  initialItems={detailData.checklist ?? []}
+                  canEdit={canEdit(detail)}
+                />
               </div>
             )}
 
