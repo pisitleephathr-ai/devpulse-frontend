@@ -18,6 +18,8 @@ export function usePersistedState<T>(
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(key);
+      // Hydrate from storage after mount (intentional — avoids SSR mismatch).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw !== null) setValue(JSON.parse(raw) as T);
     } catch {
       /* corrupt/unavailable storage → keep initial */
