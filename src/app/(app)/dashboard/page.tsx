@@ -138,6 +138,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -149,6 +150,7 @@ export default function DashboardPage() {
       .then(([i, s]) => {
         setInsights(i);
         setSummary(s);
+        setRefreshedAt(formatThaiTime());
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -226,13 +228,20 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-          <button
-            onClick={load}
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-muted dark:text-zinc-300"
-          >
-            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-            รีเฟรช
-          </button>
+          <div className="flex items-center gap-2">
+            {refreshedAt && (
+              <span className="text-[11px] text-muted-foreground">
+                อัปเดตล่าสุด {refreshedAt}
+              </span>
+            )}
+            <button
+              onClick={load}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-muted dark:text-zinc-300"
+            >
+              <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+              รีเฟรช
+            </button>
+          </div>
         </div>
       </div>
 
