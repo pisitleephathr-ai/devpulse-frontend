@@ -32,6 +32,8 @@ export type ApiRole = {
   description?: string;
   isSystem: boolean;
   isActive: boolean;
+  /** capability grants, e.g. ["TEAM_MANAGE","ADMIN_FULL"] */
+  permissions?: string[];
   _count?: { users: number };
 };
 
@@ -375,9 +377,11 @@ export type RoleInput = {
   name: string;
   code: string;
   description?: string;
+  permissions?: string[];
 };
 export type RoleUpdateInput = Partial<{
   name: string;
   description: string;
   isActive: boolean;
+  permissions: string[];
 }>;
