@@ -42,6 +42,7 @@ type Insights = {
     todo: number;
     inProgress: number;
     review: number;
+    readyToTest: number;
     done: number;
     overdue: number;
     dueToday: number;
@@ -182,7 +183,7 @@ export default function DashboardPage() {
 
   const kpis = [
     { label: "งานทั้งหมด", value: t?.total, sub: `${t?.completionRate ?? 0}% เสร็จ`, icon: <KanbanSquare className="size-[18px]" />, color: "#3b82f6" },
-    { label: "กำลังทำ", value: t?.inProgress, sub: `รอตรวจ ${t?.review ?? 0}`, icon: <Loader2 className="size-[18px]" />, color: "#7c3aed" },
+    { label: "กำลังทำ", value: t?.inProgress, sub: `รอตรวจ ${t?.review ?? 0} · พร้อมทดสอบ ${t?.readyToTest ?? 0}`, icon: <Loader2 className="size-[18px]" />, color: "#7c3aed" },
     { label: "เสร็จแล้ว", value: t?.done, sub: "งานที่ปิดแล้ว", icon: <CheckCircle2 className="size-[18px]" />, color: "#10b981" },
     { label: "เกินกำหนด", value: t?.overdue, sub: `วันนี้ ${t?.dueToday ?? 0}`, icon: <AlarmClock className="size-[18px]" />, color: "#e11d48" },
     { label: "รายงานวันนี้", value: r ? `${r.submittedCount}/${r.totalMembers}` : undefined, sub: "ส่งแล้ว", icon: <ClipboardCheck className="size-[18px]" />, color: "#0d9488" },

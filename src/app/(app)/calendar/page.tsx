@@ -252,7 +252,7 @@ export default function CalendarPage() {
             return (
               <div
                 key={i}
-                className={`min-h-24 border-b border-r border-hairline-soft p-2 ${
+                className={`min-h-[104px] lg:min-h-[132px] xl:min-h-[148px] border-b border-r border-hairline-soft p-2 ${
                   !cell.day
                     ? "bg-muted/40"
                     : nonWorking
@@ -349,7 +349,11 @@ function DayModal({
           {items.map((it) => (
             <Link
               key={it.id}
-              href={TYPE_META[it.type].href}
+              href={
+                it.type === "TASK"
+                  ? `/tasks?task=${it.entityId}`
+                  : TYPE_META[it.type].href
+              }
               className="flex items-center gap-2.5 px-[22px] py-3 transition-colors hover:bg-zinc-50"
             >
               <span className={`rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold ${TYPE_META[it.type].cls}`}>
