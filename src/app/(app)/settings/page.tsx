@@ -90,6 +90,12 @@ export default function SettingsPage() {
   const [lineStatus, setLineStatus] = useState<{
     enabled: boolean;
     groupConnected: boolean;
+    quota?: {
+      type: "limited" | "none";
+      value: number | null;
+      used: number;
+      remaining: number | null;
+    } | null;
   } | null>(null);
 
   function toMenuEdit(config: MenuConfigItem[]): MenuEdit[] {
@@ -108,7 +114,16 @@ export default function SettingsPage() {
       api
         .get<{
           setting: Record<string, unknown>;
-          line?: { enabled: boolean; groupConnected: boolean };
+          line?: {
+            enabled: boolean;
+            groupConnected: boolean;
+            quota?: {
+              type: "limited" | "none";
+              value: number | null;
+              used: number;
+              remaining: number | null;
+            } | null;
+          };
         }>("/api/settings")
         .then((r) => {
           const s = { ...DEFAULT_SETTING, ...pickSetting(r.setting) };
@@ -309,6 +324,7 @@ export default function SettingsPage() {
                     <SwitchRow label="แจ้งเตือนการอนุมัติคำขอลา" checked={setting.notifyLeaveApproval} onChange={(v) => set("notifyLeaveApproval", v)} />
                     <SwitchRow label="แจ้งเตือนงานที่ใกล้ครบกำหนด" checked={setting.notifyTaskDue} onChange={(v) => set("notifyTaskDue", v)} />
                     {lineStatus && (
+                      <>
                       <div className="flex items-center justify-between py-2.5">
                         <div className="min-w-0">
                           <div className="text-[13px] font-medium">แจ้งเตือนงานเข้ากลุ่ม LINE</div>
@@ -336,6 +352,50 @@ export default function SettingsPage() {
                               : "ปิดอยู่"}
                         </span>
                       </div>
+                      {lineStatus.quota &&
+                        (lineStatus.quota.type === "none" ? (
+                          <div className="flex items-center justify-between py-2.5 text-[12px]">
+                            <span className="text-muted-foreground">ข้อความ LINE เดือนนี้</span>
+                            <span className="font-medium">
+                              ส่งไป {lineStatus.quota.used.toLocaleString()} · ไม่จำกัด
+                            </span>
+                          </div>
+                        ) : lineStatus.quota.value !== null ? (
+                          (() => {
+                            const q = lineStatus.quota!;
+                            const value = q.value ?? 0;
+                            const remaining = q.remaining ?? 0;
+                            const low = value > 0 && remaining <= value * 0.15;
+                            const empty = remaining <= 0;
+                            const color = empty
+                              ? "text-red-600"
+                              : low
+                                ? "text-amber-600"
+                                : "text-zinc-700 dark:text-zinc-200";
+                            return (
+                              <div className="py-2.5">
+                                <div className="flex items-center justify-between text-[12px]">
+                                  <span className="text-muted-foreground">ข้อความ LINE เดือนนี้</span>
+                                  <span className={`font-semibold ${color}`}>
+                                    ใช้ไป {q.used.toLocaleString()} / {value.toLocaleString()} · เหลือ{" "}
+                                    {remaining.toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      empty ? "bg-red-500" : low ? "bg-amber-500" : "bg-teal-500"
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(100, value > 0 ? (q.used / value) * 100 : 0)}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : null)}
+                      </>
                     )}
                   </div>
                 </Section>
