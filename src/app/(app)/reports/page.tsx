@@ -82,6 +82,18 @@ export default function ReportsPage() {
   const filtersActive =
     !!search || !!date || member !== "all" || project !== "all" || status !== "all";
 
+  // "Haven't reported today" nudge — reliable since today's reports (newest)
+  // are always on the first loaded page.
+  const meUser = users.find((u) => u.key === me?.avatarKey);
+  const todayThai = isoToThai(bangkokDateISO());
+  const submittedToday =
+    !!me &&
+    reports.some(
+      (r) => r.key === me.avatarKey && r.date === todayThai && r.status !== "ฉบับร่าง"
+    );
+  const needsReportToday =
+    !!me && (meUser?.requiresDailyReport ?? true) && !submittedToday;
+
   // Role display name by avatar key (report data has no role of its own).
   const roleByKey = useMemo(
     () => new Map(users.map((u) => [u.key, u.role])),
@@ -141,6 +153,21 @@ export default function ReportsPage() {
         }
       />
 
+      {needsReportToday && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/25">
+          <div className="flex items-center gap-2 text-[13px] font-medium text-amber-800 dark:text-amber-200">
+            <TriangleAlert className="size-4 flex-none" />
+            คุณยังไม่ได้ส่งรายงานประจำวันนี้
+          </div>
+          <button
+            onClick={() => setCreating(true)}
+            className="flex-none rounded-lg bg-amber-600 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-amber-700"
+          >
+            ส่งรายงาน
+          </button>
+        </div>
+      )}
+
       <FilterBar trailing={`${filtered.length} รายงาน`}>
         <SearchInput
           value={search}
@@ -166,6 +193,18 @@ export default function ReportsPage() {
             ทั้งหมด
           </button>
         </div>
+        {me && (
+          <button
+            onClick={() => setMember(member === me.name ? "all" : me.name)}
+            className={`rounded-lg border px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${
+              member === me.name
+                ? "border-teal-600 bg-teal-600 text-white"
+                : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            ของฉัน
+          </button>
+        )}
         <Input
           type="date"
           value={date}
