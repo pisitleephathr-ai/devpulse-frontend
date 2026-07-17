@@ -243,10 +243,13 @@ export default function UsersPage() {
       >
         <UserForm
           mode="create"
-          onSubmit={(data) => {
-            addUser(data);
-            setAdding(false);
-            toast("ส่งคำเชิญแล้ว");
+          onSubmit={async (data) => {
+            const ok = await addUser(data);
+            if (ok) {
+              setAdding(false);
+              toast("ส่งคำเชิญแล้ว");
+            }
+            return ok;
           }}
           onCancel={() => setAdding(false)}
         />
@@ -263,14 +266,17 @@ export default function UsersPage() {
           <UserForm
             mode="edit"
             user={editing}
-            onSubmit={(data) => {
-              updateUser(editing.id, {
+            onSubmit={async (data) => {
+              const ok = await updateUser(editing.id, {
                 name: data.name,
                 roleId: data.roleId,
                 requiresDailyReport: data.requiresDailyReport,
               });
-              setEditing(null);
-              toast("บันทึกข้อมูลผู้ใช้แล้ว");
+              if (ok) {
+                setEditing(null);
+                toast("บันทึกข้อมูลผู้ใช้แล้ว");
+              }
+              return ok;
             }}
             onCancel={() => setEditing(null)}
           />

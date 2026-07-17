@@ -292,10 +292,13 @@ export default function ReportsPage() {
         {creating && (
           <ReportForm
             mode="create"
-            onSubmit={(data) => {
-              addReport(data);
-              setCreating(false);
-              toast(data.status === "DRAFT" ? "บันทึกฉบับร่างแล้ว" : "ส่งรายงานแล้ว");
+            onSubmit={async (data) => {
+              const ok = await addReport(data);
+              if (ok) {
+                setCreating(false);
+                toast(data.status === "DRAFT" ? "บันทึกฉบับร่างแล้ว" : "ส่งรายงานแล้ว");
+              }
+              return ok;
             }}
             onCancel={() => setCreating(false)}
           />
@@ -316,10 +319,13 @@ export default function ReportsPage() {
           <ReportForm
             mode="edit"
             report={editing}
-            onSubmit={(data) => {
-              updateReport(editing.id, data);
-              setEditing(null);
-              toast("บันทึกการแก้ไขรายงานแล้ว");
+            onSubmit={async (data) => {
+              const ok = await updateReport(editing.id, data);
+              if (ok) {
+                setEditing(null);
+                toast("บันทึกการแก้ไขรายงานแล้ว");
+              }
+              return ok;
             }}
             onCancel={() => setEditing(null)}
           />
@@ -330,9 +336,8 @@ export default function ReportsPage() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onClose={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete) {
-            deleteReport(pendingDelete.id);
+        onConfirm={async () => {
+          if (pendingDelete && (await deleteReport(pendingDelete.id))) {
             toast("ลบรายงานแล้ว");
           }
         }}
