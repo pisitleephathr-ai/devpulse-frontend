@@ -49,6 +49,17 @@ export function formatThaiDateFull(date: Date = new Date()): string {
   }).format(date);
 }
 
+/** Current Bangkok wall-clock time, 24h, e.g. "16:04:32". */
+export function formatThaiTime(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: BKK,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 /** Short Thai date, e.g. "10 ก.ค. 2569". */
 export function formatThaiDateShort(date: Date = new Date()): string {
   return new Intl.DateTimeFormat("th-TH", {

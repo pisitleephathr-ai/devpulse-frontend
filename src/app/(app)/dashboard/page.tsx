@@ -26,7 +26,12 @@ import { api } from "@/lib/api";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { canManageTasks } from "@/lib/permissions";
 import { relativeTimeTh, cn } from "@/lib/utils";
-import { getThaiGreeting, formatThaiDateFull, bangkokDateISO } from "@/lib/thai-datetime";
+import {
+  getThaiGreeting,
+  formatThaiDateFull,
+  formatThaiTime,
+  bangkokDateISO,
+} from "@/lib/thai-datetime";
 import type { ApiActivity, ApiUserMini } from "@/lib/mappers";
 
 type Proj = { name: string; code: string; color: string };
@@ -111,10 +116,22 @@ export default function DashboardPage() {
   const firstName = displayName.split(" ")[0];
   const canCreateTask = canManageTasks(me);
 
-  const [clock, setClock] = useState<{ greeting: string; date: string } | null>(null);
+  const [clock, setClock] = useState<{
+    greeting: string;
+    date: string;
+    time: string;
+  } | null>(null);
   useEffect(() => {
+    const tick = () =>
+      setClock({
+        greeting: getThaiGreeting(),
+        date: formatThaiDateFull(),
+        time: formatThaiTime(),
+      });
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setClock({ greeting: getThaiGreeting(), date: formatThaiDateFull() });
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, []);
 
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -186,9 +203,10 @@ export default function DashboardPage() {
         <div>
           <div className="mb-1 font-mono text-[10.5px] font-semibold tracking-[0.12em] text-teal-600">
             DASHBOARD · {clock?.date ?? " "}
+            {clock?.time ? ` · ${clock.time}` : ""}
           </div>
           <h1 className="text-[22px] font-bold tracking-[-0.02em]">
-            {clock?.greeting ?? "สวัสดี"} คุณ{firstName}
+            {clock?.greeting ?? "สวัสดี"} คุณ {firstName}
           </h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             นี่คือภาพรวมงานของทีมวันนี้

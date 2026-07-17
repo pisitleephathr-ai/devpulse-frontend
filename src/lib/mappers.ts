@@ -36,6 +36,8 @@ export type ApiRole = {
   permissions?: string[];
   /** whether this role appears on the task board (assignable + in workload) */
   assignable?: boolean;
+  /** sidebar menu keys this role may see ([] / undefined = inherit defaults) */
+  menuAccess?: string[];
   _count?: { users: number };
 };
 
@@ -381,6 +383,7 @@ export type RoleInput = {
   description?: string;
   permissions?: string[];
   assignable?: boolean;
+  menuAccess?: string[];
 };
 export type RoleUpdateInput = Partial<{
   name: string;
@@ -388,4 +391,5 @@ export type RoleUpdateInput = Partial<{
   isActive: boolean;
   permissions: string[];
   assignable: boolean;
+  menuAccess: string[];
 }>;

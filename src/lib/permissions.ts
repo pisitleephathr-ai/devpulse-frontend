@@ -24,8 +24,24 @@ const MENU_ACCESS: Record<string, string[]> = {
   settings: ["ADMIN", "MANAGER"],
 };
 
+/**
+ * Menus admins can never lose from their sidebar, so a misconfigured menu list
+ * can't lock the team out of role/settings management.
+ */
+export const ADMIN_LOCKED_MENUS = ["roles", "settings"];
+
 export function roleCode(user: AuthUser | null): string {
   return user ? roleCodeOf(user.role) : "";
+}
+
+/** Built-in default menu keys visible to a role code (the pre-dynamic behavior). */
+export function defaultMenusForRole(code: string): string[] {
+  return Object.keys(MENU_ACCESS).filter((k) => {
+    const allowed = MENU_ACCESS[k];
+    if (!allowed) return true; // unrestricted
+    if (allowed.length >= ALL_ROLES.length) return true; // common to everyone
+    return allowed.includes(code);
+  });
 }
 
 export function isAdmin(user: AuthUser | null): boolean {
@@ -37,6 +53,15 @@ export function isManagerOrAdmin(user: AuthUser | null): boolean {
 }
 
 export function canAccessMenu(user: AuthUser | null, menuKey: string): boolean {
+  // Admins always keep the role/settings menus (prevents self-lockout).
+  if (isAdmin(user) && ADMIN_LOCKED_MENUS.includes(menuKey)) return true;
+
+  // Per-role dynamic config (set from the roles page) wins when present.
+  // An empty/absent list means "inherit the built-in defaults" below.
+  const role = user && typeof user.role === "object" ? user.role : null;
+  const configured = role?.menuAccess;
+  if (configured && configured.length > 0) return configured.includes(menuKey);
+
   const allowed = MENU_ACCESS[menuKey];
   if (!allowed) return true; // unknown menu → allow
   return allowed.includes(roleCode(user));
