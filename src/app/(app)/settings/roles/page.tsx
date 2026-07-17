@@ -16,6 +16,8 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { matchesSearch } from "@/lib/filters";
+import { MENU_DEFS } from "@/lib/menu";
+import { defaultMenusForRole, ADMIN_LOCKED_MENUS } from "@/lib/permissions";
 import type { ApiRole } from "@/lib/mappers";
 
 const TEMPLATE = "minmax(160px,1fr) 130px 90px 110px 150px";
@@ -192,6 +194,8 @@ export default function RolesPage() {
                 // "Appears on board" is a team-membership flag, editable for
                 // every role — including system roles.
                 assignable: data.assignable,
+                // Menu visibility is navigation-only — editable for every role.
+                menuAccess: data.menuAccess,
                 // System-role permissions are fixed (backend rejects edits).
                 ...(editing.isSystem ? {} : { permissions: data.permissions }),
               });
@@ -235,6 +239,7 @@ function RoleForm({
     description: string;
     permissions: string[];
     assignable: boolean;
+    menuAccess: string[];
   }) => void | Promise<boolean | void>;
   onCancel: () => void;
 }) {
@@ -248,21 +253,48 @@ function RoleForm({
   // System roles have fixed capabilities — the backend rejects permission edits.
   const canEditPerms = !role?.isSystem;
 
+  // Admin roles keep the role/settings menus locked on (no self-lockout).
+  const isAdminRole =
+    role?.code === "ADMIN" || (role?.permissions ?? []).includes("ADMIN_FULL");
+  // Seed the menu checklist from the saved list, or the role's built-in
+  // defaults when it has never been configured.
+  const [menus, setMenus] = useState<Set<string>>(() =>
+    new Set(
+      role?.menuAccess && role.menuAccess.length > 0
+        ? role.menuAccess
+        : defaultMenusForRole(role?.code ?? "")
+    )
+  );
+
   const togglePerm = (p: string) =>
     setPermissions((cur) =>
       cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]
     );
+  const toggleMenu = (k: string) =>
+    setMenus((cur) => {
+      const next = new Set(cur);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
 
   function submit() {
     if (!name.trim()) return setError("กรุณากรอกชื่อบทบาท");
     if (!isEdit && !/^[A-Za-z0-9_-]{2,24}$/.test(code.trim()))
       return setError("รหัสต้องเป็นตัวอักษร/ตัวเลข/ขีด 2–24 ตัว");
+    // Admin roles always retain the locked menus regardless of the checkboxes.
+    const menuAccess = [...menus];
+    if (isAdminRole) {
+      for (const m of ADMIN_LOCKED_MENUS)
+        if (!menuAccess.includes(m)) menuAccess.push(m);
+    }
     onSubmit({
       name: name.trim(),
       code: code.trim().toUpperCase(),
       description: description.trim(),
       permissions,
       assignable,
+      menuAccess,
     });
   }
 
@@ -325,6 +357,37 @@ function RoleForm({
             </span>
           </span>
         </label>
+      </Field>
+      <Field
+        label="เมนูที่มองเห็น"
+        hint="เลือกเมนูที่บทบาทนี้เห็นในแถบด้านซ้าย"
+      >
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {MENU_DEFS.map((m) => {
+            const locked = isAdminRole && ADMIN_LOCKED_MENUS.includes(m.key);
+            const checked = locked || menus.has(m.key);
+            return (
+              <label
+                key={m.key}
+                className={`flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 ${
+                  locked ? "opacity-60" : "cursor-pointer hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="size-4 accent-teal-600"
+                  checked={checked}
+                  disabled={locked}
+                  onChange={() => toggleMenu(m.key)}
+                />
+                <span className="text-[13px] font-medium">{m.defaultLabel}</span>
+              </label>
+            );
+          })}
+        </div>
+        <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+          เป็นการซ่อน/แสดงเมนูเท่านั้น สิทธิ์การใช้งาน API ยังคุมด้วยสิทธิ์ของบทบาทตามเดิม
+        </p>
       </Field>
       <FormActions>
         <Button type="button" variant="secondary" onClick={onCancel}>
