@@ -223,7 +223,7 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-4 px-7 py-6">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden px-7 py-6">
       <PageHeader
         eyebrow="TASK BOARD"
         title="บอร์ดงาน"
