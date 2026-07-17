@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +16,22 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { matchesSearch } from "@/lib/filters";
-import { MENU_DEFS } from "@/lib/menu";
+import { api } from "@/lib/api";
+import {
+  MENU_DEFS,
+  resolveMenu,
+  MENU_UPDATED_EVENT,
+  type MenuConfigItem,
+} from "@/lib/menu";
 import { defaultMenusForRole, ADMIN_LOCKED_MENUS } from "@/lib/permissions";
 import type { ApiRole } from "@/lib/mappers";
+
+/** Menu key → its current display label (custom name if set, else default). */
+type MenuOption = { key: string; label: string };
+const DEFAULT_MENU_OPTIONS: MenuOption[] = MENU_DEFS.map((m) => ({
+  key: m.key,
+  label: m.defaultLabel,
+}));
 
 const TEMPLATE = "minmax(160px,1fr) 130px 90px 110px 150px";
 
@@ -46,6 +59,32 @@ export default function RolesPage() {
   const [editing, setEditing] = useState<ApiRole | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ApiRole | null>(null);
   const [search, setSearch] = useState("");
+
+  // Menu options shown in the role editor, resolved through the saved menu
+  // config so renamed menus display their custom label (not the code default).
+  const [menuOptions, setMenuOptions] =
+    useState<MenuOption[]>(DEFAULT_MENU_OPTIONS);
+  useEffect(() => {
+    let active = true;
+    const load = () =>
+      api
+        .get<{ menu: MenuConfigItem[] }>("/api/settings/menu")
+        .then(
+          (r) =>
+            active &&
+            setMenuOptions(
+              resolveMenu(r.menu).map((m) => ({ key: m.key, label: m.label }))
+            )
+        )
+        .catch(() => active && setMenuOptions(DEFAULT_MENU_OPTIONS));
+    load();
+    // Refresh live when the settings page saves a new menu config.
+    window.addEventListener(MENU_UPDATED_EVENT, load);
+    return () => {
+      active = false;
+      window.removeEventListener(MENU_UPDATED_EVENT, load);
+    };
+  }, []);
 
   const filtered = roles.filter((r) => matchesSearch([r.name, r.code], search));
 
@@ -165,6 +204,7 @@ export default function RolesPage() {
       {/* Add */}
       <Dialog open={adding} onClose={() => setAdding(false)} title="เพิ่มบทบาทใหม่">
         <RoleForm
+          menuOptions={menuOptions}
           onSubmit={async (data) => {
             const ok = await addRole(data);
             if (ok) {
@@ -187,6 +227,7 @@ export default function RolesPage() {
         {editing && (
           <RoleForm
             role={editing}
+            menuOptions={menuOptions}
             onSubmit={async (data) => {
               const ok = await updateRole(editing.id, {
                 name: data.name,
@@ -229,10 +270,12 @@ export default function RolesPage() {
 
 function RoleForm({
   role,
+  menuOptions,
   onSubmit,
   onCancel,
 }: {
   role?: ApiRole;
+  menuOptions: MenuOption[];
   onSubmit: (data: {
     name: string;
     code: string;
@@ -363,7 +406,7 @@ function RoleForm({
         hint="เลือกเมนูที่บทบาทนี้เห็นในแถบด้านซ้าย"
       >
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {MENU_DEFS.map((m) => {
+          {menuOptions.map((m) => {
             const locked = isAdminRole && ADMIN_LOCKED_MENUS.includes(m.key);
             const checked = locked || menus.has(m.key);
             return (
@@ -380,7 +423,7 @@ function RoleForm({
                   disabled={locked}
                   onChange={() => toggleMenu(m.key)}
                 />
-                <span className="text-[13px] font-medium">{m.defaultLabel}</span>
+                <span className="text-[13px] font-medium">{m.label}</span>
               </label>
             );
           })}
