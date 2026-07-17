@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Users as UsersIcon, X } from "lucide-react";
+import { Plus, Users as UsersIcon, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { SearchInput } from "@/components/search-input";
@@ -18,19 +19,22 @@ import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { ROLE_COLORS, type User } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
-import { canManageUsers } from "@/lib/permissions";
+import { canManageUsers, isAdmin } from "@/lib/permissions";
 import { roleNameOf } from "@/lib/mappers";
 import { matchesSearch } from "@/lib/filters";
 
 const TEMPLATE = "180px minmax(180px,1fr) 120px 96px 150px 168px";
 
 export default function UsersPage() {
-  const { users, roles, loading, addUser, updateUser, toggleUser } = useData();
+  const { users, roles, loading, addUser, updateUser, toggleUser, deleteUser } =
+    useData();
   const me = useCurrentUser();
   const canManage = canManageUsers(me);
+  const admin = isAdmin(me);
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<User | null>(null);
 
   const [search, setSearch] = useState("");
   const [roleF, setRoleF] = useState("all");
@@ -222,6 +226,15 @@ export default function UsersPage() {
                       >
                         {u.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
                       </button>
+                      {admin && u.id !== me?.id && (
+                        <button
+                          onClick={() => setPendingDelete(u)}
+                          className="flex size-[26px] items-center justify-center rounded-[7px] border border-zinc-200 text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
+                          aria-label={`ลบ ${u.name}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
                     </>
                   ) : (
                     <span className="text-[11.5px] text-zinc-400">ดูอย่างเดียว</span>
@@ -282,6 +295,27 @@ export default function UsersPage() {
           />
         )}
       </Dialog>
+
+      {/* Delete */}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          const u = pendingDelete;
+          void deleteUser(u.id).then((ok) => {
+            if (ok) toast(`ลบ ${u.name} แล้ว`);
+          });
+        }}
+        title="ลบผู้ใช้"
+        message={
+          pendingDelete
+            ? `ยืนยันลบ ${pendingDelete.name}? การลบจะลบรายงานประจำวัน การลา และประวัติกิจกรรมทั้งหมดของผู้ใช้นี้ด้วย และไม่สามารถย้อนกลับได้ (งานที่มอบหมายจะถูกยกเลิกการมอบหมาย ไม่ถูกลบ)`
+            : ""
+        }
+        confirmLabel="ลบผู้ใช้"
+        destructive
+      />
     </div>
   );
 }

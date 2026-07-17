@@ -75,6 +75,7 @@ type DataContextValue = {
   addUser: (data: UserInput) => Promise<boolean>;
   updateUser: (id: string, data: UserUpdateInput) => Promise<boolean>;
   toggleUser: (id: string) => Promise<boolean>;
+  deleteUser: (id: string) => Promise<boolean>;
 
   roles: ApiRole[];
   addRole: (data: RoleInput) => Promise<boolean>;
@@ -324,6 +325,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }),
     [run]
   );
+  const deleteUser = useCallback(
+    (id: string) =>
+      run(async () => {
+        await api.del(`/api/users/${id}`);
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      }),
+    [run]
+  );
 
   /* ------------------------------- Roles ---------------------------- */
   const addRole = useCallback(
@@ -385,6 +394,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addUser,
       updateUser,
       toggleUser,
+      deleteUser,
       roles,
       addRole,
       updateRole,
@@ -415,6 +425,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addUser,
       updateUser,
       toggleUser,
+      deleteUser,
       roles,
       addRole,
       updateRole,
