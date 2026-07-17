@@ -16,6 +16,8 @@ import {
   Lock,
   RotateCcw,
   GripVertical,
+  Clock,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,11 @@ type Setting = {
   notifyTaskDue: boolean;
   lineNotifyNewTask: boolean;
   lineNotifyStatuses: string[];
+  lineNotifyLeave: boolean;
+  lineDailyLeaveSummary: boolean;
+  lineDailyLeaveSummaryTime: string;
+  lineDailyReportSummary: boolean;
+  lineDailyReportSummaryTime: string;
 };
 type LeaveType = { id: string; name: string; daysLabel: string; color: string; autoApprove: boolean; sortOrder: number };
 type Holiday = { id: string; name: string; date: string; description: string; type: string; isActive: boolean };
@@ -69,6 +76,11 @@ const DEFAULT_SETTING: Setting = {
   notifyTaskDue: true,
   lineNotifyNewTask: true,
   lineNotifyStatuses: ["TODO", "DONE"],
+  lineNotifyLeave: true,
+  lineDailyLeaveSummary: false,
+  lineDailyLeaveSummaryTime: "09:00",
+  lineDailyReportSummary: false,
+  lineDailyReportSummaryTime: "18:00",
 };
 const SETTING_KEYS = Object.keys(DEFAULT_SETTING) as (keyof Setting)[];
 const pickSetting = (s: Record<string, unknown>): Setting =>
@@ -444,6 +456,39 @@ export default function SettingsPage() {
                               ยิ่งเลือกน้อย ยิ่งประหยัดโควตาข้อความ
                             </p>
                           </div>
+
+                          <div className="border-t border-hairline-soft pt-1">
+                            <SwitchRow
+                              label="แจ้ง “คำขอลา” (ยื่น/อนุมัติ) เข้ากลุ่ม LINE"
+                              checked={setting.lineNotifyLeave}
+                              onChange={(v) => set("lineNotifyLeave", v)}
+                            />
+                          </div>
+
+                          <div className="border-t border-hairline-soft pt-2.5">
+                            <div className="mb-1 text-[13px] font-medium">สรุปรายวันเข้ากลุ่ม LINE</div>
+                            <p className="mb-2 text-[11.5px] text-muted-foreground">
+                              ส่งสรุปให้กลุ่มอัตโนมัติตามเวลาที่กำหนด (เฉพาะวันทำงาน)
+                            </p>
+                            <div className="flex flex-col gap-2">
+                              <TimedSummaryRow
+                                icon={<Plane className="size-3.5" />}
+                                label="สรุป “วันนี้มีใครลา”"
+                                enabled={setting.lineDailyLeaveSummary}
+                                onToggle={(v) => set("lineDailyLeaveSummary", v)}
+                                time={setting.lineDailyLeaveSummaryTime}
+                                onTime={(v) => set("lineDailyLeaveSummaryTime", v)}
+                              />
+                              <TimedSummaryRow
+                                icon={<ClipboardList className="size-3.5" />}
+                                label="สรุปการส่งรายงานประจำวัน"
+                                enabled={setting.lineDailyReportSummary}
+                                onToggle={(v) => set("lineDailyReportSummary", v)}
+                                time={setting.lineDailyReportSummaryTime}
+                                onTime={(v) => set("lineDailyReportSummaryTime", v)}
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
                       </>
@@ -659,6 +704,51 @@ function SwitchRow({ label, checked, onChange }: { label: string; checked: boole
     <div className="flex items-center justify-between gap-4 py-2.5">
       <span className="min-w-0 text-[13px]">{label}</span>
       <Switch checked={checked} onChange={() => onChange(!checked)} label={label} />
+    </div>
+  );
+}
+
+/** A daily-summary toggle with an inline time picker revealed when enabled. */
+function TimedSummaryRow({
+  icon,
+  label,
+  enabled,
+  onToggle,
+  time,
+  onTime,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+  time: string;
+  onTime: (v: string) => void;
+}) {
+  return (
+    <div
+      className={`rounded-lg border px-3 py-1 transition-colors ${
+        enabled ? "border-teal-200 bg-teal-50/50 dark:border-teal-900 dark:bg-teal-950/20" : "border-border"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3 py-1.5">
+        <span className="flex min-w-0 items-center gap-2 text-[13px]">
+          <span className={`flex-none ${enabled ? "text-teal-600 dark:text-teal-400" : "text-muted-foreground"}`}>{icon}</span>
+          <span className="min-w-0 truncate">{label}</span>
+        </span>
+        <Switch checked={enabled} onChange={() => onToggle(!enabled)} label={label} />
+      </div>
+      {enabled && (
+        <div className="flex items-center gap-2 border-t border-hairline-soft py-2">
+          <Clock className="size-3.5 flex-none text-muted-foreground" />
+          <span className="text-[12px] text-muted-foreground">ส่งเวลา</span>
+          <Input
+            type="time"
+            value={time}
+            onChange={(e) => onTime(e.target.value)}
+            className="h-8 w-[104px] text-[13px]"
+          />
+        </div>
+      )}
     </div>
   );
 }
