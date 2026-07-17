@@ -198,6 +198,20 @@ export default function TasksPage() {
           onChange={setSearch}
           placeholder="ค้นหาชื่องาน / รายละเอียด…"
         />
+        {me && (
+          <button
+            onClick={() =>
+              setAssigneeF(assigneeF === me.avatarKey ? "all" : me.avatarKey)
+            }
+            className={`rounded-lg border px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${
+              assigneeF === me.avatarKey
+                ? "border-teal-600 bg-teal-600 text-white"
+                : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            งานของฉัน
+          </button>
+        )}
         <Select
           className="w-auto py-[7px] text-[12.5px]"
           value={statusF}
