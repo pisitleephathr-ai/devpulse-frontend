@@ -115,10 +115,21 @@ export type ApiTask = {
   /** full assignee set (multi-assignee); falls back to [assignee] */
   assignees?: ApiUserMini[];
   _count?: { links: number; attachments: number };
+  /** checklist progress (present on board-list rows) */
+  checklistTotal?: number;
+  checklistDone?: number;
+};
+export type ApiChecklistItem = {
+  id: string;
+  text: string;
+  done: boolean;
+  order: number;
 };
 export type ApiTaskDetail = ApiTask & {
   links: ApiTaskLink[];
   attachments: ApiTaskAttachment[];
+  /** full checklist items (present on the detail endpoint) */
+  checklist?: ApiChecklistItem[];
 };
 export type ApiLeave = {
   id: string;
@@ -296,6 +307,8 @@ export function mapTask(t: ApiTask): Task {
     status: TASK_STATUS_TO_LABEL[t.status],
     linkCount: t._count?.links ?? 0,
     attachmentCount: t._count?.attachments ?? 0,
+    checklistTotal: t.checklistTotal ?? 0,
+    checklistDone: t.checklistDone ?? 0,
   };
 }
 

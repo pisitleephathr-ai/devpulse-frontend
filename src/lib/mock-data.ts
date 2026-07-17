@@ -355,6 +355,9 @@ export type Task = {
   status: TaskStatus;
   linkCount: number;
   attachmentCount: number;
+  /** checklist/subtask progress shown on the card */
+  checklistTotal: number;
+  checklistDone: number;
 };
 
 export type KanbanColumn = { name: TaskStatus; dot: string; cards: Task[] };
@@ -380,7 +383,14 @@ export const TASK_PROJECTS = [
 
 const TASKS_SEED: Omit<
   Task,
-  "id" | "description" | "dueISO" | "linkCount" | "attachmentCount" | "assignees"
+  | "id"
+  | "description"
+  | "dueISO"
+  | "linkCount"
+  | "attachmentCount"
+  | "assignees"
+  | "checklistTotal"
+  | "checklistDone"
 >[] = [
   { title: "Rate limiting สำหรับ Public API", proj: "ATLAS", projFg: "#0f766e", key: "Jonas", pri: "High", due: "14 ก.ค.", status: "Todo" },
   { title: "Empty state หน้ารายการรายงาน", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Low", due: "18 ก.ค.", status: "Todo" },
@@ -401,6 +411,8 @@ export const TASKS: Task[] = TASKS_SEED.map((t, i) => ({
   dueISO: null,
   linkCount: 0,
   attachmentCount: 0,
+  checklistTotal: 0,
+  checklistDone: 0,
   assignees: [{ id: `t${i + 1}-a`, key: t.key, name: t.key }],
   ...t,
 }));
