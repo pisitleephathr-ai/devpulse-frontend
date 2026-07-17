@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
-import { downloadCsv, todayStamp } from "@/lib/csv";
+import { downloadExcel, todayStamp } from "@/lib/excel";
 import { TaskComments } from "@/components/task-comments";
 import { KanbanSkeleton } from "@/components/skeletons";
 import { KanbanBoard } from "@/components/kanban-board";
@@ -148,10 +148,10 @@ export default function TasksPage() {
     setDueF("all");
   }
 
-  function exportCsv() {
+  function exportExcel() {
     const nameByCode = new Map(projects.map((p) => [p.code, p.name]));
-    downloadCsv(
-      `tasks-${todayStamp()}.csv`,
+    downloadExcel(
+      `tasks-${todayStamp()}.xls`,
       ["ชื่องาน", "รายละเอียด", "โปรเจกต์", "ผู้รับผิดชอบ", "สถานะ", "ความสำคัญ", "กำหนดส่ง", "จำนวนลิงก์"],
       filtered.map((t) => [
         t.title,
@@ -162,7 +162,8 @@ export default function TasksPage() {
         t.pri,
         t.dueISO ?? "",
         t.linkCount,
-      ])
+      ]),
+      "บอร์ดงาน"
     );
   }
 
@@ -174,12 +175,12 @@ export default function TasksPage() {
         actions={
           <div className="flex items-center gap-2">
             <button
-              onClick={exportCsv}
+              onClick={exportExcel}
               disabled={filtered.length === 0}
               className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download className="size-3.5" />
-              ส่งออก CSV
+              ส่งออก Excel
             </button>
             {canManage && (
               <Button onClick={() => setCreateStatus("Todo")}>

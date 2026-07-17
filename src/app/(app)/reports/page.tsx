@@ -31,7 +31,7 @@ import { useCurrentUser } from "@/lib/use-current-user";
 import { isManagerOrAdmin } from "@/lib/permissions";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
-import { downloadCsv, todayStamp } from "@/lib/csv";
+import { downloadExcel, todayStamp } from "@/lib/excel";
 import { bangkokDateISO, thaiDateShortFromISO } from "@/lib/thai-datetime";
 import { REPORT_STATUS_OPTIONS, type Report, type RelatedTask } from "@/lib/mock-data";
 
@@ -97,11 +97,12 @@ export default function ReportsPage() {
     setStatus("all");
   }
 
-  function exportCsv() {
-    downloadCsv(
-      `daily-reports-${todayStamp()}.csv`,
+  function exportExcel() {
+    downloadExcel(
+      `daily-reports-${todayStamp()}.xls`,
       ["วันที่", "ผู้เขียน", "โปรเจกต์", "สิ่งที่ทำ", "แผนถัดไป", "อุปสรรค", "สถานะ"],
-      filtered.map((r) => [r.date, r.name, r.proj, r.did, r.plan, r.blockers, r.status])
+      filtered.map((r) => [r.date, r.name, r.proj, r.did, r.plan, r.blockers, r.status]),
+      "รายงานประจำวัน"
     );
   }
 
@@ -113,12 +114,12 @@ export default function ReportsPage() {
         actions={
           <div className="flex items-center gap-2">
             <button
-              onClick={exportCsv}
+              onClick={exportExcel}
               disabled={filtered.length === 0}
               className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download className="size-3.5" />
-              ส่งออก CSV
+              ส่งออก Excel
             </button>
             <button onClick={() => setCreating(true)} className={buttonVariants()}>
               <Plus className="size-3.5" strokeWidth={2.4} />
