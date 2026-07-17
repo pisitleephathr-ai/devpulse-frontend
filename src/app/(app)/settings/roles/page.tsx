@@ -156,10 +156,13 @@ export default function RolesPage() {
       {/* Add */}
       <Dialog open={adding} onClose={() => setAdding(false)} title="เพิ่มบทบาทใหม่">
         <RoleForm
-          onSubmit={(data) => {
-            addRole(data);
-            setAdding(false);
-            toast("เพิ่มบทบาทแล้ว");
+          onSubmit={async (data) => {
+            const ok = await addRole(data);
+            if (ok) {
+              setAdding(false);
+              toast("เพิ่มบทบาทแล้ว");
+            }
+            return ok;
           }}
           onCancel={() => setAdding(false)}
         />
@@ -175,15 +178,18 @@ export default function RolesPage() {
         {editing && (
           <RoleForm
             role={editing}
-            onSubmit={(data) => {
-              updateRole(editing.id, {
+            onSubmit={async (data) => {
+              const ok = await updateRole(editing.id, {
                 name: data.name,
                 description: data.description,
                 // System-role permissions are fixed (backend rejects edits).
                 ...(editing.isSystem ? {} : { permissions: data.permissions }),
               });
-              setEditing(null);
-              toast("บันทึกบทบาทแล้ว");
+              if (ok) {
+                setEditing(null);
+                toast("บันทึกบทบาทแล้ว");
+              }
+              return ok;
             }}
             onCancel={() => setEditing(null)}
           />
@@ -193,9 +199,8 @@ export default function RolesPage() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onClose={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete) {
-            deleteRole(pendingDelete.id);
+        onConfirm={async () => {
+          if (pendingDelete && (await deleteRole(pendingDelete.id))) {
             toast("ลบบทบาทแล้ว");
           }
         }}
@@ -219,7 +224,7 @@ function RoleForm({
     code: string;
     description: string;
     permissions: string[];
-  }) => void;
+  }) => void | Promise<boolean | void>;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(role?.name ?? "");

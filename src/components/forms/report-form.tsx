@@ -41,7 +41,7 @@ type PickTask = {
 type ReportFormProps = {
   mode: "create" | "edit";
   report?: Report;
-  onSubmit: (data: ReportInput) => void;
+  onSubmit: (data: ReportInput) => void | Promise<boolean | void>;
   onCancel: () => void;
 };
 
@@ -174,7 +174,11 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
       relatedTaskIds: values.relatedTaskIds,
     };
     if (mode === "create") data.date = values.date;
-    setTimeout(() => onSubmit(data), 300);
+    // Re-enable the form if the submit failed (dialog stays open on failure).
+    setTimeout(async () => {
+      const ok = await onSubmit(data);
+      if (ok === false) setSubmitting(false);
+    }, 300);
   }
 
   return (

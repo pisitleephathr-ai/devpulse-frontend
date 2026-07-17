@@ -53,27 +53,27 @@ type DataContextValue = {
   pendingLeaveCount: number;
   refresh: () => Promise<void>;
 
-  addReport: (data: ReportInput) => Promise<void>;
-  updateReport: (id: string, data: Partial<ReportInput>) => Promise<void>;
-  deleteReport: (id: string) => Promise<void>;
+  addReport: (data: ReportInput) => Promise<boolean>;
+  updateReport: (id: string, data: Partial<ReportInput>) => Promise<boolean>;
+  deleteReport: (id: string) => Promise<boolean>;
 
-  addTask: (data: TaskInput) => Promise<void>;
-  updateTask: (id: string, data: Partial<TaskInput>) => Promise<void>;
-  deleteTask: (id: string) => Promise<void>;
-  moveTask: (id: string, statusLabel: TaskStatus) => Promise<void>;
+  addTask: (data: TaskInput) => Promise<boolean>;
+  updateTask: (id: string, data: Partial<TaskInput>) => Promise<boolean>;
+  deleteTask: (id: string) => Promise<boolean>;
+  moveTask: (id: string, statusLabel: TaskStatus) => Promise<boolean>;
 
-  addLeave: (data: LeaveInput) => Promise<void>;
+  addLeave: (data: LeaveInput) => Promise<boolean>;
   /** statusLabel is the Thai label ("อนุมัติแล้ว" / "ปฏิเสธ"). */
-  setLeaveStatus: (id: string, statusLabel: string) => Promise<void>;
+  setLeaveStatus: (id: string, statusLabel: string) => Promise<boolean>;
 
-  addUser: (data: UserInput) => Promise<void>;
-  updateUser: (id: string, data: UserUpdateInput) => Promise<void>;
-  toggleUser: (id: string) => Promise<void>;
+  addUser: (data: UserInput) => Promise<boolean>;
+  updateUser: (id: string, data: UserUpdateInput) => Promise<boolean>;
+  toggleUser: (id: string) => Promise<boolean>;
 
   roles: ApiRole[];
-  addRole: (data: RoleInput) => Promise<void>;
-  updateRole: (id: string, data: RoleUpdateInput) => Promise<void>;
-  deleteRole: (id: string) => Promise<void>;
+  addRole: (data: RoleInput) => Promise<boolean>;
+  updateRole: (id: string, data: RoleUpdateInput) => Promise<boolean>;
+  deleteRole: (id: string) => Promise<boolean>;
 };
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -131,12 +131,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  /** Run a mutation, surface failures via a toast, and keep state in sync. */
-  const run = useCallback(async (fn: () => Promise<void>) => {
+  /**
+   * Run a mutation, surface failures via a toast, keep state in sync, and
+   * report success so callers can close a dialog / toast only on success.
+   */
+  const run = useCallback(async (fn: () => Promise<void>): Promise<boolean> => {
     try {
       await fn();
+      return true;
     } catch (err) {
       toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ");
+      return false;
     }
   }, []);
 

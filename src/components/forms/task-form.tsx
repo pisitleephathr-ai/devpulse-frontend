@@ -62,7 +62,7 @@ type TaskFormProps = {
   defaultStatus?: TaskStatus;
   initialLinks?: TaskLinkInput[];
   initialAttachments?: TaskAttachmentInput[];
-  onSubmit: (data: TaskInput) => void;
+  onSubmit: (data: TaskInput) => void | Promise<boolean | void>;
   onCancel: () => void;
 };
 
@@ -162,7 +162,10 @@ export function TaskForm({
       links: cleanLinks,
       attachments: cleanAttachments,
     };
-    setTimeout(() => onSubmit(data), 250);
+    setTimeout(async () => {
+      const ok = await onSubmit(data);
+      if (ok === false) setSubmitting(false);
+    }, 250);
   }
 
   return (

@@ -308,10 +308,13 @@ export default function TasksPage() {
           <TaskForm
             mode="create"
             defaultStatus={createStatus}
-            onSubmit={(data) => {
-              addTask(data);
-              setCreateStatus(null);
-              toast("สร้างงานใหม่แล้ว");
+            onSubmit={async (data) => {
+              const ok = await addTask(data);
+              if (ok) {
+                setCreateStatus(null);
+                toast("สร้างงานใหม่แล้ว");
+              }
+              return ok;
             }}
             onCancel={() => setCreateStatus(null)}
           />
@@ -500,10 +503,13 @@ export default function TasksPage() {
             task={editTask}
             initialLinks={editInitial.links}
             initialAttachments={editInitial.attachments}
-            onSubmit={(data) => {
-              updateTask(editTask.id, data);
-              setEditTask(null);
-              toast("บันทึกการแก้ไขงานแล้ว");
+            onSubmit={async (data) => {
+              const ok = await updateTask(editTask.id, data);
+              if (ok) {
+                setEditTask(null);
+                toast("บันทึกการแก้ไขงานแล้ว");
+              }
+              return ok;
             }}
             onCancel={() => setEditTask(null)}
           />
@@ -514,9 +520,8 @@ export default function TasksPage() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onClose={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete) {
-            deleteTask(pendingDelete.id);
+        onConfirm={async () => {
+          if (pendingDelete && (await deleteTask(pendingDelete.id))) {
             toast("ลบงานแล้ว");
           }
         }}

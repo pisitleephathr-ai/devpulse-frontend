@@ -20,7 +20,7 @@ export type UserFormValues = {
 type UserFormProps = {
   mode: "create" | "edit";
   user?: User;
-  onSubmit: (data: UserFormValues) => void;
+  onSubmit: (data: UserFormValues) => void | Promise<boolean | void>;
   onCancel: () => void;
 };
 
@@ -78,17 +78,16 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
   function submit() {
     if (!validate()) return;
     setSubmitting(true);
-    setTimeout(
-      () =>
-        onSubmit({
-          name: values.name.trim(),
-          email: values.email.trim(),
-          password: values.password,
-          roleId,
-          requiresDailyReport: values.requiresDailyReport,
-        }),
-      300
-    );
+    setTimeout(async () => {
+      const ok = await onSubmit({
+        name: values.name.trim(),
+        email: values.email.trim(),
+        password: values.password,
+        roleId,
+        requiresDailyReport: values.requiresDailyReport,
+      });
+      if (ok === false) setSubmitting(false);
+    }, 300);
   }
 
   return (
