@@ -75,7 +75,20 @@ export function TaskForm({
   onSubmit,
   onCancel,
 }: TaskFormProps) {
-  const { projects, users } = useData();
+  const { projects, users, roles } = useData();
+
+  // Only offer assignees whose role appears on the board. Roles flagged
+  // non-assignable (e.g. system admins) are excluded — but any user already
+  // assigned stays listed so they can still be removed when editing.
+  const assignableCodes = roles.length
+    ? new Set(roles.filter((r) => r.assignable !== false).map((r) => r.code))
+    : null;
+  const assigneeOptions = assignableCodes
+    ? users.filter(
+        (u) =>
+          assignableCodes.has(u.roleCode) || task?.assignees.some((a) => a.id === u.id)
+      )
+    : users;
 
   const [values, setValues] = useState<Values>(() => ({
     title: task?.title ?? "",
@@ -189,13 +202,13 @@ export function TaskForm({
       </Field>
 
       <Field label="ผู้รับผิดชอบ" hint="เลือกได้หลายคน">
-        {users.length === 0 ? (
+        {assigneeOptions.length === 0 ? (
           <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-[12.5px] text-muted-foreground">
             เลือกผู้รับผิดชอบ…
           </div>
         ) : (
           <div className="flex flex-wrap gap-1.5">
-            {users.map((u) => {
+            {assigneeOptions.map((u) => {
               const selected = values.assigneeIds.includes(u.id);
               return (
                 <button
