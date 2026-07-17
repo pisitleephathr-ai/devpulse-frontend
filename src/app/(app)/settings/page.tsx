@@ -87,6 +87,10 @@ export default function SettingsPage() {
   const [pendingHolidayDelete, setPendingHolidayDelete] = useState<Holiday | null>(null);
   const [confirmMenuReset, setConfirmMenuReset] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [lineStatus, setLineStatus] = useState<{
+    enabled: boolean;
+    groupConnected: boolean;
+  } | null>(null);
 
   function toMenuEdit(config: MenuConfigItem[]): MenuEdit[] {
     return resolveMenu(config).map((m) => ({
@@ -101,11 +105,17 @@ export default function SettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get<{ setting: Record<string, unknown> }>("/api/settings").then((r) => {
-        const s = { ...DEFAULT_SETTING, ...pickSetting(r.setting) };
-        setSetting(s);
-        setBaseline(s);
-      }),
+      api
+        .get<{
+          setting: Record<string, unknown>;
+          line?: { enabled: boolean; groupConnected: boolean };
+        }>("/api/settings")
+        .then((r) => {
+          const s = { ...DEFAULT_SETTING, ...pickSetting(r.setting) };
+          setSetting(s);
+          setBaseline(s);
+          setLineStatus(r.line ?? null);
+        }),
       api.get<{ leaveTypes: LeaveType[] }>("/api/settings/leave-types").then((r) => setLeaveTypes(r.leaveTypes)),
       api.get<{ holidays: Holiday[] }>("/api/settings/holidays").then((r) => setHolidays(r.holidays)),
       api.get<{ menu: MenuConfigItem[] }>("/api/settings/menu").then((r) => {
@@ -298,6 +308,35 @@ export default function SettingsPage() {
                     <SwitchRow label="แจ้งเตือนให้ส่งรายงานประจำวัน" checked={setting.notifyReportReminder} onChange={(v) => set("notifyReportReminder", v)} />
                     <SwitchRow label="แจ้งเตือนการอนุมัติคำขอลา" checked={setting.notifyLeaveApproval} onChange={(v) => set("notifyLeaveApproval", v)} />
                     <SwitchRow label="แจ้งเตือนงานที่ใกล้ครบกำหนด" checked={setting.notifyTaskDue} onChange={(v) => set("notifyTaskDue", v)} />
+                    {lineStatus && (
+                      <div className="flex items-center justify-between py-2.5">
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-medium">แจ้งเตือนงานเข้ากลุ่ม LINE</div>
+                          <div className="text-[11.5px] text-muted-foreground">
+                            {!lineStatus.enabled
+                              ? "ยังไม่เปิดใช้งาน (ตั้งค่าที่เซิร์ฟเวอร์)"
+                              : lineStatus.groupConnected
+                                ? "เชิญบอทเข้ากลุ่มแล้ว — พร้อมส่งแจ้งเตือน"
+                                : "เปิดใช้งานแล้ว — เชิญบอท LINE เข้ากลุ่มทีมเพื่อเริ่มรับแจ้งเตือน"}
+                          </div>
+                        </div>
+                        <span
+                          className={`flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            lineStatus.enabled && lineStatus.groupConnected
+                              ? "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"
+                              : lineStatus.enabled
+                                ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                          }`}
+                        >
+                          {lineStatus.enabled && lineStatus.groupConnected
+                            ? "เชื่อมกลุ่มแล้ว ✓"
+                            : lineStatus.enabled
+                              ? "รอเชิญบอท"
+                              : "ปิดอยู่"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </Section>
               </div>
