@@ -87,6 +87,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [addLeaveOpen, setAddLeaveOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<LeaveType | null>(null);
+  const [testingSummary, setTestingSummary] = useState<"leave" | "report" | null>(null);
   const [addHolidayOpen, setAddHolidayOpen] = useState(false);
   const [pendingLeaveDelete, setPendingLeaveDelete] = useState<LeaveType | null>(null);
   const [pendingHolidayDelete, setPendingHolidayDelete] = useState<Holiday | null>(null);
@@ -152,6 +153,18 @@ export default function SettingsPage() {
       toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function testSummary(kind: "leave" | "report") {
+    setTestingSummary(kind);
+    try {
+      const r = await api.post<{ sent: boolean; reason?: string }>(`/api/settings/line/test/${kind}`, {});
+      toast(r.sent ? "ส่งทดสอบเข้ากลุ่ม LINE แล้ว ✓" : r.reason ?? "ส่งทดสอบไม่สำเร็จ");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "ส่งทดสอบไม่สำเร็จ");
+    } finally {
+      setTestingSummary(null);
     }
   }
 
@@ -472,6 +485,8 @@ export default function SettingsPage() {
                                 onToggle={(v) => set("lineDailyLeaveSummary", v)}
                                 time={setting.lineDailyLeaveSummaryTime}
                                 onTime={(v) => set("lineDailyLeaveSummaryTime", v)}
+                                onTest={() => testSummary("leave")}
+                                testing={testingSummary === "leave"}
                               />
                               <TimedSummaryRow
                                 icon={<ClipboardList className="size-3.5" />}
@@ -480,6 +495,8 @@ export default function SettingsPage() {
                                 onToggle={(v) => set("lineDailyReportSummary", v)}
                                 time={setting.lineDailyReportSummaryTime}
                                 onTime={(v) => set("lineDailyReportSummaryTime", v)}
+                                onTest={() => testSummary("report")}
+                                testing={testingSummary === "report"}
                               />
                             </div>
                           </div>
@@ -562,7 +579,7 @@ function SwitchRow({ label, checked, onChange }: { label: string; checked: boole
   );
 }
 
-/** A daily-summary toggle with an inline time picker revealed when enabled. */
+/** A daily-summary toggle with an inline time picker and a manual "send test" action. */
 function TimedSummaryRow({
   icon,
   label,
@@ -570,6 +587,8 @@ function TimedSummaryRow({
   onToggle,
   time,
   onTime,
+  onTest,
+  testing,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -577,6 +596,8 @@ function TimedSummaryRow({
   onToggle: (v: boolean) => void;
   time: string;
   onTime: (v: string) => void;
+  onTest?: () => void;
+  testing?: boolean;
 }) {
   return (
     <div
@@ -593,21 +614,28 @@ function TimedSummaryRow({
       </div>
       {/* Time is always visible so the send time is clear even before enabling;
           it's just dimmed/disabled until the summary is turned on. */}
-      <div
-        className={`flex items-center gap-2 border-t border-hairline-soft py-2 transition-opacity ${
-          enabled ? "" : "opacity-50"
-        }`}
-      >
-        <Clock className="size-3.5 flex-none text-muted-foreground" />
-        <span className="text-[12px] text-muted-foreground">ส่งเวลา</span>
-        <Input
-          type="time"
-          value={time}
-          onChange={(e) => onTime(e.target.value)}
-          disabled={!enabled}
-          className="h-8 w-[104px] text-[13px]"
-        />
-        {!enabled && <span className="text-[11px] text-muted-foreground">(เปิดสวิตช์เพื่อใช้งาน)</span>}
+      <div className="flex items-center gap-2 border-t border-hairline-soft py-2">
+        <span className={`flex items-center gap-2 transition-opacity ${enabled ? "" : "opacity-50"}`}>
+          <Clock className="size-3.5 flex-none text-muted-foreground" />
+          <span className="text-[12px] text-muted-foreground">ส่งเวลา</span>
+          <Input
+            type="time"
+            value={time}
+            onChange={(e) => onTime(e.target.value)}
+            disabled={!enabled}
+            className="h-8 w-[104px] text-[13px]"
+          />
+        </span>
+        {onTest && (
+          <button
+            type="button"
+            onClick={onTest}
+            disabled={testing}
+            className="ml-auto flex-none rounded-md border border-border px-2.5 py-1 text-[11.5px] font-medium text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 disabled:opacity-50 dark:text-teal-400 dark:hover:bg-teal-950/40"
+          >
+            {testing ? "กำลังส่ง…" : "ส่งทดสอบ"}
+          </button>
+        )}
       </div>
     </div>
   );
