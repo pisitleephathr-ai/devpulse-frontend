@@ -110,6 +110,11 @@ export default function ReportsPage() {
     () => new Map(users.map((u) => [u.key, u.role])),
     [users]
   );
+  // Project accent color by project name (report data carries only the name).
+  const colorByProj = useMemo(
+    () => new Map(projects.map((p) => [p.name, p.color])),
+    [projects]
+  );
 
   const filtered = useMemo(() => {
     const dateLabel = date ? isoToThai(date) : null;
@@ -349,6 +354,7 @@ export default function ReportsPage() {
               key={r.id}
               report={r}
               role={roleByKey.get(r.key)}
+              projColor={colorByProj.get(r.proj)}
               canEdit={canEditReport(r)}
               onView={() => setViewing(r)}
               onEdit={() => setEditing(r)}
@@ -451,6 +457,7 @@ function CardGrid({ children }: { children: React.ReactNode }) {
 function ReportCard({
   report: r,
   role,
+  projColor,
   canEdit,
   onView,
   onEdit,
@@ -458,6 +465,7 @@ function ReportCard({
 }: {
   report: Report;
   role?: string;
+  projColor?: string;
   canEdit: boolean;
   onView: () => void;
   onEdit: () => void;
@@ -465,31 +473,51 @@ function ReportCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const blocker = hasBlocker(r.blockers);
+  const relatedCount = r.relatedTasks?.length ?? 0;
+  const accent = projColor || "#14b8a6";
   const longContent =
     (r.did?.length ?? 0) + (r.plan?.length ?? 0) + (r.blockers?.length ?? 0) > 320;
 
   return (
     <article className="dp-card-hover flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      {/* Header */}
-      <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
-        <Avatar userKey={r.key} size={36} fontSize={13.5} />
+      {/* Header — project-accent bar + tinted strip */}
+      <div className="flex items-center gap-3 border-b border-hairline bg-muted/30 px-4 py-3">
+        <span className="h-9 w-1 flex-none rounded-full" style={{ background: accent }} aria-hidden />
+        <Avatar userKey={r.key} size={38} fontSize={14} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[14px] font-semibold">{r.name}</span>
             {role && (
-              <span className="flex-none rounded-[5px] bg-muted px-1.5 py-px text-[10.5px] font-medium text-muted-foreground">
+              <span className="flex-none rounded-full bg-zinc-200/70 px-2 py-px text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-700/60 dark:text-zinc-300">
                 {role}
               </span>
             )}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+            <span className="size-1.5 flex-none rounded-full" style={{ background: accent }} />
             <span className="truncate font-medium text-zinc-500 dark:text-zinc-400">{r.proj}</span>
-            <span className="size-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            <span className="size-1 flex-none rounded-full bg-zinc-300 dark:bg-zinc-600" />
             <span className="flex-none">{r.date}</span>
           </div>
         </div>
         <StatusBadge label={r.status} />
       </div>
+
+      {/* Badge row — quick indicators */}
+      {(blocker || relatedCount > 0) && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline px-4 py-2">
+          {blocker && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+              <TriangleAlert className="size-3" /> มีอุปสรรค
+            </span>
+          )}
+          {relatedCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-[10.5px] font-semibold text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+              <ListChecks className="size-3" /> {relatedCount} งานที่เกี่ยวข้อง
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex flex-1 flex-col gap-3.5 px-4 py-4">
@@ -497,6 +525,16 @@ function ReportCard({
           <p className="text-[13.5px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100 [overflow-wrap:anywhere]">
             {r.summary}
           </p>
+        )}
+        {/* Blockers surface first when present — that's what managers triage. */}
+        {blocker && (
+          <CardSection
+            label="ปัญหา / อุปสรรค"
+            text={r.blockers}
+            clamp={!expanded}
+            accent="#f59e0b"
+            highlight
+          />
         )}
         <CardSection
           label="งานที่ทำล่าสุด"
@@ -511,13 +549,6 @@ function ReportCard({
           clamp={!expanded}
           accent="#2563eb"
           icon={<Target className="size-3" />}
-        />
-        <CardSection
-          label="ปัญหา / อุปสรรค"
-          text={r.blockers}
-          clamp={!expanded}
-          accent="#f59e0b"
-          highlight={blocker}
         />
         {longContent && (
           <button
