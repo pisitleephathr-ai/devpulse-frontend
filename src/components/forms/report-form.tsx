@@ -191,6 +191,9 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
               value={values.date}
               onChange={(e) => set("date", e.target.value)}
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              เลือกวันของรายงานได้ ทั้งล่วงหน้าและย้อนหลัง
+            </p>
           </Field>
         )}
         <Field label="โปรเจกต์" error={errors.projectId}>
