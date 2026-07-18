@@ -15,8 +15,6 @@ import {
   RefreshCw,
   ListChecks,
   CheckCircle2,
-  Clock,
-  Users,
   Target,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -24,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -77,6 +76,8 @@ export default function ReportsPage() {
   const [member, setMember] = usePersistedState("reports.member", "all");
   const [project, setProject] = usePersistedState("reports.project", "all");
   const [status, setStatus] = usePersistedState("reports.status", "all");
+  // Quick filter: show only reports that logged a blocker (managers triaging).
+  const [blockerOnly, setBlockerOnly] = useState(false);
 
   const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<Report | null>(null);
@@ -85,7 +86,12 @@ export default function ReportsPage() {
 
   const isToday = date === bangkokDateISO();
   const filtersActive =
-    !!search || !!date || member !== "all" || project !== "all" || status !== "all";
+    !!search ||
+    !!date ||
+    member !== "all" ||
+    project !== "all" ||
+    status !== "all" ||
+    blockerOnly;
 
   // "Haven't reported today" nudge — reliable since today's reports (newest)
   // are always on the first loaded page.
@@ -113,27 +119,10 @@ export default function ReportsPage() {
         (!dateLabel || r.date === dateLabel) &&
         (member === "all" || r.name === member) &&
         (project === "all" || r.proj === project) &&
-        (status === "all" || r.status === status)
+        (status === "all" || r.status === status) &&
+        (!blockerOnly || hasBlocker(r.blockers))
     );
-  }, [reports, search, date, member, project, status]);
-
-  // Submission overview for the selected day (managers care who's behind).
-  const overview = useMemo(() => {
-    const requiredUsers = users.filter((u) => u.requiresDailyReport ?? true);
-    const submittedKeys = new Set(
-      filtered.filter((r) => r.status !== "ฉบับร่าง").map((r) => r.key)
-    );
-    const missing = date
-      ? requiredUsers.filter((u) => !submittedKeys.has(u.key))
-      : [];
-    return {
-      total: filtered.length,
-      submitters: submittedKeys.size,
-      required: requiredUsers.length,
-      missing,
-      blockers: filtered.filter((r) => hasBlocker(r.blockers)).length,
-    };
-  }, [filtered, users, date]);
+  }, [reports, search, date, member, project, status, blockerOnly]);
 
   function clearFilters() {
     // Product rule: Clear shows ALL reports (does not return to today).
@@ -142,6 +131,7 @@ export default function ReportsPage() {
     setMember("all");
     setProject("all");
     setStatus("all");
+    setBlockerOnly(false);
   }
 
   function exportExcel() {
@@ -154,99 +144,27 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-7">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-600 dark:text-teal-400">
-            DAILY REPORTS
-          </div>
-          <h1 className="mt-1 text-[22px] font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            รายงานประจำวัน
-          </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {isToday
-              ? "อัปเดตความคืบหน้าของทีมวันนี้"
-              : date
-                ? `รายงานวันที่ ${thaiDateShortFromISO(date)}`
-                : "รายงานทั้งหมดของทีม"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={exportExcel}
-            disabled={filtered.length === 0}
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-200"
-          >
-            <Download className="size-3.5" />
-            ส่งออก Excel
-          </button>
-          <button onClick={() => setCreating(true)} className={buttonVariants()}>
-            <Plus className="size-3.5" strokeWidth={2.4} />
-            สร้างรายงาน
-          </button>
-        </div>
-      </div>
-
-      {/* Submission overview */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile
-          icon={<CheckCircle2 className="size-4" />}
-          tone="teal"
-          label={date ? "ส่งแล้ว" : "รายงานทั้งหมด"}
-          value={date ? `${overview.submitters}/${overview.required}` : String(overview.total)}
-          sub={date ? "คน" : "ฉบับ"}
-        />
-        <StatTile
-          icon={<Clock className="size-4" />}
-          tone={date && overview.missing.length ? "amber" : "zinc"}
-          label="ยังไม่ส่ง"
-          value={date ? String(overview.missing.length) : "—"}
-          sub={date ? "คน" : "เลือกวันเพื่อดู"}
-        />
-        <StatTile
-          icon={<TriangleAlert className="size-4" />}
-          tone={overview.blockers ? "red" : "zinc"}
-          label="มีอุปสรรค"
-          value={String(overview.blockers)}
-          sub="ฉบับ"
-        />
-        <StatTile
-          icon={date ? <Target className="size-4" /> : <Users className="size-4" />}
-          tone="zinc"
-          label={date ? "อัตราการส่ง" : "ผู้ส่งรายงาน"}
-          value={
-            date
-              ? overview.required
-                ? `${Math.round((overview.submitters / overview.required) * 100)}%`
-                : "—"
-              : String(overview.submitters)
-          }
-          sub={date ? "ของทีม" : "คน"}
-        />
-      </div>
-
-      {/* Who hasn't submitted (for the selected day) */}
-      {date && overview.missing.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/60 px-3.5 py-2.5 dark:border-amber-900/40 dark:bg-amber-950/20">
-          <span className="flex items-center gap-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300">
-            <Clock className="size-3.5" /> ยังไม่ส่ง
-          </span>
-          {overview.missing.slice(0, 12).map((u) => (
-            <span
-              key={u.id}
-              className="rounded-full bg-white/70 px-2 py-0.5 text-[11.5px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+    <div className="flex flex-col gap-4 px-7 py-6">
+      <PageHeader
+        eyebrow="DAILY REPORTS"
+        title="รายงานประจำวัน"
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportExcel}
+              disabled={filtered.length === 0}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {u.name}
-            </span>
-          ))}
-          {overview.missing.length > 12 && (
-            <span className="text-[11.5px] font-medium text-amber-700/80">
-              +{overview.missing.length - 12}
-            </span>
-          )}
-        </div>
-      )}
+              <Download className="size-3.5" />
+              ส่งออก Excel
+            </button>
+            <button onClick={() => setCreating(true)} className={buttonVariants()}>
+              <Plus className="size-3.5" strokeWidth={2.4} />
+              สร้างรายงาน
+            </button>
+          </div>
+        }
+      />
 
       {needsReportToday && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/25">
@@ -300,6 +218,18 @@ export default function ReportsPage() {
             ของฉัน
           </button>
         )}
+        <button
+          onClick={() => setBlockerOnly((v) => !v)}
+          aria-pressed={blockerOnly}
+          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${
+            blockerOnly
+              ? "border-amber-500 bg-amber-500 text-white"
+              : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100"
+          }`}
+        >
+          <TriangleAlert className="size-3.5" />
+          มีอุปสรรค
+        </button>
         <Input
           type="date"
           value={date}
@@ -508,53 +438,13 @@ export default function ReportsPage() {
   );
 }
 
-/* -------------------------------- Stat tile ----------------------------- */
-
-const STAT_TONES: Record<string, string> = {
-  teal: "text-teal-600 bg-teal-50 dark:bg-teal-950/40 dark:text-teal-400",
-  amber: "text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400",
-  red: "text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-400",
-  zinc: "text-zinc-500 bg-muted dark:text-zinc-400",
-};
-
-function StatTile({
-  icon,
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  tone: "teal" | "amber" | "red" | "zinc";
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      <span className={`flex size-9 flex-none items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <div className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-[19px] font-bold leading-tight text-zinc-900 dark:text-zinc-50">
-            {value}
-          </span>
-          {sub && <span className="truncate text-[11px] text-muted-foreground">{sub}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ------------------------------- Card grid ------------------------------ */
 
 function CardGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{children}</div>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {children}
+    </div>
   );
 }
 
