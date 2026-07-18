@@ -400,7 +400,14 @@ export default function ReportsPage() {
       </Dialog>
 
       {/* View */}
-      {viewing && <ReportModal report={viewing} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <ReportModal
+          report={viewing}
+          role={roleByKey.get(viewing.key)}
+          projColor={colorByProj.get(viewing.proj)}
+          onClose={() => setViewing(null)}
+        />
+      )}
 
       {/* Edit */}
       <Dialog
@@ -700,13 +707,19 @@ function SkeletonCard() {
 
 function ReportModal({
   report,
+  role,
+  projColor,
   onClose,
 }: {
   report: Report;
+  role?: string;
+  projColor?: string;
   onClose: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const accent = projColor || "#14b8a6";
+  const blocker = hasBlocker(report.blockers);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -735,51 +748,100 @@ function ReportModal({
         aria-modal="true"
         aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
-        className="dp-pop max-h-[85vh] w-[560px] max-w-full overflow-hidden rounded-[14px] bg-card shadow-[0_20px_50px_rgba(0,0,0,0.2)] outline-none"
+        className="dp-pop flex max-h-[88vh] w-[600px] max-w-full flex-col overflow-hidden rounded-2xl bg-card shadow-[0_24px_60px_rgba(0,0,0,0.28)] outline-none"
       >
-        <div className="flex items-center gap-[11px] border-b border-hairline px-[22px] py-[18px]">
-          <Avatar userKey={report.key} size={30} fontSize={11} />
-          <div className="flex-1">
-            <div id={titleId} className="text-[14px] font-semibold">{report.name}</div>
-            <div className="text-xs text-muted-foreground">
-              {report.proj} · {report.date}
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-hairline bg-muted/30 px-6 py-4">
+          <span className="h-10 w-1.5 flex-none rounded-full" style={{ background: accent }} aria-hidden />
+          <Avatar userKey={report.key} size={44} fontSize={16} />
+          <div className="min-w-0 flex-1">
+            <div id={titleId} className="flex items-center gap-1.5">
+              <span className="truncate text-[15px] font-semibold">{report.name}</span>
+              {role && (
+                <span className="flex-none rounded-full bg-zinc-200/70 px-2 py-px text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-700/60 dark:text-zinc-300">
+                  {role}
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <span className="size-1.5 flex-none rounded-full" style={{ background: accent }} />
+              <span className="truncate font-medium text-zinc-500 dark:text-zinc-400">{report.proj}</span>
+              <span className="size-1 flex-none rounded-full bg-zinc-300 dark:bg-zinc-600" />
+              <span className="flex-none">{report.date}</span>
             </div>
           </div>
           <StatusBadge label={report.status} />
           <button
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-[7px] text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+            className="flex size-8 flex-none items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
             aria-label="ปิด"
           >
             <X className="size-4" />
           </button>
         </div>
-        <div className="flex max-h-[calc(85vh-72px)] flex-col gap-4 overflow-y-auto px-[22px] py-5">
-          <Section label="งานที่ทำ" text={report.did} />
-          <Section label="ปัญหา / อุปสรรค" text={report.blockers} highlight={hasBlocker(report.blockers)} />
-          <Section label="แผนงาน" text={report.plan} />
+
+        {/* Body — every detail */}
+        <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-6 py-5">
+          {report.summary?.trim() && (
+            <div className="rounded-xl border border-teal-100 bg-teal-50/70 px-4 py-3 dark:border-teal-900/40 dark:bg-teal-950/20">
+              <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-teal-700 dark:text-teal-300">
+                <FileText className="size-3" /> สรุป
+              </div>
+              <p className="text-[13.5px] font-medium leading-relaxed text-teal-900 dark:text-teal-100 [overflow-wrap:anywhere]">
+                {report.summary}
+              </p>
+            </div>
+          )}
+
+          {/* Blockers surface first when present */}
+          {blocker && (
+            <Section
+              label="ปัญหา / อุปสรรค"
+              text={report.blockers}
+              highlight
+              icon={<TriangleAlert className="size-3" />}
+            />
+          )}
+          <Section
+            label="งานที่ทำ"
+            text={report.did}
+            accent="#0d9488"
+            icon={<CheckCircle2 className="size-3" />}
+          />
+          <Section
+            label="แผนงานถัดไป"
+            text={report.plan}
+            accent="#2563eb"
+            icon={<Target className="size-3" />}
+          />
+
           {report.relatedTasks && report.relatedTasks.length > 0 && (
-            <div>
-              <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground">
+            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">
+              <div className="mb-2 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
                 <ListChecks className="size-3" />
                 งานที่เกี่ยวข้อง ({report.relatedTasks.length})
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-col gap-1.5">
                 {report.relatedTasks.map((t) => (
-                  <span
+                  <div
                     key={t.id}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-[12px] text-zinc-700 dark:text-zinc-200"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[12.5px]"
                     title={t.title}
                   >
                     <span
-                      className="flex-none font-mono text-[10px] font-semibold"
-                      style={{ color: t.projColor }}
-                    >
+                      className="size-2 flex-none rounded-full"
+                      style={{ background: t.projColor }}
+                    />
+                    <span className="flex-none font-mono text-[10px] font-semibold" style={{ color: t.projColor }}>
                       {t.proj}
                     </span>
-                    <span className="max-w-[220px] truncate">{t.title}</span>
-                    <span className="flex-none text-[10.5px] text-muted-foreground">{t.status}</span>
-                  </span>
+                    <span className="min-w-0 flex-1 truncate text-zinc-700 dark:text-zinc-200">
+                      {t.title}
+                    </span>
+                    <span className="flex-none rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground">
+                      {t.status}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -794,19 +856,30 @@ function Section({
   label,
   text,
   highlight,
+  icon,
+  accent,
 }: {
   label: string;
   text: string;
   highlight?: boolean;
+  icon?: React.ReactNode;
+  accent?: string;
 }) {
   return (
-    <div className={highlight ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/25" : ""}>
+    <div
+      className={
+        highlight
+          ? "rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/25"
+          : "rounded-xl border border-border bg-muted/20 px-4 py-3"
+      }
+    >
       <div
-        className={`mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-[0.08em] ${
-          highlight ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"
+        className={`mb-1.5 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] ${
+          highlight ? "text-amber-700 dark:text-amber-400" : ""
         }`}
+        style={highlight ? undefined : { color: accent }}
       >
-        {highlight && <TriangleAlert className="size-3" />}
+        {icon}
         {label}
       </div>
       {text?.trim() ? (
