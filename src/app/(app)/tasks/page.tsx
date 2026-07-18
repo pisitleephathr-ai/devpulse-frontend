@@ -176,6 +176,10 @@ export default function TasksPage() {
 
   const columns = useMemo(() => groupTasks(filtered), [filtered]);
   const detail = detailId ? tasks.find((t) => t.id === detailId) ?? null : null;
+  // The modal body renders in one step: hold a skeleton until the full detail
+  // (links/attachments/checklist) for THIS task has loaded, so sections don't
+  // pop in and reflow after the base info shows.
+  const detailReady = !!detail && detailData?.id === detail.id;
 
   // Load full detail (links + attachments) when a task is opened.
   useEffect(() => {
@@ -475,7 +479,23 @@ export default function TasksPage() {
           ) : null
         }
       >
-        {detail && (
+        {detail && !detailReady && (
+          <div className="flex animate-pulse flex-col gap-4" aria-hidden>
+            <div className="space-y-2">
+              <div className="h-3 w-16 rounded bg-muted" />
+              <div className="h-4 w-3/4 rounded bg-muted" />
+              <div className="h-3 w-full rounded bg-muted" />
+              <div className="h-3 w-5/6 rounded bg-muted" />
+            </div>
+            <div className="flex gap-2">
+              <div className="h-6 w-28 rounded-full bg-muted" />
+              <div className="h-6 w-20 rounded-full bg-muted" />
+            </div>
+            <div className="h-9 w-full rounded-lg bg-muted" />
+            <div className="h-24 w-full rounded-lg bg-muted" />
+          </div>
+        )}
+        {detail && detailReady && (
           <div className="flex flex-col gap-4">
             <div>
               <div
