@@ -234,18 +234,25 @@ function enumOptions<T extends string>(map: Record<T, string>) {
 
 const MONTHS_TH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
+// Render the day in Asia/Bangkok (UTC+7), NOT the viewer's local timezone, so a
+// report/leave/task day is stable regardless of where it's viewed or the stored
+// time component (e.g. a date stored at 00:00Z stays on the same Bangkok day).
+function bangkokParts(iso: string | Date): Date {
+  return new Date(new Date(iso).getTime() + 7 * 60 * 60 * 1000);
+}
+
 export function formatThaiDate(iso: string | Date): string {
-  const d = new Date(iso);
-  return `${d.getDate()} ${MONTHS_TH[d.getMonth()]}`;
+  const d = bangkokParts(iso);
+  return `${d.getUTCDate()} ${MONTHS_TH[d.getUTCMonth()]}`;
 }
 
 export function formatThaiRange(startIso: string, endIso: string): string {
-  const s = new Date(startIso);
-  const e = new Date(endIso);
-  if (s.getTime() === e.getTime()) return formatThaiDate(s);
-  if (s.getMonth() === e.getMonth())
-    return `${s.getDate()}–${e.getDate()} ${MONTHS_TH[s.getMonth()]}`;
-  return `${formatThaiDate(s)} – ${formatThaiDate(e)}`;
+  const s = bangkokParts(startIso);
+  const e = bangkokParts(endIso);
+  if (s.getTime() === e.getTime()) return formatThaiDate(startIso);
+  if (s.getUTCMonth() === e.getUTCMonth())
+    return `${s.getUTCDate()}–${e.getUTCDate()} ${MONTHS_TH[s.getUTCMonth()]}`;
+  return `${formatThaiDate(startIso)} – ${formatThaiDate(endIso)}`;
 }
 
 /* ----------------------------- API → view ------------------------------ */

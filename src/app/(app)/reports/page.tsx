@@ -389,6 +389,9 @@ export default function ReportsPage() {
             onSubmit={async (data) => {
               const ok = await addReport(data);
               if (ok) {
+                // Jump the date filter to the report's day so it's visible even
+                // when it isn't "today" (e.g. filing a report dated tomorrow).
+                if (data.date) setDate(data.date);
                 setCreating(false);
                 toast(data.status === "DRAFT" ? "บันทึกฉบับร่างแล้ว" : "ส่งรายงานแล้ว");
               }
