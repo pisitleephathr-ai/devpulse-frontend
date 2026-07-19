@@ -44,12 +44,15 @@ export function defaultMenusForRole(code: string): string[] {
   });
 }
 
+/** Full-admin: the ADMIN role code or an ADMIN_FULL capability grant. */
 export function isAdmin(user: AuthUser | null): boolean {
-  return roleCode(user) === "ADMIN";
+  return hasPermission(user, "ADMIN_FULL");
 }
+/** Manager tier: MANAGER/ADMIN codes, or a role granted TEAM_MANAGE/ADMIN_FULL.
+ *  Drives every manager action (approve leave, manage settings/projects, edit
+ *  any task/report, delete tasks) — so granting "จัดการทีม" unlocks them all. */
 export function isManagerOrAdmin(user: AuthUser | null): boolean {
-  const c = roleCode(user);
-  return c === "ADMIN" || c === "MANAGER";
+  return hasPermission(user, "TEAM_MANAGE");
 }
 
 /** Personal pages every signed-in user can always reach, regardless of the
@@ -111,6 +114,12 @@ const TEAM_MANAGE_IMPLIES = [
   "TASK_ATTACHMENT_UPLOAD", "TASK_ATTACHMENT_DELETE",
 ];
 
+/** Every capability — ADMIN_FULL implies all of these (incl. TEAM_MANAGE). */
+const ALL_PERMISSIONS = [
+  "ADMIN_FULL", "TEAM_MANAGE", "USER_MANAGE", "ROLE_MANAGE",
+  ...TEAM_MANAGE_IMPLIES,
+];
+
 /** The user's effective capability set (grants + role-code + tier implications). */
 function effectivePermissions(user: AuthUser | null): Set<string> {
   const role = user && typeof user.role === "object" ? user.role : null;
@@ -118,7 +127,7 @@ function effectivePermissions(user: AuthUser | null): Set<string> {
   const code = roleCode(user);
   if (code === "ADMIN") set.add("ADMIN_FULL");
   if (code === "MANAGER") set.add("TEAM_MANAGE");
-  if (set.has("ADMIN_FULL")) for (const p of TEAM_MANAGE_IMPLIES) set.add(p);
+  if (set.has("ADMIN_FULL")) for (const p of ALL_PERMISSIONS) set.add(p);
   if (set.has("TEAM_MANAGE")) for (const p of TEAM_MANAGE_IMPLIES) set.add(p);
   return set;
 }
