@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { useData } from "@/lib/store";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/ui/avatar";
-import { bangkokDateISO } from "@/lib/thai-datetime";
+import { bangkokDateISO, thaiDateShortFromISO } from "@/lib/thai-datetime";
 import {
   TrendingUp,
   TriangleAlert,
@@ -20,6 +20,7 @@ import {
   CalendarOff,
   Flame,
   ArrowDownRight,
+  Repeat,
 } from "lucide-react";
 
 /* ------------------------------- API types ------------------------------ */
@@ -83,6 +84,16 @@ type TrendResp = {
   series: { date: string; submitted: number }[];
 };
 
+type VelocityResp = {
+  weeks: number;
+  cycleTime: { avgDays: number | null; medianDays: number | null; count: number };
+  velocity: {
+    series: { weekStart: string; completed: number }[];
+    avgPerWeek: number;
+    total: number;
+  };
+};
+
 /* --------------------------- validated palette --------------------------- */
 // Data-mark colors validated with the dataviz palette validator.
 // Brand accent (single-series magnitude): teal — visible on both surfaces.
@@ -110,6 +121,8 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<7 | 14 | 30>(14);
   const [trend, setTrend] = useState<TrendResp | null>(null);
   const [trendErr, setTrendErr] = useState(false);
+  const [vel, setVel] = useState<VelocityResp | null>(null);
+  const [velErr, setVelErr] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -117,6 +130,10 @@ export default function AnalyticsPage() {
       .get<Insights>("/api/dashboard/insights")
       .then((r) => alive && setInsights(r))
       .catch(() => alive && setInsightsErr(true));
+    api
+      .get<VelocityResp>("/api/dashboard/velocity?weeks=8")
+      .then((r) => alive && setVel(r))
+      .catch(() => alive && setVelErr(true));
     return () => {
       alive = false;
     };
@@ -341,6 +358,34 @@ export default function AnalyticsPage() {
             <Empty text="ยังไม่มีงานที่ปิดพร้อมกำหนดส่ง" />
           ) : (
             <DeliveryDonut onTime={onTimeSum} late={lateSum} rate={teamOnTime ?? 0} />
+          )}
+        </Panel>
+      </div>
+
+      {/* Velocity + cycle time */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel
+          className="lg:col-span-2"
+          title="ความเร็วการส่งมอบ (Velocity)"
+          subtitle={vel ? `เฉลี่ย ${vel.velocity.avgPerWeek} งาน/สัปดาห์ · ${vel.weeks} สัปดาห์` : "งานที่เสร็จต่อสัปดาห์"}
+          icon={<Repeat className="size-4" />}
+        >
+          {velErr ? (
+            <Empty text="โหลดข้อมูล velocity ไม่สำเร็จ" />
+          ) : !vel ? (
+            <div className="h-44 animate-pulse rounded-lg bg-muted" />
+          ) : (
+            <VelocityChart data={vel} />
+          )}
+        </Panel>
+
+        <Panel title="Cycle Time เฉลี่ย" subtitle="ตั้งแต่เริ่มทำจนเสร็จ" icon={<Timer className="size-4" />}>
+          {velErr ? (
+            <Empty text="โหลดข้อมูลไม่สำเร็จ" />
+          ) : !vel ? (
+            <div className="h-44 animate-pulse rounded-lg bg-muted" />
+          ) : (
+            <CycleTime cycle={vel.cycleTime} />
           )}
         </Panel>
       </div>
@@ -735,6 +780,123 @@ function DonutLegend({ color, icon, label, value }: { color: string; icon: React
       <div className="min-w-0">
         <div className="text-[15px] font-bold leading-none tabular-nums">{value}</div>
         <div className="text-[10.5px] text-muted-foreground">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================ Velocity chart =========================== */
+
+function VelocityChart({ data }: { data: VelocityResp }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const s = data.velocity.series;
+  const n = s.length;
+
+  const W = 720;
+  const H = 200;
+  const PADX = 10;
+  const PADT = 14;
+  const PADB = 26;
+  const plotH = H - PADT - PADB;
+  const maxY = Math.max(...s.map((d) => d.completed), 1);
+  const slot = (W - 2 * PADX) / n;
+  const barW = Math.min(46, slot * 0.62);
+  const xMid = (i: number) => PADX + slot * i + slot / 2;
+  const yFor = (v: number) => PADT + (1 - v / maxY) * plotH;
+  const baseY = yFor(0);
+  const avgY = yFor(data.velocity.avgPerWeek);
+  const labelEvery = Math.max(1, Math.ceil(n / 8));
+
+  function onMove(e: React.MouseEvent) {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const idx = Math.max(0, Math.min(n - 1, Math.floor(ratio * n)));
+    setHover(idx);
+  }
+
+  const hoverPt = hover !== null ? s[hover] : null;
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11.5px]">
+        <LegendDot color={TEAL} label="งานเสร็จ/สัปดาห์" />
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="inline-block h-0 w-4 border-t-2 border-dashed" style={{ borderColor: C_MUTED }} />
+          เฉลี่ย {data.velocity.avgPerWeek}
+        </span>
+        <span className="text-muted-foreground">รวม <b className="text-zinc-700 dark:text-zinc-200">{data.velocity.total}</b> งาน</span>
+      </div>
+
+      <div ref={wrapRef} className="relative" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block overflow-visible">
+          {/* avg line */}
+          <line x1={PADX} y1={avgY} x2={W - PADX} y2={avgY} stroke={C_MUTED} strokeWidth="1.5" strokeDasharray="5 5" opacity="0.7" />
+          {s.map((d, i) => {
+            const h = d.completed > 0 ? Math.max(2, baseY - yFor(d.completed)) : 0;
+            return (
+              <g key={d.weekStart}>
+                {h > 0 && (
+                  <rect
+                    x={xMid(i) - barW / 2}
+                    y={yFor(d.completed)}
+                    width={barW}
+                    height={h}
+                    rx="4"
+                    fill={TEAL}
+                    opacity={hover === null || hover === i ? 1 : 0.5}
+                  />
+                )}
+                {i % labelEvery === 0 && (
+                  <text x={xMid(i)} y={H - 8} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 10 }}>
+                    {thaiDateShortFromISO(d.weekStart)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {hover !== null && hoverPt && (
+          <div
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11.5px] shadow-lg"
+            style={{ left: `${(xMid(hover) / W) * 100}%`, top: `${(yFor(hoverPt.completed) / H) * 100}%` }}
+          >
+            <div className="font-semibold">สัปดาห์ {thaiDateShortFromISO(hoverPt.weekStart)}</div>
+            <div className="text-muted-foreground">
+              เสร็จ <b className="text-teal-600 dark:text-teal-400">{hoverPt.completed}</b> งาน
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================== Cycle time ============================= */
+
+function CycleTime({ cycle }: { cycle: VelocityResp["cycleTime"] }) {
+  if (cycle.avgDays === null)
+    return <Empty text="ยังไม่มีงานที่ปิดในช่วงนี้" />;
+  return (
+    <div className="flex h-full flex-col justify-center gap-4 py-2">
+      <div className="text-center">
+        <div className="flex items-end justify-center gap-1.5">
+          <span className="text-[44px] font-bold leading-none tabular-nums">{cycle.avgDays}</span>
+          <span className="pb-1.5 text-[15px] font-medium text-muted-foreground">วัน</span>
+        </div>
+        <div className="mt-1.5 text-[11.5px] text-muted-foreground">เฉลี่ยจากเริ่มทำจนเสร็จ</div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-hairline bg-muted/30 px-3 py-2 text-center">
+          <div className="text-[17px] font-bold tabular-nums">{cycle.medianDays ?? "—"}</div>
+          <div className="text-[10.5px] text-muted-foreground">มัธยฐาน (วัน)</div>
+        </div>
+        <div className="rounded-lg border border-hairline bg-muted/30 px-3 py-2 text-center">
+          <div className="text-[17px] font-bold tabular-nums">{cycle.count}</div>
+          <div className="text-[10.5px] text-muted-foreground">งานที่ปิด</div>
+        </div>
       </div>
     </div>
   );
