@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Presentation,
   LayoutGrid,
@@ -21,6 +29,10 @@ import {
   CalendarOff,
   CalendarClock,
   ListChecks,
+  ExternalLink,
+  Paperclip,
+  Link2,
+  Loader2,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -33,7 +45,10 @@ import { useCurrentUser } from "@/lib/use-current-user";
 import { isManagerOrAdmin } from "@/lib/permissions";
 import { formatThaiDateFull, bangkokDateISO } from "@/lib/thai-datetime";
 import { cn } from "@/lib/utils";
-import type { ApiUserMini } from "@/lib/mappers";
+import type { ApiUserMini, ApiTaskDetail } from "@/lib/mappers";
+
+/** Lets any nested TaskCard open the shared full-detail modal. */
+const TaskModalContext = createContext<(id: string) => void>(() => {});
 
 type Proj = { name: string; code: string; color: string };
 type TaskAssignee = { id: string; name: string; avatarKey: string };
@@ -135,6 +150,7 @@ function dueInfo(iso: string | null) {
  * full-screen meeting stage.
  */
 function TaskCard({ t, size = "sm" }: { t: MiniTask; size?: "sm" | "lg" }) {
+  const openTask = useContext(TaskModalContext);
   const st = statusMeta(t.status);
   const pr = priorityMeta(t.priority);
   const due = dueInfo(t.dueDate);
@@ -143,7 +159,11 @@ function TaskCard({ t, size = "sm" }: { t: MiniTask; size?: "sm" | "lg" }) {
   const isDone = t.status === "DONE";
 
   return (
-    <div className="flex gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
+    <button
+      type="button"
+      onClick={() => openTask(t.id)}
+      className="dp-card-hover flex w-full gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-teal-300 hover:bg-muted/40 dark:hover:border-teal-800"
+    >
       <span className="mt-0.5 w-1 flex-none rounded-full" style={{ background: accent }} aria-hidden />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
@@ -207,7 +227,7 @@ function TaskCard({ t, size = "sm" }: { t: MiniTask; size?: "sm" | "lg" }) {
           )}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -218,6 +238,7 @@ export default function StandupPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [mode, setMode] = useState<"overview" | "meeting">("overview");
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -233,13 +254,28 @@ export default function StandupPage() {
     load();
   }, []);
 
+  const taskModal = openTaskId ? (
+    <TaskDetailModal key={openTaskId} id={openTaskId} onClose={() => setOpenTaskId(null)} />
+  ) : null;
+
   // Meeting mode is a full-screen presentation overlay (rendered outside the flow).
   if (data && mode === "meeting") {
-    return <Meeting data={data} canManage={canManage} onExit={() => setMode("overview")} />;
+    return (
+      <TaskModalContext.Provider value={setOpenTaskId}>
+        <Meeting
+          data={data}
+          canManage={canManage}
+          onExit={() => setMode("overview")}
+          navLocked={openTaskId !== null}
+        />
+        {taskModal}
+      </TaskModalContext.Provider>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-6 sm:px-7">
+    <TaskModalContext.Provider value={setOpenTaskId}>
+      <div className="flex flex-col gap-4 px-4 py-6 sm:px-7">
       <PageHeader
         eyebrow="DAILY STANDUP"
         title="ประชุมอัปเดตงานประจำวัน"
@@ -284,7 +320,9 @@ export default function StandupPage() {
       ) : data ? (
         <Overview data={data} canManage={canManage} onRemind={load} onStart={() => setMode("meeting")} />
       ) : null}
-    </div>
+      </div>
+      {taskModal}
+    </TaskModalContext.Provider>
   );
 }
 
@@ -576,7 +614,17 @@ function Field({ label, text }: { label: string; text: string }) {
 
 type QItem = { user: ApiUserMini; report: Report | null };
 
-function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolean; onExit: () => void }) {
+function Meeting({
+  data,
+  canManage,
+  onExit,
+  navLocked,
+}: {
+  data: Standup;
+  canManage: boolean;
+  onExit: () => void;
+  navLocked: boolean;
+}) {
   const [includeMissing, setIncludeMissing] = useState(false);
   const [order, setOrder] = useState<string[]>([]);
   const [idx, setIdx] = useState(0);
@@ -615,10 +663,13 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
     setIdx(0);
   }
 
-  // Lock body scroll + keyboard controls while the overlay is open.
+  // Lock body scroll + keyboard controls while the overlay is open. When a task
+  // detail modal is open (navLocked), the modal owns the keyboard — don't
+  // navigate speakers or exit the meeting from under it.
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
+      if (navLocked) return;
       if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, total - 1));
       else if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
       else if (e.key === "Escape") onExit();
@@ -628,7 +679,7 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
-  }, [total, onExit]);
+  }, [total, onExit, navLocked]);
 
   const r = cur?.report ?? null;
   const hasBlocker = !!r && r.blockers.trim().length > 0;
@@ -817,6 +868,237 @@ function StageSection({ title, text }: { title: string; text: string; tone?: "ne
       <RichText text={text} className="text-[17px] leading-relaxed text-zinc-800 dark:text-zinc-100 sm:text-[18px]" />
     </div>
   );
+}
+
+/* ------------------------ Task detail modal (read-only) ----------------- */
+
+function TaskDetailModal({ id, onClose }: { id: string; onClose: () => void }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const [task, setTask] = useState<ApiTaskDetail | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    // The modal mounts fresh per open (keyed by id at the call site), so initial
+    // state is already empty — no synchronous reset needed here.
+    let alive = true;
+    api
+      .get<{ task: ApiTaskDetail }>(`/api/tasks/${id}`)
+      .then((r) => alive && setTask(r.task))
+      .catch(() => alive && setError(true));
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    const prevFocus = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    panelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      prevFocus?.focus?.();
+    };
+  }, [onClose]);
+
+  const st = task ? statusMeta(task.status) : null;
+  const pr = task ? priorityMeta(task.priority) : null;
+  const due = task ? dueInfo(task.dueDate) : null;
+  const assignees = task?.assignees ?? (task?.assignee ? [task.assignee] : []);
+  const checklist = task?.checklist ?? [];
+  const checkDone = checklist.filter((c) => c.done).length;
+  const isDone = task?.status === "DONE";
+  const accent = task?.project?.color ?? "#14b8a6";
+
+  return (
+    <div
+      onMouseDown={onClose}
+      className="dp-scrim fixed inset-0 z-[60] flex items-center justify-center bg-zinc-900/45 p-4 sm:p-6"
+    >
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="dp-pop flex max-h-[88vh] w-[600px] max-w-full flex-col overflow-hidden rounded-2xl bg-card shadow-[0_24px_60px_rgba(0,0,0,0.28)] outline-none"
+      >
+        {/* Header */}
+        <div className="flex items-start gap-3 border-b border-hairline bg-muted/30 px-5 py-4">
+          <span className="mt-0.5 h-10 w-1.5 flex-none rounded-full" style={{ background: accent }} aria-hidden />
+          <div className="min-w-0 flex-1">
+            {task ? (
+              <>
+                <h2 id={titleId} className={cn("text-[16px] font-bold leading-snug [overflow-wrap:anywhere]", isDone && "text-muted-foreground line-through")}>
+                  {task.title}
+                </h2>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px]">
+                  {task.project && (
+                    <span className="font-semibold" style={{ color: task.project.color }}>{task.project.code}</span>
+                  )}
+                  <span className="text-muted-foreground">{task.project?.name}</span>
+                </div>
+              </>
+            ) : (
+              <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+            )}
+          </div>
+          {st && (
+            <span className="flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: `${st.color}1f`, color: st.color }}>
+              {st.label}
+            </span>
+          )}
+          <button
+            onClick={onClose}
+            className="flex size-8 flex-none items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-muted hover:text-zinc-900 dark:hover:text-zinc-100"
+            aria-label="ปิด"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
+          {error ? (
+            <div className="py-10 text-center text-[13px] text-red-600 dark:text-red-400">โหลดรายละเอียดงานไม่สำเร็จ</div>
+          ) : !task ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> กำลังโหลด…
+            </div>
+          ) : (
+            <>
+              {/* Meta grid */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <MetaBox label="ความสำคัญ">
+                  {pr && (
+                    <span className="flex items-center gap-1.5 font-semibold" style={{ color: pr.color }}>
+                      <span className="size-2 rounded-full" style={{ background: pr.color }} /> {pr.label}
+                    </span>
+                  )}
+                </MetaBox>
+                <MetaBox label="ครบกำหนด">
+                  {due ? (
+                    <span className={cn("flex items-center gap-1.5 font-medium", due.overdue && !isDone ? "text-rose-600 dark:text-rose-400" : due.dueToday && !isDone ? "text-amber-600 dark:text-amber-400" : "")}>
+                      <CalendarClock className="size-4" /> {due.label}
+                      {due.overdue && !isDone ? " · เลยกำหนด" : due.dueToday && !isDone ? " · วันนี้" : ""}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">ไม่กำหนด</span>
+                  )}
+                </MetaBox>
+              </div>
+
+              {/* Assignees */}
+              {assignees.length > 0 && (
+                <div>
+                  <SectionLabel>ผู้รับผิดชอบ ({assignees.length})</SectionLabel>
+                  <div className="flex flex-wrap gap-1.5">
+                    {assignees.map((a) => (
+                      <span key={a.id} className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2.5 text-[12px]">
+                        <Avatar userKey={a.avatarKey} size={20} fontSize={9} /> {a.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {task.description?.trim() && (
+                <div>
+                  <SectionLabel>รายละเอียด</SectionLabel>
+                  <p className="whitespace-pre-line text-[13.5px] leading-relaxed text-zinc-700 dark:text-zinc-200 [overflow-wrap:anywhere]">
+                    {task.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Checklist */}
+              {checklist.length > 0 && (
+                <div>
+                  <SectionLabel>
+                    เช็กลิสต์ <span className="tabular-nums text-muted-foreground">({checkDone}/{checklist.length})</span>
+                  </SectionLabel>
+                  <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-teal-500" style={{ width: `${(checkDone / checklist.length) * 100}%` }} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {checklist.map((c) => (
+                      <div key={c.id} className="flex items-start gap-2 text-[13px]">
+                        <CheckCircle2 className={cn("mt-0.5 size-4 flex-none", c.done ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-600")} />
+                        <span className={cn("[overflow-wrap:anywhere]", c.done ? "text-muted-foreground line-through" : "text-zinc-700 dark:text-zinc-200")}>{c.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Links */}
+              {task.links.length > 0 && (
+                <div>
+                  <SectionLabel>ลิงก์ ({task.links.length})</SectionLabel>
+                  <div className="flex flex-col gap-1.5">
+                    {task.links.map((l) => (
+                      <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-[12.5px] text-teal-600 hover:bg-muted dark:text-teal-400">
+                        <Link2 className="size-3.5 flex-none" />
+                        <span className="min-w-0 flex-1 truncate">{l.title || l.url}</span>
+                        <ExternalLink className="size-3.5 flex-none opacity-60" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {task.attachments.length > 0 && (
+                <div>
+                  <SectionLabel>ไฟล์แนบ ({task.attachments.length})</SectionLabel>
+                  <div className="flex flex-col gap-1.5">
+                    {task.attachments.map((a) => (
+                      <a key={a.id} href={a.secureUrl || a.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-[12.5px] text-zinc-700 hover:bg-muted dark:text-zinc-200">
+                        <Paperclip className="size-3.5 flex-none opacity-70" />
+                        <span className="min-w-0 flex-1 truncate">{a.displayName || a.originalName || a.fileName}</span>
+                        <ExternalLink className="size-3.5 flex-none opacity-60" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-hairline px-5 py-3">
+          <a href="/tasks" className="rounded-lg border border-border bg-card px-3 py-1.5 text-[12.5px] font-medium text-zinc-600 transition-colors hover:bg-muted dark:text-zinc-300">
+            เปิดในบอร์ดงาน
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetaBox({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-hairline bg-muted/20 px-3 py-2">
+      <div className="mb-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[13px]">{children}</div>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{children}</div>;
 }
 
 /* --------------------------- Meeting notes (local) ---------------------- */
