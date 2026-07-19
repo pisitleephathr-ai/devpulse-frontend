@@ -129,7 +129,6 @@ export default function DashboardPage() {
         date: formatThaiDateFull(),
         time: formatThaiTime(),
       });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);

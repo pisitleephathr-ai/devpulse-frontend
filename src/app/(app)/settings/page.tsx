@@ -820,6 +820,7 @@ function LeaveTypeDialog({ open, onClose, onSaved, nextOrder, editing }: { open:
   // Reset/prefill the form each time the dialog opens (blank for add, current values for edit).
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null);
     setName(editing?.name ?? "");
     setDaysLabel(editing?.daysLabel ?? "");
