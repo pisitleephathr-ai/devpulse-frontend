@@ -34,8 +34,9 @@ type LineStatus = {
   linkedAt: string | null;
   lineEnabled: boolean;
   addFriendUrl: string | null;
-  /** notification keys this user's role allows (drives which toggles show) */
-  available: (keyof LinePrefs)[];
+  /** notification keys this user's role allows (drives which toggles show).
+   *  Optional so an older API response can't crash the page (falls back to all). */
+  available?: (keyof LinePrefs)[];
   prefs: LinePrefs;
 };
 
@@ -195,22 +196,22 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex justify-center px-7 py-6">
-      <div className="flex w-[640px] max-w-full flex-col gap-4">
+    <div className="px-7 py-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
         <PageHeader eyebrow="MY PROFILE" title="โปรไฟล์ของฉัน" />
 
         {!profile ? (
           <ProfileSkeleton />
         ) : (
         <>
-        {/* Profile header card */}
-        <div className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-[22px] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        {/* Profile header card (full width) */}
+        <div className="flex items-center gap-4 rounded-2xl border border-hairline bg-card p-5 shadow-sm">
           <Avatar userKey={profile?.avatarKey ?? "?"} name={profile?.name} size={56} fontSize={20} />
           <div className="min-w-0 flex-1">
-            <div className="text-[16px] font-semibold">
+            <div className="text-[16px] font-semibold text-foreground">
               {profile?.name ?? "…"}
             </div>
-            <div className="truncate font-mono text-[12.5px] text-zinc-500">
+            <div className="truncate font-mono text-[12.5px] text-muted-foreground">
               {profile?.email ?? ""}
             </div>
           </div>
@@ -223,15 +224,9 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Security reminder — encourage changing the initial password. */}
-        <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <ShieldAlert className="mt-0.5 size-4 flex-none text-amber-600" />
-          <div className="text-[12.5px] leading-relaxed text-amber-900">
-            <strong>เพื่อความปลอดภัย</strong> — หากคุณยังใช้รหัสผ่านเริ่มต้นที่ผู้ดูแลตั้งให้
-            กรุณาเปลี่ยนรหัสผ่านใหม่ด้านล่างนี้
-          </div>
-        </div>
-
+        {/* Two columns: left = info + password, right = LINE */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col gap-4">
         {/* Personal information */}
         <form onSubmit={saveInfo}>
           <FormCard>
@@ -244,14 +239,14 @@ export default function ProfilePage() {
                 <Input
                   value={profile?.email ?? ""}
                   disabled
-                  className="bg-zinc-100 text-zinc-500"
+                  className="bg-muted text-muted-foreground"
                 />
               </Field>
               <Field label="บทบาท">
                 <Input
                   value={profile ? roleNameOf(profile.role) : ""}
                   disabled
-                  className="bg-zinc-100 text-zinc-500"
+                  className="bg-muted text-muted-foreground"
                 />
               </Field>
             </div>
@@ -271,11 +266,15 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => setShowPw((s) => !s)}
-                className="flex items-center gap-1.5 text-[12px] text-zinc-500 hover:text-zinc-900"
+                className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground"
               >
                 {showPw ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                 {showPw ? "ซ่อน" : "แสดง"}รหัสผ่าน
               </button>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11.5px] text-amber-700 dark:text-amber-400">
+              <ShieldAlert className="size-3.5 flex-none" />
+              หากยังใช้รหัสผ่านเริ่มต้นจากผู้ดูแล ควรเปลี่ยนใหม่เพื่อความปลอดภัย
             </div>
 
             {pwError && (
@@ -318,7 +317,10 @@ export default function ProfilePage() {
             </div>
           </FormCard>
         </form>
+        </div>
 
+        {/* RIGHT column: LINE connection */}
+        <div className="flex flex-col gap-4">
         {/* Personal LINE linking */}
         {line && (
           <FormCard>
@@ -342,8 +344,10 @@ export default function ProfilePage() {
 
                 {/* Per-user DM preferences — only the types the role allows. */}
                 {(() => {
+                  const available =
+                    line.available ?? NOTIF_TOGGLES.map((t) => t.key);
                   const shown = NOTIF_TOGGLES.filter((t) =>
-                    line.available.includes(t.key)
+                    available.includes(t.key)
                   );
                   if (!shown.length) {
                     return (
@@ -437,6 +441,8 @@ export default function ProfilePage() {
             )}
           </FormCard>
         )}
+        </div>
+        </div>
         </>
         )}
       </div>
