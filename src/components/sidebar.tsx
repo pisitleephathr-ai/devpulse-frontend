@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   BarChart3,
   Sun,
+  Award,
   Pencil,
   Check,
   X,
@@ -57,6 +58,7 @@ const ICONS: Record<string, LucideIcon> = {
   SlidersHorizontal,
   BarChart3,
   Sun,
+  Award,
 };
 
 export function Sidebar({
