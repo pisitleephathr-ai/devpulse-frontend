@@ -102,6 +102,20 @@ export type ApiTaskAttachment = {
   fileUrl: string;
   fileType?: string | null;
   fileSize?: number | null;
+  /** Cloudinary upload fields (absent/null for legacy URL attachments). */
+  source?: "URL" | "CLOUDINARY";
+  kind?: "IMAGE" | "DOCUMENT" | "LINK";
+  originalName?: string | null;
+  displayName?: string | null;
+  mimeType?: string | null;
+  extension?: string | null;
+  secureUrl?: string | null;
+  thumbnailUrl?: string | null;
+  width?: number | null;
+  height?: number | null;
+  cloudinaryResourceType?: string | null;
+  uploadedById?: string | null;
+  createdAt?: string;
 };
 export type ApiTask = {
   id: string;

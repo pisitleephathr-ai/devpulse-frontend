@@ -9,7 +9,8 @@ A team operations dashboard for software teams — track **daily reports, tasks,
 
 - **Dashboard insights** — KPIs, per-person workload, report-submission status, top blockers, recent activity, dynamic Bangkok-time greeting
 - **Daily reports** — card layout, defaults to today, search + author/project/status/date filters, CSV export
-- **Task board** — Kanban with drag-drop, **multiple assignees**, comments, links/attachments, filters, CSV export
+- **Task board** — Kanban with drag-drop, **multiple assignees**, comments, links, filters, CSV export
+- **File attachments** — drag-drop / click / paste (Ctrl-V) image + document upload to Cloudinary (signed direct upload), per-file progress, cancel/retry, thumbnails + lightbox, per-task limits; legacy URL attachments still supported. See the backend `ATTACHMENTS.md`.
 - **Projects** — create / edit / archive / restore, per-project stats
 - **Leave requests** — request, approve/reject (RBAC-gated, no self-approval)
 - **Calendar** — real tasks (due dates), reports, approved leaves, and events aggregated per month

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { usePersistedState } from "@/lib/use-persisted-state";
-import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, Paperclip, ExternalLink, Download, CheckSquare } from "lucide-react";
+import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, ExternalLink, Download, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
@@ -15,12 +15,13 @@ import { matchesSearch } from "@/lib/filters";
 import { downloadExcel, todayStamp } from "@/lib/excel";
 import { TaskComments } from "@/components/task-comments";
 import { TaskChecklist } from "@/components/task-checklist";
+import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { KanbanSkeleton } from "@/components/skeletons";
 import { KanbanBoard } from "@/components/kanban-board";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { TaskForm, isImageUrl } from "@/components/forms/task-form";
+import { TaskForm } from "@/components/forms/task-form";
 import { toast } from "@/components/ui/toaster";
 import { api } from "@/lib/api";
 import { useData } from "@/lib/store";
@@ -584,46 +585,16 @@ export default function TasksPage() {
               </div>
             )}
 
-            {/* Attachments */}
-            {detailData && detailData.attachments.length > 0 && (
-              <div>
-                <div className="mb-1.5 text-[12.5px] font-medium text-zinc-900">
-                  ไฟล์แนบ
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {detailData.attachments.map((a) =>
-                    isImageUrl(a.fileUrl) || a.fileType === "image" ? (
-                      <a
-                        key={a.id}
-                        href={a.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block overflow-hidden rounded-lg border border-zinc-200 hover:border-teal-200"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={a.fileUrl}
-                          alt={a.fileName}
-                          className="h-24 w-full object-cover"
-                        />
-                        <div className="truncate px-2 py-1 text-[11px] text-zinc-500">
-                          {a.fileName}
-                        </div>
-                      </a>
-                    ) : (
-                      <a
-                        key={a.id}
-                        href={a.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-[12.5px] text-teal-600 hover:bg-zinc-50"
-                      >
-                        <Paperclip className="size-3.5 flex-none" />
-                        <span className="truncate">{a.fileName}</span>
-                      </a>
-                    )
-                  )}
-                </div>
+            {/* Attachments — Cloudinary uploads + legacy URL links.
+                Mounts once the full detail (with attachments) has loaded. */}
+            {detailData?.id === detail.id && (
+              <div className="border-t border-hairline pt-4">
+                <TaskAttachments
+                  key={detail.id}
+                  taskId={detail.id}
+                  initialAttachments={detailData.attachments ?? []}
+                  canUpload={canEdit(detail)}
+                />
               </div>
             )}
 
