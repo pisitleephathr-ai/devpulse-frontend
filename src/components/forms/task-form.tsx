@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { UploadDropzone } from "@/components/attachments/upload-dropzone";
+import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { useUploadConfig } from "@/lib/use-upload-config";
 import { validateFile, formatBytes } from "@/lib/upload-config";
 import { uploadFileToTask } from "@/lib/upload-file-to-task";
@@ -66,7 +67,6 @@ type Values = {
 };
 
 type LinkRow = { title: string; url: string };
-type AttachmentRow = { fileName: string; fileUrl: string };
 
 type TaskFormProps = {
   mode: "create" | "edit";
@@ -87,7 +87,6 @@ export function TaskForm({
   task,
   defaultStatus,
   initialLinks,
-  initialAttachments,
   onSubmit,
   onCancel,
 }: TaskFormProps) {
@@ -121,9 +120,6 @@ export function TaskForm({
   }));
   const [links, setLinks] = useState<LinkRow[]>(
     initialLinks?.map((l) => ({ title: l.title, url: l.url })) ?? []
-  );
-  const [attachments, setAttachments] = useState<AttachmentRow[]>(
-    initialAttachments?.map((a) => ({ fileName: a.fileName, fileUrl: a.fileUrl })) ?? []
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -212,12 +208,6 @@ export function TaskForm({
         else if (!isValidUrl(l.url.trim())) next[`link_${i}`] = "URL ไม่ถูกต้อง";
       }
     });
-    attachments.forEach((a, i) => {
-      if (a.fileName.trim() || a.fileUrl.trim()) {
-        if (!a.fileName.trim()) next[`att_${i}`] = "กรุณากรอกชื่อไฟล์";
-        else if (!isValidUrl(a.fileUrl.trim())) next[`att_${i}`] = "URL ไม่ถูกต้อง";
-      }
-    });
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -228,15 +218,11 @@ export function TaskForm({
     const cleanLinks: TaskLinkInput[] = links
       .filter((l) => l.title.trim() && l.url.trim())
       .map((l) => ({ title: l.title.trim(), url: l.url.trim() }));
-    const cleanAttachments: TaskAttachmentInput[] = attachments
-      .filter((a) => a.fileName.trim() && a.fileUrl.trim())
-      .map((a) => ({
-        fileName: a.fileName.trim(),
-        fileUrl: a.fileUrl.trim(),
-        fileType: isImageUrl(a.fileUrl) ? "image" : undefined,
-      }));
 
     setSubmitting(true);
+    // Note: `attachments` is intentionally omitted — image/file attachments are
+    // managed via the dedicated upload/delete endpoints (device picker below /
+    // the TaskAttachments panel), so the task payload must not replace them.
     const data: TaskInput = {
       title: values.title.trim(),
       projectId: proj.id,
@@ -246,7 +232,6 @@ export function TaskForm({
       dueDate: values.dueDate || null,
       description: values.description.trim(),
       links: cleanLinks,
-      attachments: cleanAttachments,
     };
 
     // 1) Save the task (create or edit) → get its id.
@@ -281,6 +266,10 @@ export function TaskForm({
           placeholder="เช่น ทำหน้าตั้งค่าการแจ้งเตือน"
         />
       </Field>
+
+      {/* Two columns to match the detail modal: settings (left) + content (right). */}
+      <div className="flex flex-col gap-5 md:flex-row md:gap-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
 
       <Field label="โปรเจกต์" error={errors.projectId}>
         <Select value={values.projectId} onChange={(e) => set("projectId", e.target.value)}>
@@ -352,7 +341,9 @@ export function TaskForm({
           <Input type="date" value={values.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
         </Field>
       </div>
+      </div>
 
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
       <Field label="รายละเอียดงาน" hint="ไม่บังคับ">
         <Textarea
           rows={3}
@@ -414,109 +405,62 @@ export function TaskForm({
         </div>
       </div>
 
-      {/* Attachments — upload from device (uploaded after the task is saved) */}
-      <div>
-        <label className="mb-1.5 block text-[12.5px] font-medium text-zinc-900">
-          ไฟล์แนบ <span className="font-normal text-zinc-400">— รูปภาพหรือเอกสาร</span>
-        </label>
-        <UploadDropzone onFiles={addPending} accept={acceptAttr} disabled={submitting} />
-        {pending.length > 0 && (
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {pending.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-2 rounded-lg border border-hairline bg-card p-2"
-              >
-                <div className="flex size-9 flex-none items-center justify-center overflow-hidden rounded bg-muted">
-                  {p.previewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.previewUrl} alt="" className="h-full w-full object-cover" />
-                  ) : p.isImage ? (
-                    <ImageIcon className="size-4 text-muted-foreground" />
-                  ) : (
-                    <FileText className="size-4 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[11.5px] font-medium" title={p.file.name}>
-                    {p.file.name}
-                  </div>
-                  <div className="text-[10.5px] text-muted-foreground">
-                    {formatBytes(p.file.size)}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removePending(p.id)}
-                  disabled={uploading}
-                  className="flex-none rounded p-1 text-muted-foreground hover:text-red-600 disabled:opacity-50"
-                  aria-label={`นำออก ${p.file.name}`}
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        {mode === "create" && pending.length > 0 && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            ไฟล์จะถูกอัปโหลดหลังกดสร้างงาน
-          </p>
-        )}
-      </div>
-
-      {/* Attachments — attach by URL (legacy) */}
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-[12.5px] font-medium text-zinc-900">
-            แนบด้วย URL <span className="font-normal text-zinc-400">— ลิงก์ไฟล์ภายนอก</span>
+      {/* Attachments — edit: manage live (upload + delete); create: hold files
+          and upload them right after the task is created. */}
+      {mode === "edit" && task ? (
+        <TaskAttachments taskId={task.id} canManage initialAttachments={[]} />
+      ) : (
+        <div>
+          <label className="mb-1.5 block text-[12.5px] font-medium text-zinc-900">
+            ไฟล์แนบ <span className="font-normal text-zinc-400">— รูปภาพหรือเอกสาร</span>
           </label>
-          <button
-            type="button"
-            onClick={() => setAttachments((a) => [...a, { fileName: "", fileUrl: "" }])}
-            className="flex items-center gap-1 text-[12px] font-medium text-teal-600 hover:underline"
-          >
-            <Plus className="size-3" /> เพิ่มไฟล์แนบ
-          </button>
-        </div>
-        <div className="flex flex-col gap-2">
-          {attachments.map((a, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
-                <Input
-                  value={a.fileName}
-                  onChange={(e) =>
-                    setAttachments((arr) => arr.map((x, j) => (j === i ? { ...x, fileName: e.target.value } : x)))
-                  }
-                  placeholder="ชื่อไฟล์/ชื่อรูป"
-                />
-                <Input
-                  value={a.fileUrl}
-                  onChange={(e) =>
-                    setAttachments((arr) => arr.map((x, j) => (j === i ? { ...x, fileUrl: e.target.value } : x)))
-                  }
-                  placeholder="URL ไฟล์หรือรูปภาพ"
-                  className="font-mono text-[12px]"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setAttachments((arr) => arr.filter((_, j) => j !== i))}
-                className="mt-1.5 flex size-8 flex-none items-center justify-center rounded-lg border border-zinc-200 text-red-600 hover:bg-red-50"
-                aria-label="ลบไฟล์"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
+          <UploadDropzone onFiles={addPending} accept={acceptAttr} disabled={submitting} />
+          {pending.length > 0 && (
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {pending.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-2 rounded-lg border border-hairline bg-card p-2"
+                >
+                  <div className="flex size-9 flex-none items-center justify-center overflow-hidden rounded bg-muted">
+                    {p.previewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.previewUrl} alt="" className="h-full w-full object-cover" />
+                    ) : p.isImage ? (
+                      <ImageIcon className="size-4 text-muted-foreground" />
+                    ) : (
+                      <FileText className="size-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[11.5px] font-medium" title={p.file.name}>
+                      {p.file.name}
+                    </div>
+                    <div className="text-[10.5px] text-muted-foreground">
+                      {formatBytes(p.file.size)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePending(p.id)}
+                    disabled={uploading}
+                    className="flex-none rounded p-1 text-muted-foreground hover:text-red-600 disabled:opacity-50"
+                    aria-label={`นำออก ${p.file.name}`}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
-          {attachments.map((_, i) =>
-            errors[`att_${i}`] ? (
-              <p key={`e${i}`} className="text-[11.5px] text-red-600">
-                {errors[`att_${i}`]}
-              </p>
-            ) : null
+          )}
+          {pending.length > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              ไฟล์จะถูกอัปโหลดหลังกดสร้างงาน
+            </p>
           )}
         </div>
+      )}
+      </div>
       </div>
 
       <FormActions>

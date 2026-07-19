@@ -563,11 +563,12 @@ export default function TasksPage() {
                 {/* Attachments — mounts once the full detail has loaded. */}
                 {detailData?.id === detail.id && (
                   <div className={detailData.links.length > 0 ? "border-t border-hairline pt-4" : ""}>
+                    {/* View-only in the detail dialog — add/delete is in edit mode. */}
                     <TaskAttachments
                       key={detail.id}
                       taskId={detail.id}
                       initialAttachments={detailData.attachments ?? []}
-                      canUpload={canEdit(detail)}
+                      canManage={false}
                     />
                   </div>
                 )}

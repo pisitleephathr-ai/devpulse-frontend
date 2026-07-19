@@ -23,8 +23,9 @@ import { AttachmentDeleteDialog } from "./attachment-delete-dialog";
 type Props = {
   taskId: string;
   initialAttachments?: ApiTaskAttachment[];
-  /** Whether the current user may upload here (assignee / manager / permission). */
-  canUpload: boolean;
+  /** Manage mode: show the uploader + delete controls. When false the section is
+   *  view-only (thumbnails, lightbox, download) — used in the read-only detail. */
+  canManage: boolean;
 };
 
 const p2 = (n: number) => String(n).padStart(2, "0");
@@ -44,7 +45,7 @@ type Rendered = { att: ApiTaskAttachment; isImage: boolean; href: string };
  * (image grid + document list), and a click-to-open uploader (dropzone + queue).
  * Theme-aware; legacy URL attachments keep rendering as before.
  */
-export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: Props) {
+export function TaskAttachments({ taskId, initialAttachments = [], canManage }: Props) {
   const me = useCurrentUser();
   const { users } = useData();
   const { config } = useUploadConfig();
@@ -65,26 +66,27 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
   const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ApiTaskAttachment | null>(null);
 
-  const canManage = isManagerOrAdmin(me);
+  const isManager = isManagerOrAdmin(me);
   const uploaderName = (id?: string | null) =>
     id ? users.find((u) => u.id === id)?.name : undefined;
 
   const canDelete = (att: ApiTaskAttachment): boolean => {
-    if (canManage) return true;
+    if (!canManage) return false; // view-only (detail)
+    if (isManager) return true;
     if (att.uploadedById && me && att.uploadedById === me.id) return true;
-    if ((att.source ?? "URL") === "URL" && canUpload) return true;
+    if ((att.source ?? "URL") === "URL") return true; // legacy link
     return false;
   };
 
   const full = !!usage && (usage.remainingFileCount <= 0 || usage.remainingBytes <= 0);
   // Keep the uploader visible while files are still in the queue, even if the
   // user collapsed it, so progress/errors never get hidden mid-upload.
-  const showUploader = canUpload && (adding || queue.items.length > 0);
+  const showUploader = canManage && (adding || queue.items.length > 0);
 
   // Clipboard paste — scoped to this component's lifetime (only mounts while the
   // task dialog is open), so we never hijack paste globally.
   useEffect(() => {
-    if (!canUpload) return;
+    if (!canManage) return;
     const onPaste = (e: ClipboardEvent) => {
       const items = Array.from(e.clipboardData?.items ?? []);
       const images = items.filter((it) => it.kind === "file" && it.type.startsWith("image/"));
@@ -104,7 +106,7 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
     };
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
-  }, [canUpload, queue]);
+  }, [canManage, queue]);
 
   const rendered: Rendered[] = useMemo(
     () =>
@@ -156,7 +158,7 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
           </span>
         )}
         <div className="flex-1" />
-        {canUpload && (
+        {canManage && (
           <button
             type="button"
             onClick={() => setAdding((v) => !v)}
