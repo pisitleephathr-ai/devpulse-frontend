@@ -16,6 +16,7 @@ import {
   Pencil,
   HardDrive,
   Trophy,
+  PartyPopper,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,8 @@ type Setting = {
   lineDailyReportSummaryTime: string;
   lineWeeklyPerformance: boolean;
   lineWeeklyPerformanceTime: string;
+  lineWeeklyHighlight: boolean;
+  lineWeeklyHighlightTime: string;
   lineDailyDigest: boolean;
   lineDailyDigestTime: string;
 };
@@ -84,6 +87,8 @@ const DEFAULT_SETTING: Setting = {
   lineDailyReportSummaryTime: "18:00",
   lineWeeklyPerformance: false,
   lineWeeklyPerformanceTime: "09:00",
+  lineWeeklyHighlight: false,
+  lineWeeklyHighlightTime: "09:00",
   lineDailyDigest: false,
   lineDailyDigestTime: "08:30",
 };
@@ -101,7 +106,7 @@ export default function SettingsPage() {
   const [addLeaveOpen, setAddLeaveOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<LeaveType | null>(null);
   const [testingSummary, setTestingSummary] = useState<
-    "leave" | "report" | "performance" | "digest" | null
+    "leave" | "report" | "performance" | "highlight" | "digest" | null
   >(null);
   const [addHolidayOpen, setAddHolidayOpen] = useState(false);
   const [pendingLeaveDelete, setPendingLeaveDelete] = useState<LeaveType | null>(null);
@@ -171,7 +176,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function testSummary(kind: "leave" | "report" | "performance" | "digest") {
+  async function testSummary(kind: "leave" | "report" | "performance" | "highlight" | "digest") {
     setTestingSummary(kind);
     try {
       const r = await api.post<{ sent: boolean; reason?: string }>(`/api/settings/line/test/${kind}`, {});
@@ -538,6 +543,16 @@ export default function SettingsPage() {
                                 onTime={(v) => set("lineWeeklyPerformanceTime", v)}
                                 onTest={() => testSummary("performance")}
                                 testing={testingSummary === "performance"}
+                              />
+                              <TimedSummaryRow
+                                icon={<PartyPopper className="size-3.5" />}
+                                label="ไฮไลต์ประจำสัปดาห์ (ทีมส่งมอบอะไรบ้าง) — ทุกวันจันทร์"
+                                enabled={setting.lineWeeklyHighlight}
+                                onToggle={(v) => set("lineWeeklyHighlight", v)}
+                                time={setting.lineWeeklyHighlightTime}
+                                onTime={(v) => set("lineWeeklyHighlightTime", v)}
+                                onTest={() => testSummary("highlight")}
+                                testing={testingSummary === "highlight"}
                               />
                               <TimedSummaryRow
                                 icon={<Bell className="size-3.5" />}
