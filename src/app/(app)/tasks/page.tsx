@@ -145,11 +145,15 @@ export default function TasksPage() {
   function openEdit(t: Task) {
     setEditInitial({
       links: (detailData?.links ?? []).map((l) => ({ title: l.title, url: l.url })),
-      attachments: (detailData?.attachments ?? []).map((a) => ({
-        fileName: a.fileName,
-        fileUrl: a.fileUrl,
-        fileType: a.fileType ?? undefined,
-      })),
+      // Only URL/link attachments are edited via the form's URL rows. Cloudinary
+      // uploads are managed in the detail view and are preserved on save.
+      attachments: (detailData?.attachments ?? [])
+        .filter((a) => (a.source ?? "URL") === "URL")
+        .map((a) => ({
+          fileName: a.fileName,
+          fileUrl: a.fileUrl,
+          fileType: a.fileType ?? undefined,
+        })),
     });
     setEditTask(t);
     closeTask();
@@ -438,12 +442,8 @@ export default function TasksPage() {
             mode="create"
             defaultStatus={createStatus}
             onSubmit={async (data) => {
-              const ok = await addTask(data);
-              if (ok) {
-                setCreateStatus(null);
-                toast("สร้างงานใหม่แล้ว");
-              }
-              return ok;
+              const task = await addTask(data);
+              return task ? task.id : null;
             }}
             onCancel={() => setCreateStatus(null)}
           />
@@ -654,11 +654,7 @@ export default function TasksPage() {
             initialAttachments={editInitial.attachments}
             onSubmit={async (data) => {
               const ok = await updateTask(editTask.id, data);
-              if (ok) {
-                setEditTask(null);
-                toast("บันทึกการแก้ไขงานแล้ว");
-              }
-              return ok;
+              return ok ? editTask.id : null;
             }}
             onCancel={() => setEditTask(null)}
           />

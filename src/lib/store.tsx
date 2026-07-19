@@ -63,7 +63,8 @@ type DataContextValue = {
   updateReport: (id: string, data: Partial<ReportInput>) => Promise<boolean>;
   deleteReport: (id: string) => Promise<boolean>;
 
-  addTask: (data: TaskInput) => Promise<boolean>;
+  /** Returns the created task (with its new id) on success, or null on failure. */
+  addTask: (data: TaskInput) => Promise<Task | null>;
   updateTask: (id: string, data: Partial<TaskInput>) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
   moveTask: (id: string, statusLabel: TaskStatus) => Promise<boolean>;
@@ -220,12 +221,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   /* ------------------------------- Tasks ---------------------------- */
   const addTask = useCallback(
-    (data: TaskInput) =>
-      run(async () => {
+    async (data: TaskInput): Promise<Task | null> => {
+      try {
         const { task } = await api.post<{ task: ApiTask }>("/api/tasks", data);
-        setTasks((prev) => [...prev, mapTask(task)]);
-      }),
-    [run]
+        const mapped = mapTask(task);
+        setTasks((prev) => [...prev, mapped]);
+        return mapped;
+      } catch (err) {
+        toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ");
+        return null;
+      }
+    },
+    []
   );
   const updateTask = useCallback(
     (id: string, data: Partial<TaskInput>) =>

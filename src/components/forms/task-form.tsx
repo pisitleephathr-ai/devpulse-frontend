@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, X, ImageIcon, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -9,7 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar } from "@/components/ui/avatar";
 import { Field, FormActions } from "@/components/form-card";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
+import { UploadDropzone } from "@/components/attachments/upload-dropzone";
+import { useUploadConfig } from "@/lib/use-upload-config";
+import { validateFile, formatBytes } from "@/lib/upload-config";
+import { uploadFileToTask } from "@/lib/upload-file-to-task";
 import {
   PRIORITY_ENUM_OPTIONS,
   TASK_STATUS_ENUM_OPTIONS,
@@ -69,9 +74,13 @@ type TaskFormProps = {
   defaultStatus?: TaskStatus;
   initialLinks?: TaskLinkInput[];
   initialAttachments?: TaskAttachmentInput[];
-  onSubmit: (data: TaskInput) => void | Promise<boolean | void>;
+  /** Persist the task; return its id on success (so device uploads can attach to
+   *  it) or null on failure. */
+  onSubmit: (data: TaskInput) => Promise<string | null>;
   onCancel: () => void;
 };
+
+type PendingFile = { id: string; file: File; previewUrl?: string; isImage: boolean };
 
 export function TaskForm({
   mode,
@@ -119,6 +128,63 @@ export function TaskForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Device files to upload AFTER the task is saved (a signed upload needs the
+  // task id, which for a new task only exists once it's created).
+  const { config: uploadConfig } = useUploadConfig();
+  const [pending, setPending] = useState<PendingFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const seqRef = useRef(0);
+  const pendingRef = useRef<PendingFile[]>([]);
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
+
+  const acceptAttr = [
+    ...uploadConfig.allowed.extensions,
+    ...uploadConfig.allowed.imageMimeTypes,
+    ...uploadConfig.allowed.documentMimeTypes,
+  ].join(",");
+
+  function addPending(files: File[]) {
+    const additions: PendingFile[] = [];
+    for (const file of files) {
+      const v = validateFile(file, uploadConfig);
+      if (!v.ok) {
+        toast(v.error);
+        continue;
+      }
+      if (
+        pending.some((p) => p.file.name === file.name && p.file.size === file.size) ||
+        additions.some((p) => p.file.name === file.name && p.file.size === file.size)
+      )
+        continue;
+      const isImage = v.kind === "IMAGE";
+      additions.push({
+        id: `pf_${seqRef.current++}`,
+        file,
+        isImage,
+        previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+      });
+    }
+    if (additions.length) setPending((p) => [...p, ...additions]);
+  }
+
+  function removePending(id: string) {
+    setPending((p) => {
+      const target = p.find((x) => x.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return p.filter((x) => x.id !== id);
+    });
+  }
+
+  // Revoke any object URLs on unmount.
+  useEffect(
+    () => () => {
+      for (const p of pendingRef.current) if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+    },
+    []
+  );
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues((v) => {
@@ -156,7 +222,7 @@ export function TaskForm({
     return Object.keys(next).length === 0;
   }
 
-  function submit() {
+  async function submit() {
     if (!validate()) return;
     const proj = projects.find((p) => p.id === values.projectId)!;
     const cleanLinks: TaskLinkInput[] = links
@@ -182,10 +248,28 @@ export function TaskForm({
       links: cleanLinks,
       attachments: cleanAttachments,
     };
-    setTimeout(async () => {
-      const ok = await onSubmit(data);
-      if (ok === false) setSubmitting(false);
-    }, 250);
+
+    // 1) Save the task (create or edit) → get its id.
+    const taskId = await onSubmit(data);
+    if (!taskId) {
+      setSubmitting(false);
+      return;
+    }
+
+    // 2) Upload any device files to the (now-existing) task. Independent per file
+    //    so one failure doesn't sink the rest.
+    if (pending.length > 0) {
+      setUploading(true);
+      const results = await Promise.allSettled(
+        pending.map((p) => uploadFileToTask(taskId, p.file))
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      for (const p of pending) if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+      if (failed > 0) toast(`อัปโหลดไฟล์ไม่สำเร็จ ${failed} รายการ`);
+    }
+
+    toast(mode === "create" ? "สร้างงานใหม่แล้ว" : "บันทึกการแก้ไขงานแล้ว");
+    onCancel(); // close the dialog
   }
 
   return (
@@ -330,11 +414,62 @@ export function TaskForm({
         </div>
       </div>
 
-      {/* Attachments (URL only) */}
+      {/* Attachments — upload from device (uploaded after the task is saved) */}
+      <div>
+        <label className="mb-1.5 block text-[12.5px] font-medium text-zinc-900">
+          ไฟล์แนบ <span className="font-normal text-zinc-400">— รูปภาพหรือเอกสาร</span>
+        </label>
+        <UploadDropzone onFiles={addPending} accept={acceptAttr} disabled={submitting} />
+        {pending.length > 0 && (
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {pending.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 rounded-lg border border-hairline bg-card p-2"
+              >
+                <div className="flex size-9 flex-none items-center justify-center overflow-hidden rounded bg-muted">
+                  {p.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.previewUrl} alt="" className="h-full w-full object-cover" />
+                  ) : p.isImage ? (
+                    <ImageIcon className="size-4 text-muted-foreground" />
+                  ) : (
+                    <FileText className="size-4 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[11.5px] font-medium" title={p.file.name}>
+                    {p.file.name}
+                  </div>
+                  <div className="text-[10.5px] text-muted-foreground">
+                    {formatBytes(p.file.size)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removePending(p.id)}
+                  disabled={uploading}
+                  className="flex-none rounded p-1 text-muted-foreground hover:text-red-600 disabled:opacity-50"
+                  aria-label={`นำออก ${p.file.name}`}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {mode === "create" && pending.length > 0 && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            ไฟล์จะถูกอัปโหลดหลังกดสร้างงาน
+          </p>
+        )}
+      </div>
+
+      {/* Attachments — attach by URL (legacy) */}
       <div>
         <div className="mb-1.5 flex items-center justify-between">
           <label className="text-[12.5px] font-medium text-zinc-900">
-            ไฟล์แนบ <span className="font-normal text-zinc-400">— แนบด้วย URL</span>
+            แนบด้วย URL <span className="font-normal text-zinc-400">— ลิงก์ไฟล์ภายนอก</span>
           </label>
           <button
             type="button"
@@ -389,7 +524,13 @@ export function TaskForm({
           ยกเลิก
         </Button>
         <Button type="button" onClick={submit} disabled={submitting}>
-          {submitting ? "กำลังบันทึก…" : mode === "create" ? "สร้างงาน" : "บันทึก"}
+          {uploading
+            ? "กำลังอัปโหลดไฟล์…"
+            : submitting
+              ? "กำลังบันทึก…"
+              : mode === "create"
+                ? "สร้างงาน"
+                : "บันทึก"}
         </Button>
       </FormActions>
     </div>
