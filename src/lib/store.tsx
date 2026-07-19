@@ -226,7 +226,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Live sync: poll while the tab is visible, and refetch immediately when it
     // regains focus/visibility (that's when stale data is most obvious). Polling
     // pauses while the tab is hidden to avoid needless load.
-    const POLL_MS = 30_000;
+    const POLL_MS = 15_000;
     let interval: ReturnType<typeof setInterval> | null = null;
     const start = () => {
       if (!interval) interval = setInterval(() => void silentRefresh(), POLL_MS);
