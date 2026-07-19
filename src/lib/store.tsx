@@ -107,6 +107,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [reportsHasMore, setReportsHasMore] = useState(false);
   const [loadingMoreReports, setLoadingMoreReports] = useState(false);
   const reportsPageRef = useRef(1);
+  // Guards for background sync: skip a poll while one is already running or
+  // while a local mutation is in flight (so we never clobber an optimistic
+  // update with slightly-stale server data).
+  const syncingRef = useRef(false);
+  const mutationsRef = useRef(0);
+  // Per-collection signatures of the last synced payload — lets a background
+  // sync update only the collections that actually changed, so consumers don't
+  // re-render (or flicker mid-interaction) every poll when nothing moved.
+  const syncSigRef = useRef<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     if (!getToken()) {
@@ -166,16 +175,103 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   /**
+   * Background re-sync — refetch the live collections WITHOUT flipping the
+   * `loading` flag (so the page never flashes its skeleton). Keeps the board
+   * and reports fresh when a teammate edits, so nobody has to hit refresh.
+   * Preserves the reports pagination window (fetches every loaded page in one
+   * shot) and bails if a poll is already running or a mutation is in flight.
+   */
+  const silentRefresh = useCallback(async () => {
+    if (!getToken()) return;
+    if (syncingRef.current || mutationsRef.current > 0) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    syncingRef.current = true;
+    try {
+      const reportWindow = REPORT_PAGE_SIZE * reportsPageRef.current;
+      const [u, p, r, t, l] = await Promise.all([
+        api.get<{ users: ApiUser[] }>("/api/users"),
+        api.get<{ projects: ApiProject[] }>("/api/projects"),
+        api.get<{ reports: ApiReport[]; hasMore?: boolean }>(
+          `/api/reports?limit=${reportWindow}&page=1`
+        ),
+        api.get<{ tasks: ApiTask[] }>("/api/tasks"),
+        api.get<{ leaves: ApiLeave[] }>("/api/leaves"),
+      ]);
+      // A mutation may have started while we were fetching — don't overwrite it.
+      if (mutationsRef.current > 0) return;
+      // Only apply collections that actually changed since the last sync.
+      const sig = syncSigRef.current;
+      const apply = (key: string, raw: unknown, set: () => void) => {
+        const next = JSON.stringify(raw);
+        if (sig[key] === next) return;
+        sig[key] = next;
+        set();
+      };
+      apply("users", u.users, () => setUsers(u.users.map(mapUser)));
+      apply("projects", p.projects, () => setProjects(p.projects));
+      apply("reports", r.reports, () => {
+        setReports(r.reports.map(mapReport));
+        setReportsHasMore(r.hasMore ?? false);
+      });
+      apply("tasks", t.tasks, () => setTasks(t.tasks.map(mapTask)));
+      apply("leaves", l.leaves, () => setLeaves(l.leaves.map(mapLeave)));
+    } catch {
+      // Silent: a failed background sync must never disrupt the UI.
+    } finally {
+      syncingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    // Live sync: poll while the tab is visible, and refetch immediately when it
+    // regains focus/visibility (that's when stale data is most obvious). Polling
+    // pauses while the tab is hidden to avoid needless load.
+    const POLL_MS = 30_000;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (!interval) interval = setInterval(() => void silentRefresh(), POLL_MS);
+    };
+    const stop = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        void silentRefresh();
+        start();
+      }
+    };
+    const onFocus = () => void silentRefresh();
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [silentRefresh]);
+
+  /**
    * Run a mutation, surface failures via a toast, keep state in sync, and
    * report success so callers can close a dialog / toast only on success.
+   * Tracks in-flight mutations so a background sync won't clobber optimistic
+   * updates.
    */
   const run = useCallback(async (fn: () => Promise<void>): Promise<boolean> => {
+    mutationsRef.current++;
     try {
       await fn();
       return true;
     } catch (err) {
       toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ");
       return false;
+    } finally {
+      mutationsRef.current--;
     }
   }, []);
 
@@ -237,6 +333,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   /* ------------------------------- Tasks ---------------------------- */
   const addTask = useCallback(
     async (data: TaskInput): Promise<Task | null> => {
+      mutationsRef.current++;
       try {
         const { task } = await api.post<{ task: ApiTask }>("/api/tasks", data);
         const mapped = mapTask(task);
@@ -245,6 +342,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ");
         return null;
+      } finally {
+        mutationsRef.current--;
       }
     },
     []
