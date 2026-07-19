@@ -200,7 +200,6 @@ export default function CalendarPage() {
         <Select className="w-auto py-[7px] text-[12.5px]" value={typeF} onChange={(e) => setTypeF(e.target.value as "all" | CalType)}>
           <option value="all">ทุกประเภท</option>
           <option value="TASK">งาน</option>
-          <option value="REPORT">รายงานประจำวัน</option>
           <option value="LEAVE">การลา</option>
           <option value="EVENT">กิจกรรม</option>
         </Select>
@@ -216,7 +215,7 @@ export default function CalendarPage() {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-3.5 text-xs text-muted-foreground">
-        {(Object.keys(TYPE_META) as CalType[]).map((t) => (
+        {(Object.keys(TYPE_META) as CalType[]).filter((t) => t !== "REPORT").map((t) => (
           <span key={t} className="flex items-center gap-1.5">
             <span className="size-2 rounded-[3px]" style={{ background: TYPE_META[t].dot }} />
             {TYPE_META[t].label}
