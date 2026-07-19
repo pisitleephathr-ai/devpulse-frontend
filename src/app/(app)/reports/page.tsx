@@ -29,6 +29,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ReportForm } from "@/components/forms/report-form";
+import { ReportItemsList } from "@/components/report-items";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -543,42 +544,57 @@ function ReportCard({
 
       {/* Content */}
       <div className="flex flex-1 flex-col gap-3.5 px-4 py-4">
-        {r.summary?.trim() && r.summary.trim() !== r.did?.trim() && (
-          <p className="text-[13.5px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100 [overflow-wrap:anywhere]">
-            {r.summary}
-          </p>
-        )}
-        {/* Blockers surface first when present — that's what managers triage. */}
-        {blocker && (
-          <CardSection
-            label="ปัญหา / อุปสรรค"
-            text={r.blockers}
-            clamp={!expanded}
-            accent="#f59e0b"
-            highlight
-          />
-        )}
-        <CardSection
-          label="งานที่ทำล่าสุด"
-          text={r.did}
-          clamp={!expanded}
-          accent="#0d9488"
-          icon={<CheckCircle2 className="size-3" />}
-        />
-        <CardSection
-          label="แผนงานวันนี้"
-          text={r.plan}
-          clamp={!expanded}
-          accent="#2563eb"
-          icon={<Target className="size-3" />}
-        />
-        {longContent && (
-          <button
-            onClick={() => setExpanded((e) => !e)}
-            className="self-start text-[12px] font-medium text-teal-600 hover:underline"
-          >
-            {expanded ? "ย่อลง" : "ดูเพิ่มเติม"}
-          </button>
+        {r.items && r.items.length > 0 ? (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                งานที่ทำวันนี้ ({r.items.length})
+              </div>
+            </div>
+            <ReportItemsList items={expanded ? r.items : r.items.slice(0, 4)} />
+            {r.items.length > 4 && (
+              <button
+                onClick={() => setExpanded((e) => !e)}
+                className="self-start text-[12px] font-medium text-teal-600 hover:underline"
+              >
+                {expanded ? "ย่อลง" : `ดูอีก ${r.items.length - 4} งาน`}
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            {r.summary?.trim() && r.summary.trim() !== r.did?.trim() && (
+              <p className="text-[13.5px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100 [overflow-wrap:anywhere]">
+                {r.summary}
+              </p>
+            )}
+            {/* Blockers surface first when present — that's what managers triage. */}
+            {blocker && (
+              <CardSection label="ปัญหา / อุปสรรค" text={r.blockers} clamp={!expanded} accent="#f59e0b" highlight />
+            )}
+            <CardSection
+              label="งานที่ทำล่าสุด"
+              text={r.did}
+              clamp={!expanded}
+              accent="#0d9488"
+              icon={<CheckCircle2 className="size-3" />}
+            />
+            <CardSection
+              label="แผนงานวันนี้"
+              text={r.plan}
+              clamp={!expanded}
+              accent="#2563eb"
+              icon={<Target className="size-3" />}
+            />
+            {longContent && (
+              <button
+                onClick={() => setExpanded((e) => !e)}
+                className="self-start text-[12px] font-medium text-teal-600 hover:underline"
+              >
+                {expanded ? "ย่อลง" : "ดูเพิ่มเติม"}
+              </button>
+            )}
+          </>
         )}
         <RelatedTasksRow tasks={r.relatedTasks ?? []} />
       </div>
@@ -797,38 +813,33 @@ function ReportModal({
 
         {/* Body — every detail */}
         <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-6 py-5">
-          {report.summary?.trim() && (
-            <div className="rounded-xl border border-teal-100 bg-teal-50/70 px-4 py-3 dark:border-teal-900/40 dark:bg-teal-950/20">
-              <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-teal-700 dark:text-teal-300">
-                <FileText className="size-3" /> สรุป
+          {report.items && report.items.length > 0 ? (
+            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
+              <div className="mb-2.5 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+                <ListChecks className="size-3" /> งานที่ทำวันนี้ ({report.items.length})
               </div>
-              <p className="text-[13.5px] font-medium leading-relaxed text-teal-900 dark:text-teal-100 [overflow-wrap:anywhere]">
-                {report.summary}
-              </p>
+              <ReportItemsList items={report.items} />
             </div>
+          ) : (
+            <>
+              {report.summary?.trim() && (
+                <div className="rounded-xl border border-teal-100 bg-teal-50/70 px-4 py-3 dark:border-teal-900/40 dark:bg-teal-950/20">
+                  <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-teal-700 dark:text-teal-300">
+                    <FileText className="size-3" /> สรุป
+                  </div>
+                  <p className="text-[13.5px] font-medium leading-relaxed text-teal-900 dark:text-teal-100 [overflow-wrap:anywhere]">
+                    {report.summary}
+                  </p>
+                </div>
+              )}
+              {/* Blockers surface first when present */}
+              {blocker && (
+                <Section label="ปัญหา / อุปสรรค" text={report.blockers} highlight icon={<TriangleAlert className="size-3" />} />
+              )}
+              <Section label="งานที่ทำ" text={report.did} accent="#0d9488" icon={<CheckCircle2 className="size-3" />} />
+              <Section label="แผนงานถัดไป" text={report.plan} accent="#2563eb" icon={<Target className="size-3" />} />
+            </>
           )}
-
-          {/* Blockers surface first when present */}
-          {blocker && (
-            <Section
-              label="ปัญหา / อุปสรรค"
-              text={report.blockers}
-              highlight
-              icon={<TriangleAlert className="size-3" />}
-            />
-          )}
-          <Section
-            label="งานที่ทำ"
-            text={report.did}
-            accent="#0d9488"
-            icon={<CheckCircle2 className="size-3" />}
-          />
-          <Section
-            label="แผนงานถัดไป"
-            text={report.plan}
-            accent="#2563eb"
-            icon={<Target className="size-3" />}
-          />
 
           {report.relatedTasks && report.relatedTasks.length > 0 && (
             <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">

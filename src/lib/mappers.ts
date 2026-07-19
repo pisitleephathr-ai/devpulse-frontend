@@ -88,6 +88,22 @@ export type ApiReport = {
   project: ApiProject;
   /** optional tasks linked to this report (compact shape) */
   relatedTasks?: ApiRelatedTask[];
+  /** per-task work items (work + progress% + note) — the new primary content */
+  items?: ApiReportItem[];
+};
+/** One report line: work + progress% + note, optionally linked to a board task. */
+export type ApiReportItem = {
+  id: string;
+  title: string;
+  progress: number;
+  note: string;
+  taskId: string | null;
+  task?: {
+    id: string;
+    title: string;
+    status: TaskStatusEnum;
+    project: { id: string; code: string; color: string; name: string };
+  } | null;
 };
 /** Compact task shape embedded in a report's related-task list. */
 export type ApiRelatedTask = {
@@ -319,6 +335,21 @@ export function mapReport(r: ApiReport): Report {
       proj: t.project.code,
       projColor: t.project.color,
     })),
+    items: (r.items ?? []).map((it) => ({
+      id: it.id,
+      title: it.title,
+      progress: it.progress,
+      note: it.note,
+      task: it.task
+        ? {
+            id: it.task.id,
+            title: it.task.title,
+            status: TASK_STATUS_TO_LABEL[it.task.status],
+            proj: it.task.project.code,
+            projColor: it.task.project.color,
+          }
+        : null,
+    })),
   };
 }
 
@@ -375,16 +406,25 @@ export function leaveDurationLabel(days: number, half?: string | null): string {
 
 /* ---------------------------- Input DTO types -------------------------- */
 
+export type ReportItemInput = {
+  taskId?: string | null;
+  title: string;
+  progress: number;
+  note?: string;
+};
 export type ReportInput = {
   projectId: string;
   date?: string;
   summary?: string;
-  did: string;
+  /** legacy free-text; optional now — content comes from `items` */
+  did?: string;
   blockers?: string;
   plan?: string;
   status?: ReportStatusEnum;
   /** optional board tasks linked to this report */
   relatedTaskIds?: string[];
+  /** the per-task work items (new primary content) */
+  items?: ReportItemInput[];
 };
 export type TaskLinkInput = { title: string; url: string };
 export type TaskAttachmentInput = {

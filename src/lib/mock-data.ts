@@ -189,6 +189,21 @@ export type RelatedTask = {
   projColor: string;
 };
 
+/** One report line: a piece of work + how far it got today + an optional note. */
+export type ReportItemView = {
+  id: string;
+  title: string;
+  progress: number;
+  note: string;
+  task?: {
+    id: string;
+    title: string;
+    status: TaskStatus;
+    proj: string;
+    projColor: string;
+  } | null;
+};
+
 export type Report = {
   id: string;
   date: string;
@@ -202,6 +217,8 @@ export type Report = {
   plan: string;
   /** optional board tasks the author linked to this report */
   relatedTasks?: RelatedTask[];
+  /** per-task work items (work + progress% + note) — new primary content */
+  items?: ReportItemView[];
 };
 
 const REPORTS_SEED: Omit<Report, "id">[] = [

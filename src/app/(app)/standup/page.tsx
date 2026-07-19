@@ -24,6 +24,7 @@ import {
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/page-header";
+import { ReportItemsList } from "@/components/report-items";
 import { EmptyState } from "@/components/empty-state";
 import { api, ApiError } from "@/lib/api";
 import { toast } from "@/components/ui/toaster";
@@ -35,6 +36,7 @@ import type { ApiUserMini } from "@/lib/mappers";
 
 type Proj = { name: string; code: string; color: string };
 type MiniTask = { id: string; title: string; status: string; priority: string };
+type ReportItem = { id: string; title: string; progress: number; note: string };
 type Report = {
   id: string;
   user: ApiUserMini;
@@ -45,6 +47,7 @@ type Report = {
   status: string;
   reportCount?: number;
   tasks: MiniTask[];
+  items?: ReportItem[];
 };
 type Standup = {
   date: string;
@@ -360,17 +363,23 @@ function ReportRow({ r }: { r: Report }) {
           </span>
         )}
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="ที่ทำแล้ว" text={r.did} />
-        <Field label="วันนี้" text={r.plan} />
-      </div>
-      {hasBlocker && (
-        <div className="mt-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
-          <div className="mb-0.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-            <TriangleAlert className="size-3" /> อุปสรรค
+      {r.items && r.items.length > 0 ? (
+        <ReportItemsList items={r.items} />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="ที่ทำแล้ว" text={r.did} />
+            <Field label="วันนี้" text={r.plan} />
           </div>
-          <RichText text={r.blockers} className="text-[13px] leading-relaxed text-amber-900 dark:text-amber-200" />
-        </div>
+          {hasBlocker && (
+            <div className="mt-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
+              <div className="mb-0.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                <TriangleAlert className="size-3" /> อุปสรรค
+              </div>
+              <RichText text={r.blockers} className="text-[13px] leading-relaxed text-amber-900 dark:text-amber-200" />
+            </div>
+          )}
+        </>
       )}
       {r.tasks.length > 0 && (
         <div className="mt-2">
@@ -581,6 +590,17 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
             </div>
           ) : (
             <div className="mt-6 grid flex-1 grid-cols-1 gap-4 lg:grid-cols-2 lg:content-start">
+              {r.items && r.items.length > 0 ? (
+                <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 lg:col-span-2">
+                  <div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-teal-600">
+                    งานที่ทำวันนี้ ({r.items.length})
+                  </div>
+                  <div className="text-[16px] [&_*]:text-[15px] sm:[&_*]:text-[16px]">
+                    <ReportItemsList items={r.items} />
+                  </div>
+                </div>
+              ) : (
+                <>
               <StageSection title="งานที่ทำล่าสุด" text={r.did} tone="neutral" />
               <StageSection title="วันนี้จะทำอะไร" text={r.plan} tone="neutral" />
               <div className="lg:col-span-2">
@@ -597,6 +617,8 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
                   </div>
                 )}
               </div>
+                </>
+              )}
             </div>
           )}
         </div>
