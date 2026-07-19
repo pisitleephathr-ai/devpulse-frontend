@@ -192,6 +192,7 @@ export type RelatedTask = {
 /** One report line: a piece of work + how far it got today + an optional note. */
 export type ReportItemView = {
   id: string;
+  section: "DID" | "PLAN";
   title: string;
   progress: number;
   note: string;

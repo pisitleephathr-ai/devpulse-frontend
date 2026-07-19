@@ -24,7 +24,7 @@ import {
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/page-header";
-import { ReportItemsList } from "@/components/report-items";
+import { ReportItemsSections } from "@/components/report-items";
 import { EmptyState } from "@/components/empty-state";
 import { api, ApiError } from "@/lib/api";
 import { toast } from "@/components/ui/toaster";
@@ -36,7 +36,13 @@ import type { ApiUserMini } from "@/lib/mappers";
 
 type Proj = { name: string; code: string; color: string };
 type MiniTask = { id: string; title: string; status: string; priority: string };
-type ReportItem = { id: string; title: string; progress: number; note: string };
+type ReportItem = {
+  id: string;
+  section?: "DID" | "PLAN";
+  title: string;
+  progress: number;
+  note: string;
+};
 type Report = {
   id: string;
   user: ApiUserMini;
@@ -364,7 +370,7 @@ function ReportRow({ r }: { r: Report }) {
         )}
       </div>
       {r.items && r.items.length > 0 ? (
-        <ReportItemsList items={r.items} />
+        <ReportItemsSections items={r.items} />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -596,7 +602,7 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
                     งานที่ทำวันนี้ ({r.items.length})
                   </div>
                   <div className="text-[16px] [&_*]:text-[15px] sm:[&_*]:text-[16px]">
-                    <ReportItemsList items={r.items} />
+                    <ReportItemsSections items={r.items} />
                   </div>
                 </div>
               ) : (

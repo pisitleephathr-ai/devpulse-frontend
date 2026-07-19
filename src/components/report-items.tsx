@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 /** Minimal shape needed to render a report item's progress row. */
 export type DisplayReportItem = {
   id: string;
+  section?: "DID" | "PLAN";
   title: string;
   progress: number;
   note: string;
@@ -56,6 +57,41 @@ export function ReportItemsList({
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Report items split into the two sections (งานที่ทำล่าสุด / แผนงานวันนี้). Falls
+ * back to a single list when no items carry a section (older data).
+ */
+export function ReportItemsSections({ items }: { items: DisplayReportItem[] }) {
+  const did = items.filter((i) => i.section !== "PLAN");
+  const plan = items.filter((i) => i.section === "PLAN");
+  if (!plan.length) return <ReportItemsList items={items} />;
+  return (
+    <div className="flex flex-col gap-3">
+      {did.length > 0 && (
+        <div>
+          <SectionLabel dot="#0d9488" label="งานที่ทำล่าสุด" n={did.length} />
+          <ReportItemsList items={did} compact />
+        </div>
+      )}
+      {plan.length > 0 && (
+        <div>
+          <SectionLabel dot="#2563eb" label="แผนงานวันนี้" n={plan.length} />
+          <ReportItemsList items={plan} compact />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionLabel({ dot, label, n }: { dot: string; label: string; n: number }) {
+  return (
+    <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+      <span className="size-2 rounded-full" style={{ background: dot }} />
+      {label} ({n})
     </div>
   );
 }

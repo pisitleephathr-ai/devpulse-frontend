@@ -94,6 +94,7 @@ export type ApiReport = {
 /** One report line: work + progress% + note, optionally linked to a board task. */
 export type ApiReportItem = {
   id: string;
+  section: "DID" | "PLAN";
   title: string;
   progress: number;
   note: string;
@@ -337,6 +338,7 @@ export function mapReport(r: ApiReport): Report {
     })),
     items: (r.items ?? []).map((it) => ({
       id: it.id,
+      section: it.section === "PLAN" ? "PLAN" : "DID",
       title: it.title,
       progress: it.progress,
       note: it.note,
@@ -407,6 +409,7 @@ export function leaveDurationLabel(days: number, half?: string | null): string {
 /* ---------------------------- Input DTO types -------------------------- */
 
 export type ReportItemInput = {
+  section?: "DID" | "PLAN";
   taskId?: string | null;
   title: string;
   progress: number;

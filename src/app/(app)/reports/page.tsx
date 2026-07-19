@@ -29,7 +29,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ReportForm } from "@/components/forms/report-form";
-import { ReportItemsList } from "@/components/report-items";
+import { ReportItemsSections } from "@/components/report-items";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -546,18 +546,15 @@ function ReportCard({
       <div className="flex flex-1 flex-col gap-3.5 px-4 py-4">
         {r.items && r.items.length > 0 ? (
           <>
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                งานที่ทำวันนี้ ({r.items.length})
-              </div>
-            </div>
-            <ReportItemsList items={expanded ? r.items : r.items.slice(0, 4)} />
-            {r.items.length > 4 && (
+            <ReportItemsSections
+              items={expanded ? r.items : r.items.slice(0, 5)}
+            />
+            {r.items.length > 5 && (
               <button
                 onClick={() => setExpanded((e) => !e)}
                 className="self-start text-[12px] font-medium text-teal-600 hover:underline"
               >
-                {expanded ? "ย่อลง" : `ดูอีก ${r.items.length - 4} งาน`}
+                {expanded ? "ย่อลง" : `ดูอีก ${r.items.length - 5} งาน`}
               </button>
             )}
           </>
@@ -815,10 +812,7 @@ function ReportModal({
         <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-6 py-5">
           {report.items && report.items.length > 0 ? (
             <div className="rounded-xl border border-border bg-muted/20 px-4 py-3.5">
-              <div className="mb-2.5 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-                <ListChecks className="size-3" /> งานที่ทำวันนี้ ({report.items.length})
-              </div>
-              <ReportItemsList items={report.items} />
+              <ReportItemsSections items={report.items} />
             </div>
           ) : (
             <>
