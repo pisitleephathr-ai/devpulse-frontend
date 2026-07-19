@@ -104,5 +104,30 @@ export function useNotifications() {
     }
   }, []);
 
-  return { items, unread, loading, error, refresh, markRead, markAllRead };
+  const remove = useCallback(async (id: string) => {
+    setItems((prev) => {
+      const target = prev.find((n) => n.id === id);
+      if (target && !target.isRead) setUnread((u) => Math.max(0, u - 1));
+      return prev.filter((n) => n.id !== id);
+    });
+    seenIds.current.delete(id);
+    try {
+      await api.del(`/api/notifications/${id}`);
+    } catch {
+      /* optimistic; next poll reconciles */
+    }
+  }, []);
+
+  const clearAll = useCallback(async () => {
+    setItems([]);
+    setUnread(0);
+    seenIds.current = new Set();
+    try {
+      await api.del("/api/notifications");
+    } catch {
+      /* optimistic; next poll reconciles */
+    }
+  }, []);
+
+  return { items, unread, loading, error, refresh, markRead, markAllRead, remove, clearAll };
 }

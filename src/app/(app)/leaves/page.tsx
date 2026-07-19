@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { usePersistedState } from "@/lib/use-persisted-state";
-import Link from "next/link";
 import { Plus, CalendarClock } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { LeaveForm } from "@/components/forms/leave-form";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
@@ -31,10 +31,11 @@ import { X } from "lucide-react";
 const TEMPLATE = "160px 96px 150px 92px minmax(170px,1fr) 104px 172px";
 
 export default function LeavesPage() {
-  const { leaves, users, loading, setLeaveStatus } = useData();
+  const { leaves, users, loading, setLeaveStatus, addLeave } = useData();
   const me = useCurrentUser();
   // Anyone with approval rights can decide any pending leave — including their own.
   const canApprove = canApproveLeave(me);
+  const [creating, setCreating] = useState(false);
 
   const [search, setSearch] = usePersistedState("leaves.search", "");
   const [member, setMember] = usePersistedState("leaves.member", "all");
@@ -76,10 +77,10 @@ export default function LeavesPage() {
         eyebrow="LEAVE REQUESTS"
         title="คำขอลา"
         actions={
-          <Link href="/leaves/new" className={buttonVariants()}>
+          <Button onClick={() => setCreating(true)}>
             <Plus className="size-3.5" strokeWidth={2.4} />
             ขอลา
-          </Link>
+          </Button>
         }
       />
 
@@ -89,18 +90,21 @@ export default function LeavesPage() {
           onChange={setSearch}
           placeholder="ค้นหาชื่อ เหตุผล…"
         />
-        <Select
-          className="w-auto py-[7px] text-[12.5px]"
-          value={member}
-          onChange={(e) => setMember(e.target.value)}
-        >
-          <option value="all">สมาชิกทั้งหมด</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.name}>
-              {u.name}
-            </option>
-          ))}
-        </Select>
+        {/* Member filter only for approvers — others see just their own leaves. */}
+        {canApprove && (
+          <Select
+            className="w-auto py-[7px] text-[12.5px]"
+            value={member}
+            onChange={(e) => setMember(e.target.value)}
+          >
+            <option value="all">สมาชิกทั้งหมด</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.name}>
+                {u.name}
+              </option>
+            ))}
+          </Select>
+        )}
         <Select
           className="w-auto py-[7px] text-[12.5px]"
           value={type}
@@ -278,6 +282,27 @@ export default function LeavesPage() {
               </p>
             </DetailField>
           </div>
+        )}
+      </Dialog>
+
+      {/* Create leave request */}
+      <Dialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="ขอลา"
+        description="ส่งคำขอลาให้หัวหน้าทีมพิจารณา"
+      >
+        {creating && (
+          <LeaveForm
+            onSubmit={async (data) => {
+              const ok = await addLeave(data);
+              if (ok) {
+                setCreating(false);
+                toast("ส่งคำขอลาแล้ว — รอการอนุมัติ");
+              }
+            }}
+            onCancel={() => setCreating(false)}
+          />
         )}
       </Dialog>
     </div>

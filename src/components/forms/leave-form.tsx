@@ -145,12 +145,6 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
         />
       </Field>
 
-      <Field label="ไฟล์แนบ" hint="ไม่บังคับ">
-        <div className="cursor-pointer rounded-lg border-[1.5px] border-dashed border-zinc-300 p-[18px] text-center text-[12.5px] text-zinc-400 transition-colors hover:border-teal-600 hover:bg-teal-50 hover:text-teal-600">
-          วางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์
-        </div>
-      </Field>
-
       <FormActions>
         <Button
           type="button"
