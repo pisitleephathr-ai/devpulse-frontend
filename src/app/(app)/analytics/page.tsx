@@ -21,6 +21,8 @@ import {
   Flame,
   ArrowDownRight,
   Repeat,
+  GitCompareArrows,
+  Hourglass,
 } from "lucide-react";
 
 /* ------------------------------- API types ------------------------------ */
@@ -94,6 +96,31 @@ type VelocityResp = {
   };
 };
 
+type FlowAssignee = { id: string; name: string; avatarKey: string };
+type FlowResp = {
+  weeks: number;
+  aging: {
+    buckets: { key: string; label: string; count: number }[];
+    avgDays: number;
+    openTotal: number;
+    stalest: {
+      id: string;
+      title: string;
+      status: string;
+      ageDays: number;
+      project: Proj | null;
+      assignees: FlowAssignee[];
+    }[];
+  };
+  flow: {
+    series: { weekStart: string; created: number; completed: number }[];
+    openNow: number;
+    totalCreated: number;
+    totalCompleted: number;
+    net: number;
+  };
+};
+
 /* --------------------------- validated palette --------------------------- */
 // Data-mark colors validated with the dataviz palette validator.
 // Brand accent (single-series magnitude): teal — visible on both surfaces.
@@ -104,6 +131,23 @@ const C_GOOD = "#0ca30c";
 const C_WARN = "#fab219";
 const C_CRIT = "#d03b3b";
 const C_MUTED = "#a1a1aa";
+const C_SERIOUS = "#ec835a";
+// Intake series for the flow chart (blue) — validated adjacent to teal.
+const BLUE = "#2a78d6";
+// Aging heat ramp, calm→alarm, one per age bucket (labels carry the meaning).
+const AGE_COLORS = [C_GOOD, "#65a30d", C_WARN, C_SERIOUS, C_CRIT];
+function ageColor(days: number) {
+  return days >= 14 ? C_CRIT : days >= 7 ? C_SERIOUS : days >= 3 ? C_WARN : C_GOOD;
+}
+
+// Task status → Thai label + dot color (for the "stalest" list).
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  TODO: { label: "รอดำเนินการ", color: "#a1a1aa" },
+  IN_PROGRESS: { label: "กำลังทำ", color: "#3b82f6" },
+  REVIEW: { label: "รอตรวจ", color: "#8b5cf6" },
+  READY_TO_TEST: { label: "พร้อมทดสอบ", color: "#06b6d4" },
+  DONE: { label: "เสร็จแล้ว", color: "#10b981" },
+};
 // Blue ordinal ramp (pipeline stages, TODO→Done). Theme-aware light/dark steps
 // applied via CSS custom properties on the wrapper (see STAGE_VARS).
 const STAGE_KEYS = ["--st1", "--st2", "--st3", "--st4", "--st5"] as const;
@@ -123,6 +167,8 @@ export default function AnalyticsPage() {
   const [trendErr, setTrendErr] = useState(false);
   const [vel, setVel] = useState<VelocityResp | null>(null);
   const [velErr, setVelErr] = useState(false);
+  const [flowData, setFlowData] = useState<FlowResp | null>(null);
+  const [flowErr, setFlowErr] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -134,6 +180,10 @@ export default function AnalyticsPage() {
       .get<VelocityResp>("/api/dashboard/velocity?weeks=8")
       .then((r) => alive && setVel(r))
       .catch(() => alive && setVelErr(true));
+    api
+      .get<FlowResp>("/api/dashboard/flow?weeks=8")
+      .then((r) => alive && setFlowData(r))
+      .catch(() => alive && setFlowErr(true));
     return () => {
       alive = false;
     };
@@ -386,6 +436,43 @@ export default function AnalyticsPage() {
             <div className="h-44 animate-pulse rounded-lg bg-muted" />
           ) : (
             <CycleTime cycle={vel.cycleTime} />
+          )}
+        </Panel>
+      </div>
+
+      {/* Flow (intake vs throughput) + aging */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Panel
+          title="ไหลเข้า vs ไหลออก"
+          subtitle={
+            flowData
+              ? `เปิดค้างตอนนี้ ${flowData.flow.openNow} · ${flowData.weeks} สัปดาห์`
+              : "งานเปิดใหม่ vs งานที่ปิด"
+          }
+          icon={<GitCompareArrows className="size-4" />}
+        >
+          {flowErr ? (
+            <Empty text="โหลดข้อมูลไม่สำเร็จ" />
+          ) : !flowData ? (
+            <div className="h-52 animate-pulse rounded-lg bg-muted" />
+          ) : (
+            <FlowChart data={flowData} />
+          )}
+        </Panel>
+
+        <Panel
+          title="อายุงานค้าง (Aging)"
+          subtitle={flowData ? `ค้างเฉลี่ย ${flowData.aging.avgDays} วัน · ${flowData.aging.openTotal} งาน` : "ค้างในคอลัมน์ปัจจุบันนานแค่ไหน"}
+          icon={<Hourglass className="size-4" />}
+        >
+          {flowErr ? (
+            <Empty text="โหลดข้อมูลไม่สำเร็จ" />
+          ) : !flowData ? (
+            <div className="h-52 animate-pulse rounded-lg bg-muted" />
+          ) : flowData.aging.openTotal === 0 ? (
+            <Empty text="ไม่มีงานค้าง 🎉" />
+          ) : (
+            <Aging data={flowData.aging} />
           )}
         </Panel>
       </div>
@@ -898,6 +985,151 @@ function CycleTime({ cycle }: { cycle: VelocityResp["cycleTime"] }) {
           <div className="text-[10.5px] text-muted-foreground">งานที่ปิด</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ============================== Flow chart ============================= */
+
+function FlowChart({ data }: { data: FlowResp }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const s = data.flow.series;
+  const n = s.length;
+
+  const W = 720;
+  const H = 210;
+  const PADX = 10;
+  const PADT = 14;
+  const PADB = 26;
+  const plotH = H - PADT - PADB;
+  const maxY = Math.max(...s.map((d) => Math.max(d.created, d.completed)), 1);
+  const slot = (W - 2 * PADX) / n;
+  const pairW = Math.min(48, slot * 0.66);
+  const barW = (pairW - 3) / 2;
+  const yFor = (v: number) => PADT + (1 - v / maxY) * plotH;
+  const baseY = yFor(0);
+  const labelEvery = Math.max(1, Math.ceil(n / 8));
+
+  function onMove(e: React.MouseEvent) {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const ratio = (e.clientX - rect.left) / rect.width;
+    setHover(Math.max(0, Math.min(n - 1, Math.floor(ratio * n))));
+  }
+  const hoverPt = hover !== null ? s[hover] : null;
+
+  const netUp = data.flow.net > 0; // backlog grew
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11.5px]">
+        <LegendDot color={BLUE} label="เปิดใหม่" />
+        <LegendDot color={TEAL} label="ปิดงาน" />
+        <span
+          className={`flex items-center gap-1 font-medium ${netUp ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}
+        >
+          {netUp ? "backlog เพิ่ม" : "backlog ลด"} {netUp ? "+" : ""}{data.flow.net}
+        </span>
+      </div>
+
+      <div ref={wrapRef} className="relative" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block overflow-visible">
+          {s.map((d, i) => {
+            const cx = PADX + slot * i + slot / 2;
+            const x0 = cx - pairW / 2;
+            const hCreated = d.created > 0 ? Math.max(2, baseY - yFor(d.created)) : 0;
+            const hDone = d.completed > 0 ? Math.max(2, baseY - yFor(d.completed)) : 0;
+            const dim = hover !== null && hover !== i;
+            return (
+              <g key={d.weekStart}>
+                {hCreated > 0 && (
+                  <rect x={x0} y={yFor(d.created)} width={barW} height={hCreated} rx="3" fill={BLUE} opacity={dim ? 0.45 : 1} />
+                )}
+                {hDone > 0 && (
+                  <rect x={x0 + barW + 3} y={yFor(d.completed)} width={barW} height={hDone} rx="3" fill={TEAL} opacity={dim ? 0.45 : 1} />
+                )}
+                {i % labelEvery === 0 && (
+                  <text x={cx} y={H - 8} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 10 }}>
+                    {thaiDateShortFromISO(d.weekStart)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {hover !== null && hoverPt && (
+          <div
+            className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11.5px] shadow-lg"
+            style={{ left: `${((PADX + slot * hover + slot / 2) / W) * 100}%`, top: 0 }}
+          >
+            <div className="font-semibold">สัปดาห์ {thaiDateShortFromISO(hoverPt.weekStart)}</div>
+            <div style={{ color: BLUE }}>เปิดใหม่ {hoverPt.created}</div>
+            <div className="text-teal-600 dark:text-teal-400">ปิด {hoverPt.completed}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================== Aging ================================= */
+
+function Aging({ data }: { data: FlowResp["aging"] }) {
+  const max = Math.max(...data.buckets.map((b) => b.count), 1);
+  return (
+    <div className="flex flex-col gap-4">
+      {/* bucket bars */}
+      <div className="flex flex-col gap-2">
+        {data.buckets.map((b, i) => (
+          <div key={b.key} className="flex items-center gap-2.5">
+            <span className="w-16 flex-none text-[11.5px] text-muted-foreground">{b.label}</span>
+            <div className="h-4 flex-1 overflow-hidden rounded-md bg-muted">
+              <div
+                className="h-full rounded-md"
+                style={{ width: `${b.count > 0 ? Math.max(4, (b.count / max) * 100) : 0}%`, background: AGE_COLORS[i] }}
+              />
+            </div>
+            <span className="w-6 flex-none text-right text-[12.5px] font-bold tabular-nums">{b.count}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* stalest tasks */}
+      {data.stalest.length > 0 && (
+        <div className="border-t border-hairline pt-3">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            ค้างเงียบนานสุด
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {data.stalest.slice(0, 6).map((t) => {
+              const st = STATUS_META[t.status] ?? { label: t.status, color: C_MUTED };
+              const col = ageColor(t.ageDays);
+              return (
+                <div key={t.id} className="flex items-center gap-2.5">
+                  <span
+                    className="flex-none rounded-md px-1.5 py-0.5 text-[10.5px] font-bold tabular-nums"
+                    style={{ background: `${col}1f`, color: col }}
+                  >
+                    {t.ageDays}ว
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-zinc-700 dark:text-zinc-200">{t.title}</span>
+                  <span className="flex flex-none items-center gap-1 text-[10.5px] text-muted-foreground">
+                    <span className="size-1.5 rounded-full" style={{ background: st.color }} />
+                    {st.label}
+                  </span>
+                  {t.project && (
+                    <span className="flex-none text-[10.5px] font-semibold" style={{ color: t.project.color }}>
+                      {t.project.code}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
