@@ -242,8 +242,9 @@ export default function RolesPage() {
                 assignable: data.assignable,
                 // Menu visibility is navigation-only — editable for every role.
                 menuAccess: data.menuAccess,
-                // System-role permissions are fixed (backend rejects edits).
-                ...(editing.isSystem ? {} : { permissions: data.permissions }),
+                // Capabilities are editable for every role except ADMIN, whose
+                // full access is fixed (the backend enforces the same rule).
+                ...(editing.code === "ADMIN" ? {} : { permissions: data.permissions }),
               });
               if (ok) {
                 setEditing(null);
@@ -298,8 +299,10 @@ function RoleForm({
   const [assignable, setAssignable] = useState(role?.assignable !== false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = !!role;
-  // System roles have fixed capabilities — the backend rejects permission edits.
-  const canEditPerms = !role?.isSystem;
+  // Only the ADMIN role's capabilities are locked (it must stay full to prevent
+  // self-lockout). Every other role — including built-in worker roles — can be
+  // granted/removed fine-grained capabilities.
+  const canEditPerms = role?.code !== "ADMIN";
 
   // Admin roles keep the role/settings menus locked on (no self-lockout).
   const isAdminRole =
@@ -364,7 +367,7 @@ function RoleForm({
       <Field label="คำอธิบาย" hint="ไม่บังคับ">
         <Input value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
-      <Field label="สิทธิ์การเข้าถึง" hint={canEditPerms ? "ไม่บังคับ" : "บทบาทระบบ — แก้ไขไม่ได้"}>
+      <Field label="สิทธิ์การเข้าถึง" hint={canEditPerms ? "ไม่บังคับ" : "บทบาทผู้ดูแลระบบ — สิทธิ์เต็มเสมอ"}>
         <div className="flex flex-col gap-1.5">
           {PERMISSION_OPTIONS.map((p) => (
             <label
