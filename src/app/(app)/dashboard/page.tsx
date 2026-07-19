@@ -57,12 +57,14 @@ type Insights = {
     totalMembers: number;
     submitted: ApiUserMini[];
     missing: ApiUserMini[];
+    onLeave?: ApiUserMini[];
   };
   topBlockers: { id: string; text: string; author: ApiUserMini; project: Proj; date: string }[];
   workload: {
     id: string;
     name: string;
     avatarKey: string;
+    onLeave?: boolean;
     todo: number;
     inProgress: number;
     review: number;
@@ -555,10 +557,19 @@ function WorkloadRow({
         </div>
         {showReport && (
           <div className="flex items-center gap-1 text-[10.5px]">
-            <span className={cn("size-1.5 rounded-full", submitted ? "bg-emerald-500" : "bg-amber-400")} />
-            <span className={submitted ? "text-emerald-600" : "text-amber-600"}>
-              {submitted ? "ส่งรายงานแล้ว" : "ยังไม่ส่ง"}
-            </span>
+            {w.onLeave && !submitted ? (
+              <>
+                <span className="size-1.5 rounded-full bg-sky-400" />
+                <span className="text-sky-600 dark:text-sky-400">ลา</span>
+              </>
+            ) : (
+              <>
+                <span className={cn("size-1.5 rounded-full", submitted ? "bg-emerald-500" : "bg-amber-400")} />
+                <span className={submitted ? "text-emerald-600" : "text-amber-600"}>
+                  {submitted ? "ส่งรายงานแล้ว" : "ยังไม่ส่ง"}
+                </span>
+              </>
+            )}
           </div>
         )}
       </div>

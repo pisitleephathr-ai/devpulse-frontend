@@ -53,6 +53,7 @@ type Standup = {
   stats: {
     submitted: number;
     missing: number;
+    onLeave?: number;
     exempt: number;
     totalRequired: number;
     blockers: number;
@@ -60,6 +61,7 @@ type Standup = {
   };
   submittedReports: Report[];
   missingUsers: ApiUserMini[];
+  onLeaveUsers?: ApiUserMini[];
   exemptUsers: ApiUserMini[];
   blockers: { id: string; user: ApiUserMini; text: string; project: Proj | null }[];
 };
@@ -266,6 +268,23 @@ function Overview({
                       {u.name}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* On approved leave today — not expected to report. */}
+              {(data.onLeaveUsers?.length ?? 0) > 0 && (
+                <div className="mt-3 border-t border-hairline-soft pt-3">
+                  <div className="mb-1.5 text-[11.5px] font-medium text-muted-foreground">
+                    ลาวันนี้ ({data.onLeaveUsers!.length}) — ไม่ต้องส่งรายงาน
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {data.onLeaveUsers!.map((u) => (
+                      <span key={u.id} className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 py-0.5 pl-0.5 pr-2 text-[12px] text-sky-800 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-300">
+                        <Avatar userKey={u.avatarKey} size={18} fontSize={8} />
+                        {u.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
