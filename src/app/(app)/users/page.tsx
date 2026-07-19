@@ -18,7 +18,7 @@ import { TableRowsSkeleton } from "@/components/skeletons";
 import { UserForm } from "@/components/forms/user-form";
 import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
-import { ROLE_COLORS, type User } from "@/lib/mock-data";
+import { roleColors, type User } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { canManageUsers, isAdmin } from "@/lib/permissions";
 import { roleNameOf } from "@/lib/mappers";
@@ -163,7 +163,7 @@ export default function UsersPage() {
                 <span className="justify-self-start" style={{ opacity }}>
                   <StatusBadge
                     label={u.role}
-                    colors={ROLE_COLORS[u.role]}
+                    colors={roleColors(u.role)}
                     shape="tag"
                   />
                 </span>

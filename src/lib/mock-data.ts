@@ -80,6 +80,25 @@ export const ROLE_COLORS: Record<string, [string, string]> = {
   QA: ["#f3e8ff", "#7e22ce"],
 };
 
+/** Deterministic fallback palette for roles not in the built-in ROLE_COLORS
+ *  (e.g. custom roles created from the roles page). */
+const ROLE_FALLBACK_COLORS: [string, string][] = [
+  ["#e0e7ff", "#4338ca"],
+  ["#dcfce7", "#15803d"],
+  ["#fef3c7", "#b45309"],
+  ["#f3e8ff", "#7e22ce"],
+  ["#dbeafe", "#1d4ed8"],
+  ["#ffe4e6", "#be123c"],
+];
+
+/** Badge colors for a role name — built-in palette, else a stable per-name color. */
+export function roleColors(name: string): [string, string] {
+  if (ROLE_COLORS[name]) return ROLE_COLORS[name];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return ROLE_FALLBACK_COLORS[Math.abs(hash) % ROLE_FALLBACK_COLORS.length];
+}
+
 /* ------------------------------------------------------------------ */
 /* Current user                                                        */
 /* ------------------------------------------------------------------ */

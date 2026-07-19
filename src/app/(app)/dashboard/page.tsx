@@ -251,7 +251,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap gap-2">
         {canCreateTask && <QuickAction href="/tasks" icon={<KanbanSquare className="size-4" />} label="สร้างงาน" />}
         <QuickAction href="/reports/new" icon={<Plus className="size-4" />} label="เขียนรายงาน" />
-        <QuickAction href="/leaves/new" icon={<CalendarClock className="size-4" />} label="ขอลา" />
+        <QuickAction href="/leaves?new=1" icon={<CalendarClock className="size-4" />} label="ขอลา" />
         <QuickAction href="/reports" icon={<FileText className="size-4" />} label="ดูรายงาน" />
       </div>
 

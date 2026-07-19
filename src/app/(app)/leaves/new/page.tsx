@@ -25,7 +25,7 @@ export default function CreateLeavePage() {
 
         <div className="mb-1 text-[19px] font-bold tracking-[-0.02em]">ขอลา</div>
         <div className="mb-[18px] text-[13px] text-zinc-500">
-          คุณเหลือวันลาพักร้อน 14 วันในปีนี้
+          ส่งคำขอลาให้หัวหน้าทีมพิจารณา
         </div>
 
         <FormCard>

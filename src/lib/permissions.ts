@@ -74,6 +74,9 @@ export function canAccessMenu(user: AuthUser | null, menuKey: string): boolean {
 
   const allowed = MENU_ACCESS[menuKey];
   if (!allowed) return true; // unknown menu → allow
+  // Menus common to everyone stay visible to ANY role — including custom role
+  // codes that aren't in the built-in ALL_ROLES list.
+  if (isCommonMenu(menuKey)) return true;
   return allowed.includes(roleCode(user));
 }
 

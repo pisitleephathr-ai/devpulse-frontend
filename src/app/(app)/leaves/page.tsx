@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/lib/use-persisted-state";
 import { Plus, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,13 @@ export default function LeavesPage() {
   // Anyone with approval rights can decide any pending leave — including their own.
   const canApprove = canApproveLeave(me);
   const [creating, setCreating] = useState(false);
+  // Open the create modal when arriving via ?new=1 (e.g. the dashboard shortcut).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("new") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCreating(true);
+    }
+  }, []);
 
   const [search, setSearch] = usePersistedState("leaves.search", "");
   const [member, setMember] = usePersistedState("leaves.member", "all");
