@@ -306,6 +306,7 @@ export default function DashboardPage() {
                   w={w}
                   submitted={submittedIds.has(w.id)}
                   hasBlocker={blockerAuthorIds.has(w.id)}
+                  showReport={r?.isWorkingDay !== false}
                 />
               ))
             )}
@@ -537,10 +538,12 @@ function WorkloadRow({
   w,
   submitted,
   hasBlocker,
+  showReport,
 }: {
   w: Insights["workload"][number];
   submitted: boolean;
   hasBlocker: boolean;
+  showReport: boolean;
 }) {
   const percent = w.total ? Math.round((w.done / w.total) * 100) : 0;
   return (
@@ -551,12 +554,14 @@ function WorkloadRow({
           <span className="truncate text-[13px] font-semibold">{w.name}</span>
           {hasBlocker && <TriangleAlert className="size-3 flex-none text-amber-500" aria-label="มีอุปสรรค" />}
         </div>
-        <div className="flex items-center gap-1 text-[10.5px]">
-          <span className={cn("size-1.5 rounded-full", submitted ? "bg-emerald-500" : "bg-amber-400")} />
-          <span className={submitted ? "text-emerald-600" : "text-amber-600"}>
-            {submitted ? "ส่งรายงานแล้ว" : "ยังไม่ส่ง"}
-          </span>
-        </div>
+        {showReport && (
+          <div className="flex items-center gap-1 text-[10.5px]">
+            <span className={cn("size-1.5 rounded-full", submitted ? "bg-emerald-500" : "bg-amber-400")} />
+            <span className={submitted ? "text-emerald-600" : "text-amber-600"}>
+              {submitted ? "ส่งรายงานแล้ว" : "ยังไม่ส่ง"}
+            </span>
+          </div>
+        )}
       </div>
       <div className="flex flex-1 flex-wrap items-center gap-1">
         {PILLS.map((p) =>

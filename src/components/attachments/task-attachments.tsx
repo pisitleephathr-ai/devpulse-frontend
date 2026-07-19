@@ -47,10 +47,16 @@ type Rendered = { att: ApiTaskAttachment; isImage: boolean; href: string };
  */
 export function TaskAttachments({ taskId, initialAttachments = [], canManage }: Props) {
   const me = useCurrentUser();
-  const { users } = useData();
+  const { users, setTaskAttachmentCount } = useData();
   const { config } = useUploadConfig();
   const { attachments, usage, refresh } = useTaskAttachments(taskId, initialAttachments);
   const [adding, setAdding] = useState(false);
+
+  // Keep the board card's attachment count in sync with what's actually here
+  // (after uploads/deletes), so the paperclip badge never goes stale.
+  useEffect(() => {
+    setTaskAttachmentCount(taskId, attachments.length);
+  }, [attachments.length, taskId, setTaskAttachmentCount]);
 
   const remaining = usage
     ? { files: usage.remainingFileCount, bytes: usage.remainingBytes }

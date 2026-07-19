@@ -68,6 +68,8 @@ type DataContextValue = {
   updateTask: (id: string, data: Partial<TaskInput>) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
   moveTask: (id: string, statusLabel: TaskStatus) => Promise<boolean>;
+  /** Keep a board card's attachment count in sync after an upload/delete. */
+  setTaskAttachmentCount: (id: string, count: number) => void;
 
   addLeave: (data: LeaveInput) => Promise<boolean>;
   /** statusLabel is the Thai label ("อนุมัติแล้ว" / "ปฏิเสธ"). */
@@ -276,6 +278,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }),
     [run]
   );
+  const setTaskAttachmentCount = useCallback((id: string, count: number) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, attachmentCount: count } : t))
+    );
+  }, []);
 
   /* ------------------------------ Leaves ---------------------------- */
   const addLeave = useCallback(
@@ -396,6 +403,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      setTaskAttachmentCount,
       addLeave,
       setLeaveStatus,
       addUser,
@@ -427,6 +435,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      setTaskAttachmentCount,
       addLeave,
       setLeaveStatus,
       addUser,
