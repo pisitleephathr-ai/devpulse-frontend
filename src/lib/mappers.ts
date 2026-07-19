@@ -38,6 +38,8 @@ export type ApiRole = {
   assignable?: boolean;
   /** sidebar menu keys this role may see ([] / undefined = inherit defaults) */
   menuAccess?: string[];
+  /** personal-LINE notification types allowed ([] / undefined = all allowed) */
+  lineNotifications?: string[];
   _count?: { users: number };
 };
 
@@ -433,6 +435,7 @@ export type RoleInput = {
   permissions?: string[];
   assignable?: boolean;
   menuAccess?: string[];
+  lineNotifications?: string[];
 };
 export type RoleUpdateInput = Partial<{
   name: string;
@@ -441,4 +444,5 @@ export type RoleUpdateInput = Partial<{
   permissions: string[];
   assignable: boolean;
   menuAccess: string[];
+  lineNotifications: string[];
 }>;

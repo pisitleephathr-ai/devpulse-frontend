@@ -34,8 +34,17 @@ type LineStatus = {
   linkedAt: string | null;
   lineEnabled: boolean;
   addFriendUrl: string | null;
+  /** notification keys this user's role allows (drives which toggles show) */
+  available: (keyof LinePrefs)[];
   prefs: LinePrefs;
 };
+
+/** Notification toggle metadata (only the role-allowed ones are shown). */
+const NOTIF_TOGGLES: { key: keyof LinePrefs; label: string; hint: string }[] = [
+  { key: "taskAssigned", label: "งานที่ได้รับมอบหมาย", hint: "เมื่อมีคนมอบหมายงานให้คุณ" },
+  { key: "leaveDecision", label: "ผลอนุมัติการลา", hint: "เมื่อคำขอลาของคุณถูกอนุมัติ/ปฏิเสธ" },
+  { key: "reportReminder", label: "เตือนส่งรายงานประจำวัน", hint: "เมื่อผู้จัดการกดเตือนและคุณยังไม่ส่ง" },
+];
 type LinkCode = { code: string; expiresAt: string; addFriendUrl: string | null };
 
 function formatThaiDate(iso: string): string {
@@ -331,27 +340,32 @@ export default function ProfilePage() {
                   เลือกได้ว่าจะรับแจ้งเตือนอะไรบ้างทาง LINE ส่วนตัว
                 </p>
 
-                {/* Per-user DM preferences */}
-                <div className="divide-y divide-hairline rounded-xl border border-hairline">
-                  <SwitchRow
-                    label="งานที่ได้รับมอบหมาย"
-                    hint="เมื่อมีคนมอบหมายงานให้คุณ"
-                    checked={line.prefs.taskAssigned}
-                    onChange={(v) => updatePref("taskAssigned", v)}
-                  />
-                  <SwitchRow
-                    label="ผลอนุมัติการลา"
-                    hint="เมื่อคำขอลาของคุณถูกอนุมัติ/ปฏิเสธ"
-                    checked={line.prefs.leaveDecision}
-                    onChange={(v) => updatePref("leaveDecision", v)}
-                  />
-                  <SwitchRow
-                    label="เตือนส่งรายงานประจำวัน"
-                    hint="เมื่อผู้จัดการกดเตือนและคุณยังไม่ส่ง"
-                    checked={line.prefs.reportReminder}
-                    onChange={(v) => updatePref("reportReminder", v)}
-                  />
-                </div>
+                {/* Per-user DM preferences — only the types the role allows. */}
+                {(() => {
+                  const shown = NOTIF_TOGGLES.filter((t) =>
+                    line.available.includes(t.key)
+                  );
+                  if (!shown.length) {
+                    return (
+                      <p className="rounded-lg border border-hairline bg-muted/40 px-3 py-2.5 text-[12px] text-muted-foreground">
+                        บทบาทของคุณยังไม่เปิดการแจ้งเตือนส่วนตัวทาง LINE
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="divide-y divide-hairline rounded-xl border border-hairline">
+                      {shown.map((t) => (
+                        <SwitchRow
+                          key={t.key}
+                          label={t.label}
+                          hint={t.hint}
+                          checked={line.prefs[t.key]}
+                          onChange={(v) => updatePref(t.key, v)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" onClick={sendTestDm} disabled={lineBusy}>

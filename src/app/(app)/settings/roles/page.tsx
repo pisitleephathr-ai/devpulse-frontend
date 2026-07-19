@@ -58,6 +58,14 @@ const PERMISSION_LABEL: Record<string, string> = Object.fromEntries(
   PERMISSION_OPTIONS.map((p) => [p.value, p.label])
 );
 
+/** Personal-LINE notification types a role can be allowed to receive. */
+const NOTIF_OPTIONS = [
+  { value: "taskAssigned", label: "งานที่ได้รับมอบหมาย" },
+  { value: "leaveDecision", label: "ผลอนุมัติการลา" },
+  { value: "reportReminder", label: "เตือนส่งรายงานประจำวัน" },
+] as const;
+const ALL_NOTIF_KEYS = NOTIF_OPTIONS.map((n) => n.value);
+
 export default function RolesPage() {
   const { roles, loading, addRole, updateRole, deleteRole } = useData();
   const [adding, setAdding] = useState(false);
@@ -242,6 +250,8 @@ export default function RolesPage() {
                 assignable: data.assignable,
                 // Menu visibility is navigation-only — editable for every role.
                 menuAccess: data.menuAccess,
+                // Personal-LINE notification allow-list (editable for every role).
+                lineNotifications: data.lineNotifications,
                 // Capabilities are editable for every role except ADMIN, whose
                 // full access is fixed (the backend enforces the same rule).
                 ...(editing.code === "ADMIN" ? {} : { permissions: data.permissions }),
@@ -289,6 +299,7 @@ function RoleForm({
     permissions: string[];
     assignable: boolean;
     menuAccess: string[];
+    lineNotifications: string[];
   }) => void | Promise<boolean | void>;
   onCancel: () => void;
 }) {
@@ -316,11 +327,26 @@ function RoleForm({
         : defaultMenusForRole(role?.code ?? "")
     )
   );
+  // Empty saved list = all types allowed (default) → seed all checked.
+  const [notifs, setNotifs] = useState<Set<string>>(() =>
+    new Set(
+      role?.lineNotifications && role.lineNotifications.length > 0
+        ? role.lineNotifications
+        : ALL_NOTIF_KEYS
+    )
+  );
 
   const togglePerm = (p: string) =>
     setPermissions((cur) =>
       cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]
     );
+  const toggleNotif = (k: string) =>
+    setNotifs((cur) => {
+      const next = new Set(cur);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
   const toggleMenu = (k: string) =>
     setMenus((cur) => {
       const next = new Set(cur);
@@ -339,6 +365,9 @@ function RoleForm({
       for (const m of ADMIN_LOCKED_MENUS)
         if (!menuAccess.includes(m)) menuAccess.push(m);
     }
+    // All types selected ≡ the "all allowed" default → store as [] (canonical).
+    const lineNotifications =
+      notifs.size === ALL_NOTIF_KEYS.length ? [] : [...notifs];
     onSubmit({
       name: name.trim(),
       code: code.trim().toUpperCase(),
@@ -346,6 +375,7 @@ function RoleForm({
       permissions,
       assignable,
       menuAccess,
+      lineNotifications,
     });
   }
 
@@ -438,6 +468,30 @@ function RoleForm({
         </div>
         <p className="mt-1.5 text-[11.5px] text-muted-foreground">
           เป็นการซ่อน/แสดงเมนูเท่านั้น สิทธิ์การใช้งาน API ยังคุมด้วยสิทธิ์ของบทบาทตามเดิม
+        </p>
+      </Field>
+      <Field
+        label="แจ้งเตือน LINE ส่วนตัว (ที่อนุญาต)"
+        hint="เลือกว่าบทบาทนี้รับแจ้งเตือนส่วนตัวแบบไหนได้ — ผู้ใช้เปิด/ปิดเองได้ภายในที่อนุญาต"
+      >
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {NOTIF_OPTIONS.map((n) => (
+            <label
+              key={n.value}
+              className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-muted/50"
+            >
+              <input
+                type="checkbox"
+                className="size-4 accent-teal-600"
+                checked={notifs.has(n.value)}
+                onChange={() => toggleNotif(n.value)}
+              />
+              <span className="text-[13px] font-medium">{n.label}</span>
+            </label>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+          ไม่เลือกเลย = อนุญาตทุกแบบ (ค่าเริ่มต้น) · ต้องการจำกัด ให้เลือกเฉพาะที่อนุญาต
         </p>
       </Field>
       <FormActions>
