@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Presentation,
   LayoutGrid,
@@ -20,6 +19,8 @@ import {
   ClipboardList,
   AlarmClock,
   CalendarOff,
+  CalendarClock,
+  ListChecks,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -35,7 +36,18 @@ import { cn } from "@/lib/utils";
 import type { ApiUserMini } from "@/lib/mappers";
 
 type Proj = { name: string; code: string; color: string };
-type MiniTask = { id: string; title: string; status: string; priority: string };
+type TaskAssignee = { id: string; name: string; avatarKey: string };
+type MiniTask = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  dueDate: string | null;
+  project: Proj | null;
+  assignees: TaskAssignee[];
+  checklistTotal: number;
+  checklistDone: number;
+};
 type ReportItem = {
   id: string;
   section?: "DID" | "PLAN";
@@ -74,6 +86,130 @@ type Standup = {
   exemptUsers: ApiUserMini[];
   blockers: { id: string; user: ApiUserMini; text: string; project: Proj | null }[];
 };
+
+/* -------------------------- task presentation --------------------------- */
+
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  TODO: { label: "รอดำเนินการ", color: "#a1a1aa" },
+  IN_PROGRESS: { label: "กำลังทำ", color: "#3b82f6" },
+  REVIEW: { label: "รอตรวจ", color: "#8b5cf6" },
+  READY_TO_TEST: { label: "พร้อมทดสอบ", color: "#06b6d4" },
+  DONE: { label: "เสร็จแล้ว", color: "#10b981" },
+};
+const PRIORITY_META: Record<string, { label: string; color: string }> = {
+  HIGH: { label: "สูง", color: "#e11d48" },
+  MEDIUM: { label: "กลาง", color: "#f59e0b" },
+  LOW: { label: "ต่ำ", color: "#a1a1aa" },
+};
+
+function statusMeta(s: string) {
+  return STATUS_META[s] ?? { label: s, color: "#a1a1aa" };
+}
+function priorityMeta(p: string) {
+  return PRIORITY_META[p] ?? { label: p, color: "#a1a1aa" };
+}
+
+/** Short Thai date from an ISO datetime, plus overdue/due-today flags. */
+function dueInfo(iso: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const label = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+  }).format(d);
+  const dayIso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+  const today = bangkokDateISO();
+  return { label, overdue: dayIso < today, dueToday: dayIso === today };
+}
+
+/**
+ * A related task rendered with its real detail: status, priority, due date,
+ * checklist progress, project, and assignees. `size="lg"` is used on the
+ * full-screen meeting stage.
+ */
+function TaskCard({ t, size = "sm" }: { t: MiniTask; size?: "sm" | "lg" }) {
+  const st = statusMeta(t.status);
+  const pr = priorityMeta(t.priority);
+  const due = dueInfo(t.dueDate);
+  const accent = t.project?.color ?? "#14b8a6";
+  const lg = size === "lg";
+  const isDone = t.status === "DONE";
+
+  return (
+    <div className="flex gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
+      <span className="mt-0.5 w-1 flex-none rounded-full" style={{ background: accent }} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className={cn(
+              "min-w-0 font-medium leading-snug [overflow-wrap:anywhere]",
+              lg ? "text-[15px]" : "text-[13px]",
+              isDone && "text-muted-foreground line-through"
+            )}
+          >
+            {t.title}
+          </span>
+          <span
+            className="flex-none rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+            style={{ background: `${st.color}1f`, color: st.color }}
+          >
+            {st.label}
+          </span>
+        </div>
+        <div className={cn("mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1", lg ? "text-[12.5px]" : "text-[11.5px]")}>
+          <span className="flex items-center gap-1 font-medium" style={{ color: pr.color }}>
+            <span className="size-1.5 rounded-full" style={{ background: pr.color }} />
+            {pr.label}
+          </span>
+          {t.project && (
+            <span className="font-semibold" style={{ color: t.project.color }}>
+              {t.project.code}
+            </span>
+          )}
+          {due && (
+            <span
+              className={cn(
+                "flex items-center gap-1",
+                due.overdue && !isDone
+                  ? "font-semibold text-rose-600 dark:text-rose-400"
+                  : due.dueToday && !isDone
+                    ? "font-semibold text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground"
+              )}
+            >
+              <CalendarClock className="size-3.5" />
+              {due.label}
+              {due.overdue && !isDone ? " · เลยกำหนด" : due.dueToday && !isDone ? " · วันนี้" : ""}
+            </span>
+          )}
+          {t.checklistTotal > 0 && (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <ListChecks className="size-3.5" />
+              {t.checklistDone}/{t.checklistTotal}
+            </span>
+          )}
+          {t.assignees.length > 0 && (
+            <span className="flex items-center gap-1">
+              {t.assignees.slice(0, 4).map((a) => (
+                <Avatar key={a.id} userKey={a.avatarKey} size={lg ? 20 : 17} fontSize={lg ? 9 : 8} />
+              ))}
+              {t.assignees.length > 4 && (
+                <span className="text-[10.5px] text-muted-foreground">+{t.assignees.length - 4}</span>
+              )}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function StandupPage() {
   const me = useCurrentUser();
@@ -353,7 +489,7 @@ function Kpi({ label, value, sub, icon, color }: { label: string; value: string;
 }
 
 function ReportRow({ r }: { r: Report }) {
-  const [showTasks, setShowTasks] = useState(false);
+  const [showTasks, setShowTasks] = useState(true);
   const hasBlocker = r.blockers.trim().length > 0;
   return (
     <div className="px-[18px] py-3.5">
@@ -388,20 +524,18 @@ function ReportRow({ r }: { r: Report }) {
         </>
       )}
       {r.tasks.length > 0 && (
-        <div className="mt-2">
+        <div className="mt-2.5">
           <button
             onClick={() => setShowTasks((v) => !v)}
-            className="flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground"
           >
-            <ChevronDown className={cn("size-3.5 transition-transform", showTasks && "rotate-180")} />
-            ดูงานที่เกี่ยวข้อง ({r.tasks.length})
+            <ChevronDown className={cn("size-3.5 transition-transform", !showTasks && "-rotate-90")} />
+            งานที่เกี่ยวข้อง ({r.tasks.length})
           </button>
           {showTasks && (
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-col gap-1.5">
               {r.tasks.map((t) => (
-                <Link key={t.id} href="/tasks" className="max-w-[200px] truncate rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11.5px] text-zinc-600 hover:bg-muted dark:text-zinc-300">
-                  {t.title}
-                </Link>
+                <TaskCard key={t.id} t={t} />
               ))}
             </div>
           )}
@@ -585,6 +719,15 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
                 ) : (
                   <span className="inline-flex items-center gap-1 text-amber-600"><TriangleAlert className="size-4" /> ยังไม่ได้ส่งรายงาน</span>
                 )}
+                {r && r.items && r.items.length > 0 && (
+                  <span className="inline-flex items-center gap-1"><ClipboardList className="size-4" /> {r.items.length} งานที่ทำ</span>
+                )}
+                {r && r.tasks.length > 0 && (
+                  <span className="inline-flex items-center gap-1"><LayoutGrid className="size-4" /> {r.tasks.length} งานที่เกี่ยวข้อง</span>
+                )}
+                {hasBlocker && (
+                  <span className="inline-flex items-center gap-1 font-medium text-amber-600"><TriangleAlert className="size-4" /> มีอุปสรรค</span>
+                )}
               </div>
             </div>
           </div>
@@ -624,6 +767,19 @@ function Meeting({ data, canManage, onExit }: { data: Standup; canManage: boolea
                 )}
               </div>
                 </>
+              )}
+
+              {r.tasks.length > 0 && (
+                <div className="lg:col-span-2">
+                  <div className="mb-2.5 flex items-center gap-2 text-[13px] font-bold uppercase tracking-wide text-teal-600">
+                    <ClipboardList className="size-4" /> งานที่เกี่ยวข้อง ({r.tasks.length})
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {r.tasks.map((t) => (
+                      <TaskCard key={t.id} t={t} size="lg" />
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
