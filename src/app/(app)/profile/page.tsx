@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, TriangleAlert, ShieldAlert } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  TriangleAlert,
+  ShieldAlert,
+  MessageCircle,
+  RefreshCw,
+  Send,
+  Unlink,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
@@ -14,6 +24,28 @@ import { api, ApiError } from "@/lib/api";
 import { updateStoredUser, type AuthUser } from "@/lib/auth";
 import { roleNameOf, type ApiUser } from "@/lib/mappers";
 
+type LineStatus = {
+  linked: boolean;
+  linkedAt: string | null;
+  lineEnabled: boolean;
+  addFriendUrl: string | null;
+};
+type LinkCode = { code: string; expiresAt: string; addFriendUrl: string | null };
+
+function formatThaiDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+function formatThaiTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("th-TH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ApiUser | null>(null);
   const [name, setName] = useState("");
@@ -24,6 +56,10 @@ export default function ProfilePage() {
   const [savingPw, setSavingPw] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
 
+  const [line, setLine] = useState<LineStatus | null>(null);
+  const [linkCode, setLinkCode] = useState<LinkCode | null>(null);
+  const [lineBusy, setLineBusy] = useState(false);
+
   useEffect(() => {
     api
       .get<{ user: ApiUser }>("/api/profile")
@@ -32,7 +68,56 @@ export default function ProfilePage() {
         setName(r.user.name);
       })
       .catch(() => {});
+    refreshLine();
   }, []);
+
+  async function refreshLine() {
+    try {
+      const s = await api.get<LineStatus>("/api/profile/line");
+      setLine(s);
+      if (s.linked) setLinkCode(null); // linked → hide any lingering code
+    } catch {
+      /* leave status unknown; card stays hidden until it loads */
+    }
+  }
+
+  async function generateLinkCode() {
+    setLineBusy(true);
+    try {
+      const c = await api.post<LinkCode>("/api/profile/line/link-code");
+      setLinkCode(c);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "สร้างรหัสไม่สำเร็จ");
+    } finally {
+      setLineBusy(false);
+    }
+  }
+
+  async function sendTestDm() {
+    setLineBusy(true);
+    try {
+      await api.post("/api/profile/line/test");
+      toast("ส่งข้อความทดสอบแล้ว — ตรวจสอบ LINE ของคุณ");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "ส่งข้อความไม่สำเร็จ");
+    } finally {
+      setLineBusy(false);
+    }
+  }
+
+  async function unlinkLine() {
+    setLineBusy(true);
+    try {
+      await api.del("/api/profile/line");
+      setLinkCode(null);
+      await refreshLine();
+      toast("ยกเลิกการเชื่อมต่อ LINE แล้ว");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "ยกเลิกไม่สำเร็จ");
+    } finally {
+      setLineBusy(false);
+    }
+  }
 
   async function saveInfo(e: React.FormEvent) {
     e.preventDefault();
@@ -201,6 +286,97 @@ export default function ProfilePage() {
             </div>
           </FormCard>
         </form>
+
+        {/* Personal LINE linking */}
+        {line && (
+          <FormCard>
+            <div className="flex items-center gap-2">
+              <MessageCircle className="size-4 text-teal-600" />
+              <div className="text-[13.5px] font-semibold">เชื่อมต่อ LINE ส่วนตัว</div>
+              {line.linked && (
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-[11.5px] font-medium text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+                  <CheckCircle2 className="size-3" /> เชื่อมต่อแล้ว
+                </span>
+              )}
+            </div>
+
+            {line.linked ? (
+              <>
+                <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+                  บัญชี LINE ของคุณเชื่อมต่อแล้ว
+                  {line.linkedAt && ` เมื่อ ${formatThaiDate(line.linkedAt)}`} —
+                  จะได้รับแจ้งเตือนงานที่มอบหมายและผลอนุมัติลาทาง LINE ส่วนตัว
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={sendTestDm} disabled={lineBusy}>
+                    <Send className="size-3.5" /> ส่งข้อความทดสอบ
+                  </Button>
+                  <Button variant="ghost" onClick={unlinkLine} disabled={lineBusy}>
+                    <Unlink className="size-3.5" /> ยกเลิกการเชื่อมต่อ
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+                  เชื่อมต่อเพื่อรับแจ้งเตือนส่วนตัว (งานที่ได้รับมอบหมาย, ผลอนุมัติลา) ทาง LINE
+                  ของคุณ ทำได้โดยสร้างรหัสด้านล่าง แล้วส่งรหัสนั้นในแชท LINE OA ของทีม
+                </p>
+
+                {!line.lineEnabled && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                    <TriangleAlert className="mt-0.5 size-3.5 flex-none" />
+                    ระบบ LINE ยังไม่ถูกเปิดใช้งานโดยผู้ดูแล — สร้างรหัสไว้ได้ แต่การยืนยันจะทำงานเมื่อเปิดระบบแล้ว
+                  </div>
+                )}
+
+                {line.addFriendUrl && (
+                  <a
+                    href={line.addFriendUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1.5 text-[12.5px] font-medium text-teal-600 hover:underline"
+                  >
+                    <MessageCircle className="size-3.5" /> เพิ่มเพื่อน LINE OA ของทีมก่อน ↗
+                  </a>
+                )}
+
+                {linkCode ? (
+                  <div className="rounded-xl border border-hairline bg-muted/40 p-4">
+                    <div className="text-[11.5px] text-muted-foreground">
+                      ส่งรหัสนี้ในแชท LINE OA ของทีม
+                    </div>
+                    <div className="mt-1 select-all font-mono text-[28px] font-bold tracking-[0.3em] text-foreground">
+                      {linkCode.code}
+                    </div>
+                    <div className="mt-1 text-[11.5px] text-muted-foreground">
+                      รหัสหมดอายุเวลา {formatThaiTime(linkCode.expiresAt)} น. (ภายใน 10 นาที)
+                    </div>
+                    <ol className="mt-3 list-decimal space-y-1 pl-4 text-[12px] leading-relaxed text-muted-foreground">
+                      <li>เปิดแชท LINE OA ของทีม (เพิ่มเพื่อนก่อนหากยังไม่ได้เพิ่ม)</li>
+                      <li>พิมพ์/วางรหัสด้านบนแล้วส่ง</li>
+                      <li>บอทจะตอบยืนยัน แล้วกด “ฉันเชื่อมต่อแล้ว” ด้านล่าง</li>
+                    </ol>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button onClick={refreshLine} disabled={lineBusy}>
+                        <RefreshCw className="size-3.5" /> ฉันเชื่อมต่อแล้ว
+                      </Button>
+                      <Button variant="ghost" onClick={generateLinkCode} disabled={lineBusy}>
+                        สร้างรหัสใหม่
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <Button onClick={generateLinkCode} disabled={lineBusy}>
+                      {lineBusy ? "กำลังสร้าง…" : "สร้างรหัสเชื่อมต่อ"}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </FormCard>
+        )}
         </>
         )}
       </div>
