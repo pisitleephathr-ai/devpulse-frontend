@@ -455,6 +455,7 @@ export default function TasksPage() {
         open={detail !== null}
         onClose={() => closeTask()}
         title="รายละเอียดงาน"
+        className="w-[880px]"
         footer={
           detail ? (
             <>
@@ -515,104 +516,125 @@ export default function TasksPage() {
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {detail.assignees.length > 0 ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-1.5">
-                    {detail.assignees.slice(0, 5).map((a) => (
-                      <span key={a.id} className="rounded-full ring-2 ring-[color:var(--card)]">
-                        <Avatar userKey={a.key} size={26} fontSize={10} />
-                      </span>
-                    ))}
+            {/* Two columns on desktop: main content (left) + properties (right).
+                On mobile they stack with properties first. */}
+            <div className="flex flex-col-reverse gap-5 md:flex-row md:gap-6">
+              {/* MAIN — links, attachments, comments */}
+              <div className="flex min-w-0 flex-1 flex-col gap-4">
+                {/* Reference links */}
+                {detailData && detailData.links.length > 0 && (
+                  <div>
+                    <div className="mb-1.5 text-[12.5px] font-medium text-zinc-900">
+                      ลิงก์ที่เกี่ยวข้อง
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {detailData.links.map((l) => (
+                        <a
+                          key={l.id}
+                          href={l.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 text-[13px] text-teal-600 hover:underline"
+                        >
+                          <Link2 className="size-3.5 flex-none" />
+                          <span className="truncate">{l.title}</span>
+                          <ExternalLink className="size-3 flex-none text-zinc-400" />
+                        </a>
+                      ))}
+                    </div>
                   </div>
-                  <span className="text-[13px] font-medium">
-                    {detail.assignees.map((a) => a.name).join(", ")}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-[13px] text-zinc-400">ไม่มีผู้รับผิดชอบ</span>
-              )}
-              <StatusBadge
-                label={detail.pri}
-                colors={PRIORITY_COLORS[detail.pri]}
-                shape="tag"
-              />
-              <div className="flex-1" />
-              <span className="text-[12.5px] text-zinc-500">
-                ครบกำหนด {detail.due}
-              </span>
-            </div>
+                )}
 
-            <div>
-              <label className="mb-1.5 block text-[12.5px] font-medium text-zinc-900">
-                สถานะ
-              </label>
-              <Select
-                value={detail.status}
-                disabled={!canEdit(detail)}
-                onChange={(e) => {
-                  // Optimistic update handles the UI; the store toasts on failure.
-                  moveTask(detail.id, e.target.value as TaskStatus);
-                }}
-              >
-                {TASK_STATUSES.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </Select>
-            </div>
+                {/* Attachments — mounts once the full detail has loaded. */}
+                {detailData?.id === detail.id && (
+                  <div className={detailData.links.length > 0 ? "border-t border-hairline pt-4" : ""}>
+                    <TaskAttachments
+                      key={detail.id}
+                      taskId={detail.id}
+                      initialAttachments={detailData.attachments ?? []}
+                      canUpload={canEdit(detail)}
+                    />
+                  </div>
+                )}
 
-            {/* Reference links */}
-            {detailData && detailData.links.length > 0 && (
-              <div>
-                <div className="mb-1.5 text-[12.5px] font-medium text-zinc-900">
-                  ลิงก์ที่เกี่ยวข้อง
+                {/* Comments */}
+                <div className="border-t border-hairline pt-4">
+                  <TaskComments taskId={detail.id} />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  {detailData.links.map((l) => (
-                    <a
-                      key={l.id}
-                      href={l.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 text-[13px] text-teal-600 hover:underline"
+              </div>
+
+              {/* SIDEBAR — properties + checklist */}
+              <div className="flex flex-col gap-4 md:w-[248px] md:flex-none">
+                <div className="flex flex-col gap-3.5 rounded-xl border border-hairline bg-muted/30 p-3.5">
+                  <div>
+                    <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                      ผู้รับผิดชอบ
+                    </div>
+                    {detail.assignees.length > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex -space-x-1.5">
+                          {detail.assignees.slice(0, 5).map((a) => (
+                            <span key={a.id} className="rounded-full ring-2 ring-[color:var(--card)]">
+                              <Avatar userKey={a.key} size={24} fontSize={10} />
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-[12.5px] font-medium [overflow-wrap:anywhere]">
+                          {detail.assignees.map((a) => a.name).join(", ")}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[12.5px] text-muted-foreground">ไม่มีผู้รับผิดชอบ</span>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                      ความสำคัญ
+                    </div>
+                    <StatusBadge
+                      label={detail.pri}
+                      colors={PRIORITY_COLORS[detail.pri]}
+                      shape="tag"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                      ครบกำหนด
+                    </div>
+                    <span className="text-[12.5px]">{detail.due}</span>
+                  </div>
+
+                  <div>
+                    <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                      สถานะ
+                    </div>
+                    <Select
+                      value={detail.status}
+                      disabled={!canEdit(detail)}
+                      onChange={(e) => {
+                        // Optimistic update handles the UI; the store toasts on failure.
+                        moveTask(detail.id, e.target.value as TaskStatus);
+                      }}
                     >
-                      <Link2 className="size-3.5 flex-none" />
-                      <span className="truncate">{l.title}</span>
-                      <ExternalLink className="size-3 flex-none text-zinc-400" />
-                    </a>
-                  ))}
+                      {TASK_STATUSES.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </Select>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* Attachments — Cloudinary uploads + legacy URL links.
-                Mounts once the full detail (with attachments) has loaded. */}
-            {detailData?.id === detail.id && (
-              <div className="border-t border-hairline pt-4">
-                <TaskAttachments
-                  key={detail.id}
-                  taskId={detail.id}
-                  initialAttachments={detailData.attachments ?? []}
-                  canUpload={canEdit(detail)}
-                />
+                {/* Checklist / subtasks */}
+                {detailData?.id === detail.id && (
+                  <TaskChecklist
+                    key={detail.id}
+                    taskId={detail.id}
+                    initialItems={detailData.checklist ?? []}
+                    canEdit={canEdit(detail)}
+                  />
+                )}
               </div>
-            )}
-
-            {/* Checklist / subtasks — mount once the detail (with items) loads */}
-            {detailData?.id === detail.id && (
-              <div className="border-t border-hairline pt-4">
-                <TaskChecklist
-                  key={detail.id}
-                  taskId={detail.id}
-                  initialItems={detailData.checklist ?? []}
-                  canEdit={canEdit(detail)}
-                />
-              </div>
-            )}
-
-            {/* Comments */}
-            <div className="border-t border-hairline pt-4">
-              <TaskComments taskId={detail.id} />
             </div>
           </div>
         )}

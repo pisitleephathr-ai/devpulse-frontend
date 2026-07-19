@@ -13,7 +13,6 @@ import { formatBytes } from "@/lib/upload-config";
 import { useUploadConfig } from "@/lib/use-upload-config";
 import { useTaskAttachments } from "@/lib/use-attachments";
 import { useUploadQueue } from "@/lib/use-upload-queue";
-import { UploadLimitSummary } from "./upload-limit-summary";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadQueue } from "./upload-queue";
 import { ImageThumbnail } from "./image-thumbnail";
@@ -151,9 +150,9 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
           <Paperclip className="size-3.5" />
           ไฟล์แนบ
         </div>
-        {usage && (
+        {rendered.length > 0 && (
           <span className="text-[11px] tabular-nums text-muted-foreground">
-            {usage.fileCount}/{config.limits.maxFilesPerTask}
+            {rendered.length}
           </span>
         )}
         <div className="flex-1" />
@@ -184,14 +183,11 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
                 : "พื้นที่ของงานเต็มแล้ว กรุณาลบไฟล์เดิมก่อน"
             }
           />
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-0.5">
-            <span className="text-[11px] text-muted-foreground">
-              รูปภาพ ≤ {formatBytes(config.limits.imageMaxBytes)} · เอกสาร ≤{" "}
-              {formatBytes(config.limits.documentMaxBytes)} · สูงสุด{" "}
-              {config.limits.maxConcurrentUploads} ไฟล์/ครั้ง
-            </span>
-            <UploadLimitSummary usage={usage} config={config} />
-          </div>
+          <span className="px-0.5 text-[11px] text-muted-foreground">
+            รูปภาพ ≤ {formatBytes(config.limits.imageMaxBytes)} · เอกสาร ≤{" "}
+            {formatBytes(config.limits.documentMaxBytes)} · สูงสุด{" "}
+            {config.limits.maxConcurrentUploads} ไฟล์/ครั้ง
+          </span>
           <UploadQueue
             items={queue.items}
             onCancel={queue.cancel}

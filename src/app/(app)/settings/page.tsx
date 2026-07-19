@@ -14,6 +14,7 @@ import {
   ClipboardList,
   MessageCircle,
   Pencil,
+  HardDrive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { FormSkeleton } from "@/components/skeletons";
 import { TASK_STATUS_ENUM_OPTIONS } from "@/lib/mappers";
 import { toast } from "@/components/ui/toaster";
 import { api, ApiError } from "@/lib/api";
+import { formatBytes } from "@/lib/upload-config";
 import { thaiDateShortFromISO, nextMonthFirstThai } from "@/lib/thai-datetime";
 
 type Setting = {
@@ -346,6 +348,8 @@ export default function SettingsPage() {
                   </div>
                 </Section>
 
+                <CloudinaryUsageSection />
+
                 {lineStatus && (
                   <Section icon={<MessageCircle className="size-4" />} title="แจ้งเตือน LINE OA" desc="ส่งการ์ดแจ้งเตือนเข้ากลุ่ม LINE ของทีม">
                     <div className="divide-y divide-hairline-soft">
@@ -551,6 +555,148 @@ export default function SettingsPage() {
 }
 
 /* ------------------------------- pieces -------------------------------- */
+
+type CloudinaryUsage = {
+  plan: string | null;
+  credits: { used: number; limit: number | null; usedPercent: number | null } | null;
+  storage: { usedBytes: number; limitBytes: number | null };
+  bandwidth: { usedBytes: number; limitBytes: number | null };
+  transformations: { used: number; limit: number | null } | null;
+  objects: { used: number; limit: number | null } | null;
+  lastUpdated: string | null;
+};
+
+/** Cloudinary account credit/storage usage (manager/admin). Lives in Settings so
+ *  the per-task upload UI stays focused on uploading. */
+function CloudinaryUsageSection() {
+  const [status, setStatus] = useState<"loading" | "ok" | "unconfigured" | "error">("loading");
+  const [usage, setUsage] = useState<CloudinaryUsage | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get<{ usage: CloudinaryUsage }>("/api/uploads/credit-usage")
+      .then((r) => {
+        if (!active) return;
+        setUsage(r.usage);
+        setStatus("ok");
+      })
+      .catch((err) => {
+        if (!active) return;
+        setStatus(err instanceof ApiError && err.status === 503 ? "unconfigured" : "error");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const credits = usage?.credits;
+  const pct = credits
+    ? credits.usedPercent ?? (credits.limit ? (credits.used / credits.limit) * 100 : 0)
+    : 0;
+  const barColor = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-teal-500";
+
+  return (
+    <Section
+      icon={<HardDrive className="size-4" />}
+      title="พื้นที่จัดเก็บไฟล์ (Cloudinary)"
+      desc="ปริมาณการใช้งานเครดิตและพื้นที่ของบัญชี Cloudinary"
+    >
+      {status === "loading" && (
+        <div className="text-[12.5px] text-muted-foreground">กำลังโหลด…</div>
+      )}
+      {status === "unconfigured" && (
+        <div className="text-[12.5px] text-muted-foreground">
+          ยังไม่ได้ตั้งค่า Cloudinary — เพิ่มตัวแปร <code>CLOUDINARY_*</code> ที่ฝั่งเซิร์ฟเวอร์เพื่อเปิดใช้งานการอัปโหลดไฟล์
+        </div>
+      )}
+      {status === "error" && (
+        <div className="text-[12.5px] text-red-600 dark:text-red-400">
+          โหลดข้อมูลการใช้งานไม่สำเร็จ
+        </div>
+      )}
+      {status === "ok" && usage && (
+        <div className="flex flex-col gap-3.5">
+          {credits && (
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[12.5px]">
+                <span className="font-medium">เครดิตที่ใช้</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {credits.used.toFixed(2)}
+                  {credits.limit != null ? ` / ${credits.limit}` : ""} ({Math.round(pct)}%)
+                </span>
+              </div>
+              <div
+                className="h-2 w-full overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+                aria-valuenow={Math.round(pct)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`เครดิตที่ใช้ ${Math.round(pct)}%`}
+              >
+                <div
+                  className={`h-full transition-all ${barColor}`}
+                  style={{ width: `${Math.min(100, pct)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <UsageStat
+              label="พื้นที่จัดเก็บ"
+              value={formatBytes(usage.storage.usedBytes)}
+              sub={usage.storage.limitBytes ? `/ ${formatBytes(usage.storage.limitBytes)}` : undefined}
+            />
+            <UsageStat
+              label="แบนด์วิดท์ (เดือนนี้)"
+              value={formatBytes(usage.bandwidth.usedBytes)}
+              sub={usage.bandwidth.limitBytes ? `/ ${formatBytes(usage.bandwidth.limitBytes)}` : undefined}
+            />
+            {usage.objects && (
+              <UsageStat
+                label="จำนวนไฟล์"
+                value={usage.objects.used.toLocaleString()}
+                sub={usage.objects.limit != null ? `/ ${usage.objects.limit.toLocaleString()}` : undefined}
+              />
+            )}
+            {usage.transformations && (
+              <UsageStat
+                label="Transformations"
+                value={usage.transformations.used.toLocaleString()}
+                sub={
+                  usage.transformations.limit != null
+                    ? `/ ${usage.transformations.limit.toLocaleString()}`
+                    : undefined
+                }
+              />
+            )}
+          </div>
+
+          {(usage.plan || usage.lastUpdated) && (
+            <div className="text-[11px] text-muted-foreground">
+              {usage.plan ? `แผน: ${usage.plan}` : ""}
+              {usage.plan && usage.lastUpdated ? " · " : ""}
+              {usage.lastUpdated ? `อัปเดต ${thaiDateShortFromISO(usage.lastUpdated)}` : ""}
+            </div>
+          )}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function UsageStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg border border-hairline bg-muted/30 p-2.5">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-[13px] font-semibold tabular-nums">
+        {value}
+        {sub && <span className="ml-1 text-[11px] font-normal text-muted-foreground">{sub}</span>}
+      </div>
+    </div>
+  );
+}
 
 function Section({ icon, title, desc, action, children }: { icon: React.ReactNode; title: string; desc?: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
