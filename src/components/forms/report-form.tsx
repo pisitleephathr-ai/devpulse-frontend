@@ -183,6 +183,9 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Two columns so the form fits without scrolling in the modal. */}
+      <div className="flex flex-col gap-4 md:flex-row md:gap-5">
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         {mode === "create" && (
           <Field label="วันที่รายงาน">
@@ -241,7 +244,9 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
           placeholder="มีอะไรที่ทำให้งานช้าลงไหม?"
         />
       </Field>
+      </div>
 
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
       <Field label="แผนสำหรับพรุ่งนี้" error={errors.plan}>
         <Textarea
           rows={3}
@@ -325,6 +330,8 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
           )}
         </div>
       </Field>
+      </div>
+      </div>
 
       <FormActions>
         {mode === "create" ? (

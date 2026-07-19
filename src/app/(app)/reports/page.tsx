@@ -392,6 +392,7 @@ export default function ReportsPage() {
         onClose={() => setCreating(false)}
         title="สร้างรายงานประจำวัน"
         description="ใช้เวลาประมาณ 2 นาที · หัวหน้าทีมอ่านรายงานเหล่านี้ทุกเช้า"
+        className="w-[860px]"
       >
         {creating && (
           <ReportForm
@@ -428,6 +429,7 @@ export default function ReportsPage() {
         onClose={() => setEditing(null)}
         title="แก้ไขรายงาน"
         description={editing ? `${editing.name} · ${editing.date}` : undefined}
+        className="w-[860px]"
       >
         {editing && (
           <ReportForm
