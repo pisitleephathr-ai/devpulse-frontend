@@ -100,6 +100,38 @@ export const canApproveLeave = isManagerOrAdmin;
 export const canManageSettings = isManagerOrAdmin;
 /** create / delete tasks (edit-any is also manager/admin). */
 export const canManageTasks = isManagerOrAdmin;
+
+/* --------------------------- fine-grained caps ------------------------- */
+
+/** Fine-grained capabilities the manager tier (TEAM_MANAGE) implies. Mirrors
+ *  the backend `expandPermissions` so the UI matches server enforcement. */
+const TEAM_MANAGE_IMPLIES = [
+  "PROJECT_MANAGE", "LEAVE_APPROVE", "ACTIVITY_VIEW", "SETTINGS_MANAGE",
+  "TASK_CREATE", "TASK_DELETE", "TASK_EDIT_ANY", "REPORT_EDIT_ANY",
+  "TASK_ATTACHMENT_UPLOAD", "TASK_ATTACHMENT_DELETE",
+];
+
+/** The user's effective capability set (grants + role-code + tier implications). */
+function effectivePermissions(user: AuthUser | null): Set<string> {
+  const role = user && typeof user.role === "object" ? user.role : null;
+  const set = new Set<string>(role?.permissions ?? []);
+  const code = roleCode(user);
+  if (code === "ADMIN") set.add("ADMIN_FULL");
+  if (code === "MANAGER") set.add("TEAM_MANAGE");
+  if (set.has("ADMIN_FULL")) for (const p of TEAM_MANAGE_IMPLIES) set.add(p);
+  if (set.has("TEAM_MANAGE")) for (const p of TEAM_MANAGE_IMPLIES) set.add(p);
+  return set;
+}
+
+/** Whether the user holds a specific capability. */
+export function hasPermission(user: AuthUser | null, permission: string): boolean {
+  return effectivePermissions(user).has(permission);
+}
+
+/** May create tasks on the board (manager/admin, or a role granted TASK_CREATE). */
+export function canCreateTask(user: AuthUser | null): boolean {
+  return hasPermission(user, "TASK_CREATE");
+}
 /** create / edit / archive projects. */
 export const canManageProjects = isManagerOrAdmin;
 export const canArchiveProject = isManagerOrAdmin;

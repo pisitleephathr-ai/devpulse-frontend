@@ -38,6 +38,11 @@ const TEMPLATE = "minmax(160px,1fr) 130px 90px 110px 150px";
 /** Capability grants a role can hold (mirrors the backend PERMISSIONS taxonomy). */
 const PERMISSION_OPTIONS = [
   {
+    value: "TASK_CREATE",
+    label: "สร้างงานในบอร์ด",
+    hint: "เพิ่ม/สร้างงานใหม่บนบอร์ดงานได้ (โดยไม่ต้องเป็นหัวหน้าทีม)",
+  },
+  {
     value: "TEAM_MANAGE",
     label: "จัดการทีม",
     hint: "โปรเจกต์ · อนุมัติการลา · แก้ไขงาน/รายงานของทีม",

@@ -26,7 +26,7 @@ import { toast } from "@/components/ui/toaster";
 import { api } from "@/lib/api";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
-import { canManageTasks, isManagerOrAdmin } from "@/lib/permissions";
+import { canManageTasks, canCreateTask, isManagerOrAdmin } from "@/lib/permissions";
 import type {
   ApiTaskDetail,
   TaskLinkInput,
@@ -69,6 +69,9 @@ export default function TasksPage() {
     useData();
   const me = useCurrentUser();
   const canManage = canManageTasks(me);
+  // Creating board tasks can be granted to a role via the TASK_CREATE capability
+  // (managers/admins always have it).
+  const canCreate = canCreateTask(me);
   const ownsTask = (t: Task) =>
     !!me && t.assignees.some((a) => a.key === me.avatarKey);
   const canEdit = (t: Task) => isManagerOrAdmin(me) || ownsTask(t);
@@ -261,7 +264,7 @@ export default function TasksPage() {
                 เลือกหลายรายการ
               </button>
             )}
-            {canManage && (
+            {canCreate && (
               <Button onClick={() => setCreateStatus("Todo")}>
                 <Plus className="size-3.5" strokeWidth={2.4} />
                 สร้างงานใหม่
@@ -417,7 +420,7 @@ export default function TasksPage() {
       ) : (
         <KanbanBoard
           columns={columns}
-          showAdd={canManage}
+          showAdd={canCreate}
           canDrag={(t) => canEdit(t)}
           onCardClick={(t) => openTask(t.id)}
           onDropTask={(id, status) => {
