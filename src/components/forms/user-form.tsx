@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Eye, EyeOff, Dices } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -49,6 +50,17 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
   }));
   const [errors, setErrors] = useState<Partial<Record<keyof UserFormValues, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+
+  /** Generate a readable, unambiguous random password and reveal it. */
+  function generatePassword() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const rnd = new Uint32Array(12);
+    crypto.getRandomValues(rnd);
+    const pw = Array.from(rnd, (n) => chars[n % chars.length]).join("");
+    set("password", pw);
+    setShowPw(true);
+  }
 
   // Default the role once roles load (or match the editing user's role).
   const roleId =
@@ -116,12 +128,35 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
 
       {mode === "create" && (
         <Field label="รหัสผ่านเริ่มต้น" error={errors.password}>
-          <Input
-            type="password"
-            value={values.password}
-            onChange={(e) => set("password", e.target.value)}
-            placeholder="อย่างน้อย 6 ตัวอักษร"
-          />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                type={showPw ? "text" : "password"}
+                value={values.password}
+                onChange={(e) => set("password", e.target.value)}
+                placeholder="อย่างน้อย 6 ตัวอักษร"
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((s) => !s)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={showPw ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+              >
+                {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={generatePassword}
+              className="flex flex-none items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[12.5px] font-medium text-teal-600 transition-colors hover:bg-teal-50 dark:hover:bg-teal-950/30"
+            >
+              <Dices className="size-4" /> สุ่ม
+            </button>
+          </div>
+          <p className="mt-1 text-[11.5px] text-muted-foreground">
+            กด “สุ่ม” เพื่อสร้างรหัสผ่านอัตโนมัติ — ผู้ใช้จะได้รับทางอีเมลต้อนรับ
+          </p>
         </Field>
       )}
 
