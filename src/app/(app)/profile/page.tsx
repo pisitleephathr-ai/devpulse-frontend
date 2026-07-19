@@ -24,11 +24,17 @@ import { api, ApiError } from "@/lib/api";
 import { updateStoredUser, type AuthUser } from "@/lib/auth";
 import { roleNameOf, type ApiUser } from "@/lib/mappers";
 
+type LinePrefs = {
+  taskAssigned: boolean;
+  leaveDecision: boolean;
+  reportReminder: boolean;
+};
 type LineStatus = {
   linked: boolean;
   linkedAt: string | null;
   lineEnabled: boolean;
   addFriendUrl: string | null;
+  prefs: LinePrefs;
 };
 type LinkCode = { code: string; expiresAt: string; addFriendUrl: string | null };
 
@@ -116,6 +122,23 @@ export default function ProfilePage() {
       toast(err instanceof ApiError ? err.message : "ยกเลิกไม่สำเร็จ");
     } finally {
       setLineBusy(false);
+    }
+  }
+
+  async function updatePref(key: keyof LinePrefs, value: boolean) {
+    if (!line) return;
+    const prev = line.prefs;
+    // Optimistic — revert on failure.
+    setLine({ ...line, prefs: { ...prev, [key]: value } });
+    try {
+      const { prefs } = await api.patch<{ prefs: LinePrefs }>(
+        "/api/profile/line/prefs",
+        { [key]: value }
+      );
+      setLine((l) => (l ? { ...l, prefs } : l));
+    } catch (err) {
+      setLine((l) => (l ? { ...l, prefs: prev } : l));
+      toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ");
     }
   }
 
@@ -305,8 +328,31 @@ export default function ProfilePage() {
                 <p className="text-[12.5px] leading-relaxed text-muted-foreground">
                   บัญชี LINE ของคุณเชื่อมต่อแล้ว
                   {line.linkedAt && ` เมื่อ ${formatThaiDate(line.linkedAt)}`} —
-                  จะได้รับแจ้งเตือนงานที่มอบหมายและผลอนุมัติลาทาง LINE ส่วนตัว
+                  เลือกได้ว่าจะรับแจ้งเตือนอะไรบ้างทาง LINE ส่วนตัว
                 </p>
+
+                {/* Per-user DM preferences */}
+                <div className="divide-y divide-hairline rounded-xl border border-hairline">
+                  <SwitchRow
+                    label="งานที่ได้รับมอบหมาย"
+                    hint="เมื่อมีคนมอบหมายงานให้คุณ"
+                    checked={line.prefs.taskAssigned}
+                    onChange={(v) => updatePref("taskAssigned", v)}
+                  />
+                  <SwitchRow
+                    label="ผลอนุมัติการลา"
+                    hint="เมื่อคำขอลาของคุณถูกอนุมัติ/ปฏิเสธ"
+                    checked={line.prefs.leaveDecision}
+                    onChange={(v) => updatePref("leaveDecision", v)}
+                  />
+                  <SwitchRow
+                    label="เตือนส่งรายงานประจำวัน"
+                    hint="เมื่อผู้จัดการกดเตือนและคุณยังไม่ส่ง"
+                    checked={line.prefs.reportReminder}
+                    onChange={(v) => updatePref("reportReminder", v)}
+                  />
+                </div>
+
                 <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" onClick={sendTestDm} disabled={lineBusy}>
                     <Send className="size-3.5" /> ส่งข้อความทดสอบ
@@ -381,5 +427,59 @@ export default function ProfilePage() {
         )}
       </div>
     </div>
+  );
+}
+
+function SwitchRow({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-foreground">{label}</div>
+        {hint && <div className="text-[11.5px] text-muted-foreground">{hint}</div>}
+      </div>
+      <Switch checked={checked} onChange={() => onChange(!checked)} label={label} />
+    </div>
+  );
+}
+
+function Switch({
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onChange}
+      className={`inline-flex h-6 w-11 flex-none shrink-0 items-center rounded-full px-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 focus-visible:ring-offset-1 disabled:cursor-default disabled:opacity-60 ${
+        checked ? "bg-teal-600" : "bg-zinc-300 dark:bg-zinc-600"
+      }`}
+    >
+      <span
+        className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
   );
 }
