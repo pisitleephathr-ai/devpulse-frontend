@@ -31,6 +31,7 @@ type LinePrefs = {
   leaveDecision: boolean;
   leaveRequest: boolean;
   reportReminder: boolean;
+  dailyDigest: boolean;
 };
 type LineStatus = {
   linked: boolean;
@@ -53,6 +54,7 @@ const NOTIF_TOGGLES: { key: keyof LinePrefs; label: string; hint: string }[] = [
   { key: "leaveDecision", label: "ผลอนุมัติการลา", hint: "เมื่อคำขอลาของคุณถูกอนุมัติ/ปฏิเสธ" },
   { key: "leaveRequest", label: "คำขอลาใหม่", hint: "เมื่อมีคนส่งคำขอลา (สำหรับผู้อนุมัติ)" },
   { key: "reportReminder", label: "เตือนส่งรายงานประจำวัน", hint: "เมื่อยังไม่ส่งรายงานตอนเย็น" },
+  { key: "dailyDigest", label: "สรุปงานเช้า", hint: "งานเลยกำหนด/ครบกำหนดวันนี้-พรุ่งนี้ ทุกเช้า" },
 ];
 type LinkCode = { code: string; expiresAt: string; addFriendUrl: string | null };
 

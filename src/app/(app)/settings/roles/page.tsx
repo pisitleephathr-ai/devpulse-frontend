@@ -66,6 +66,7 @@ const NOTIF_OPTIONS = [
   { value: "leaveDecision", label: "ผลอนุมัติการลา (ของฉัน)" },
   { value: "leaveRequest", label: "คำขอลาใหม่ (สำหรับผู้อนุมัติ)" },
   { value: "reportReminder", label: "เตือนส่งรายงานประจำวัน" },
+  { value: "dailyDigest", label: "สรุปงานเช้า (ครบกำหนด/เลยกำหนด)" },
 ] as const;
 const ALL_NOTIF_KEYS = NOTIF_OPTIONS.map((n) => n.value);
 

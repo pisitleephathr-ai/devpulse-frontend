@@ -52,6 +52,8 @@ type Setting = {
   lineDailyReportSummaryTime: string;
   lineWeeklyPerformance: boolean;
   lineWeeklyPerformanceTime: string;
+  lineDailyDigest: boolean;
+  lineDailyDigestTime: string;
 };
 type LeaveType = { id: string; name: string; daysLabel: string; color: string; autoApprove: boolean; sortOrder: number };
 type Holiday = { id: string; name: string; date: string; description: string; type: string; isActive: boolean };
@@ -82,6 +84,8 @@ const DEFAULT_SETTING: Setting = {
   lineDailyReportSummaryTime: "18:00",
   lineWeeklyPerformance: false,
   lineWeeklyPerformanceTime: "09:00",
+  lineDailyDigest: false,
+  lineDailyDigestTime: "08:30",
 };
 const SETTING_KEYS = Object.keys(DEFAULT_SETTING) as (keyof Setting)[];
 const pickSetting = (s: Record<string, unknown>): Setting =>
@@ -97,7 +101,7 @@ export default function SettingsPage() {
   const [addLeaveOpen, setAddLeaveOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<LeaveType | null>(null);
   const [testingSummary, setTestingSummary] = useState<
-    "leave" | "report" | "performance" | null
+    "leave" | "report" | "performance" | "digest" | null
   >(null);
   const [addHolidayOpen, setAddHolidayOpen] = useState(false);
   const [pendingLeaveDelete, setPendingLeaveDelete] = useState<LeaveType | null>(null);
@@ -167,7 +171,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function testSummary(kind: "leave" | "report" | "performance") {
+  async function testSummary(kind: "leave" | "report" | "performance" | "digest") {
     setTestingSummary(kind);
     try {
       const r = await api.post<{ sent: boolean; reason?: string }>(`/api/settings/line/test/${kind}`, {});
@@ -534,6 +538,16 @@ export default function SettingsPage() {
                                 onTime={(v) => set("lineWeeklyPerformanceTime", v)}
                                 onTest={() => testSummary("performance")}
                                 testing={testingSummary === "performance"}
+                              />
+                              <TimedSummaryRow
+                                icon={<Bell className="size-3.5" />}
+                                label="สรุปงานเช้าเข้า DM รายคน (ครบกำหนด/เลยกำหนด)"
+                                enabled={setting.lineDailyDigest}
+                                onToggle={(v) => set("lineDailyDigest", v)}
+                                time={setting.lineDailyDigestTime}
+                                onTime={(v) => set("lineDailyDigestTime", v)}
+                                onTest={() => testSummary("digest")}
+                                testing={testingSummary === "digest"}
                               />
                             </div>
                           </div>
