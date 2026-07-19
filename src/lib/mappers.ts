@@ -461,6 +461,7 @@ export type UserInput = {
   password: string;
   roleId: string;
   requiresDailyReport?: boolean;
+  sendWelcomeEmail?: boolean;
 };
 export type UserUpdateInput = Partial<{
   name: string;

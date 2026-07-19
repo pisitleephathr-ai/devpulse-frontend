@@ -261,7 +261,11 @@ export default function UsersPage() {
             const ok = await addUser(data);
             if (ok) {
               setAdding(false);
-              toast("ส่งคำเชิญแล้ว");
+              toast(
+                data.sendWelcomeEmail
+                  ? "เพิ่มผู้ใช้แล้ว — ส่งอีเมลต้อนรับ (ถ้าตั้งค่าอีเมลไว้)"
+                  : "เพิ่มผู้ใช้แล้ว"
+              );
             }
             return ok;
           }}

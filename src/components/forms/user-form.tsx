@@ -15,6 +15,7 @@ export type UserFormValues = {
   password: string;
   roleId: string;
   requiresDailyReport: boolean;
+  sendWelcomeEmail: boolean;
 };
 
 type UserFormProps = {
@@ -44,6 +45,7 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
     password: "",
     roleId: "",
     requiresDailyReport: user?.requiresDailyReport ?? true,
+    sendWelcomeEmail: true,
   }));
   const [errors, setErrors] = useState<Partial<Record<keyof UserFormValues, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -85,6 +87,7 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
         password: values.password,
         roleId,
         requiresDailyReport: values.requiresDailyReport,
+        sendWelcomeEmail: values.sendWelcomeEmail,
       });
       if (ok === false) setSubmitting(false);
     }, 300);
@@ -139,7 +142,7 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
         )}
       </Field>
 
-      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2.5">
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
         <input
           type="checkbox"
           checked={values.requiresDailyReport}
@@ -147,14 +150,33 @@ export function UserForm({ mode, user, onSubmit, onCancel }: UserFormProps) {
           className="mt-0.5 size-[15px] flex-none accent-teal-600"
         />
         <span>
-          <span className="block text-[13px] font-medium text-zinc-800">
+          <span className="block text-[13px] font-medium text-foreground">
             ต้องส่งรายงานประจำวัน
           </span>
-          <span className="block text-[11.5px] text-zinc-500">
+          <span className="block text-[11.5px] text-muted-foreground">
             ปิดตัวเลือกนี้สำหรับผู้ใช้ที่ไม่จำเป็นต้องส่งรายงานทุกวัน
           </span>
         </span>
       </label>
+
+      {mode === "create" && (
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={values.sendWelcomeEmail}
+            onChange={(e) => set("sendWelcomeEmail", e.target.checked)}
+            className="mt-0.5 size-[15px] flex-none accent-teal-600"
+          />
+          <span>
+            <span className="block text-[13px] font-medium text-foreground">
+              ส่งอีเมลต้อนรับให้ผู้ใช้
+            </span>
+            <span className="block text-[11.5px] text-muted-foreground">
+              ส่งอีเมลพร้อมวิธีเข้าระบบ + รหัสผ่านเริ่มต้น (เฉพาะเมื่อผู้ดูแลตั้งค่าอีเมลไว้แล้ว)
+            </span>
+          </span>
+        </label>
+      )}
 
       <FormActions>
         <Button
