@@ -25,7 +25,7 @@ type Props = {
   onRemove: (id: string) => void;
 };
 
-/** The live upload queue — one row per file with its own progress + controls. */
+/** Live upload queue — one row per file with its own progress + controls. */
 export function UploadQueue({ items, onCancel, onRetry, onRemove }: Props) {
   if (items.length === 0) return null;
 
@@ -34,33 +34,32 @@ export function UploadQueue({ items, onCancel, onRetry, onRemove }: Props) {
       {items.map((it) => (
         <li
           key={it.id}
-          className="flex items-center gap-2.5 rounded-lg border border-zinc-200 px-2.5 py-2"
+          className="flex items-center gap-2.5 rounded-lg border border-hairline bg-card px-2.5 py-2"
         >
-          <div className="flex size-8 flex-none items-center justify-center overflow-hidden rounded bg-zinc-100">
+          <div className="flex size-8 flex-none items-center justify-center overflow-hidden rounded bg-muted">
             {it.previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={it.previewUrl} alt="" className="h-full w-full object-cover" />
             ) : it.kind === "IMAGE" ? (
-              <ImageIcon className="size-4 text-zinc-400" />
+              <ImageIcon className="size-4 text-muted-foreground" />
             ) : (
-              <FileText className="size-4 text-zinc-400" />
+              <FileText className="size-4 text-muted-foreground" />
             )}
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="truncate text-[12px] font-medium" title={it.name}>
+              <span className="truncate text-[12px] font-medium text-foreground" title={it.name}>
                 {it.name}
               </span>
-              <span className="flex-none text-[10.5px] text-zinc-400">
+              <span className="flex-none text-[10.5px] text-muted-foreground">
                 {formatBytes(it.size)}
               </span>
             </div>
 
-            {/* Progress bar (active states) */}
             {isActive(it.state) && (
               <div
-                className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200"
+                className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted"
                 role="progressbar"
                 aria-valuenow={it.progress}
                 aria-valuemin={0}
@@ -68,7 +67,9 @@ export function UploadQueue({ items, onCancel, onRetry, onRemove }: Props) {
               >
                 <div
                   className="h-full bg-teal-500 transition-all"
-                  style={{ width: `${it.state === "uploading" ? it.progress : it.state === "saving" ? 100 : 0}%` }}
+                  style={{
+                    width: `${it.state === "uploading" ? it.progress : it.state === "saving" ? 100 : 0}%`,
+                  }}
                 />
               </div>
             )}
@@ -83,10 +84,10 @@ export function UploadQueue({ items, onCancel, onRetry, onRemove }: Props) {
               <span
                 className={
                   it.state === "error"
-                    ? "text-red-600"
+                    ? "text-red-600 dark:text-red-400"
                     : it.state === "success"
-                      ? "text-emerald-600"
-                      : "text-zinc-400"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground"
                 }
               >
                 {it.state === "uploading"
@@ -96,14 +97,13 @@ export function UploadQueue({ items, onCancel, onRetry, onRemove }: Props) {
             </div>
           </div>
 
-          {/* Controls */}
           <div className="flex flex-none items-center gap-0.5">
             {it.state === "error" && (
               <button
                 type="button"
                 onClick={() => onRetry(it.id)}
                 aria-label={`ลองใหม่ ${it.name}`}
-                className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-teal-600"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-teal-600"
               >
                 <RotateCcw className="size-3.5" />
               </button>
@@ -113,7 +113,7 @@ export function UploadQueue({ items, onCancel, onRetry, onRemove }: Props) {
                 type="button"
                 onClick={() => onCancel(it.id)}
                 aria-label={`ยกเลิก ${it.name}`}
-                className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
               >
                 <X className="size-3.5" />
               </button>
@@ -122,7 +122,7 @@ export function UploadQueue({ items, onCancel, onRetry, onRemove }: Props) {
                 type="button"
                 onClick={() => onRemove(it.id)}
                 aria-label={`นำออก ${it.name}`}
-                className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
               >
                 <X className="size-3.5" />
               </button>

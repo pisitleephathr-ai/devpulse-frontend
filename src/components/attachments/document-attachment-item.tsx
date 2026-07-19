@@ -27,7 +27,7 @@ type Props = {
 
 /** Render the type icon for a file extension (returns JSX, not a component). */
 function fileIcon(ext: string, isLink: boolean) {
-  const cls = "size-5 flex-none text-zinc-400";
+  const cls = "size-5 flex-none text-muted-foreground";
   if (isLink) return <Link2 className={cls} aria-hidden />;
   if ([".xls", ".xlsx", ".csv"].includes(ext))
     return <FileSpreadsheet className={cls} aria-hidden />;
@@ -64,7 +64,7 @@ export function DocumentAttachmentItem({
     .join(" · ");
 
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 px-3 py-2">
+    <div className="flex items-center gap-2.5 rounded-lg border border-hairline bg-card px-3 py-2">
       {fileIcon(ext, !!isLink)}
       <div className="min-w-0 flex-1">
         <a
@@ -72,11 +72,11 @@ export function DocumentAttachmentItem({
           target="_blank"
           rel="noreferrer"
           title={name}
-          className="block truncate text-[12.5px] font-medium text-teal-600 hover:underline"
+          className="block truncate text-[12.5px] font-medium text-teal-600 hover:underline dark:text-teal-400"
         >
           {name}
         </a>
-        {meta && <div className="truncate text-[11px] text-zinc-400">{meta}</div>}
+        {meta && <div className="truncate text-[11px] text-muted-foreground">{meta}</div>}
       </div>
       <a
         href={href}
@@ -84,7 +84,7 @@ export function DocumentAttachmentItem({
         target="_blank"
         rel="noreferrer"
         aria-label={`ดาวน์โหลด ${name}`}
-        className="flex-none rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+        className="flex-none rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         <Download className="size-4" />
       </a>
@@ -93,7 +93,7 @@ export function DocumentAttachmentItem({
           type="button"
           onClick={onDelete}
           aria-label={`ลบ ${name}`}
-          className="flex-none rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600"
+          className="flex-none rounded-md p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
         >
           <Trash2 className="size-4" />
         </button>

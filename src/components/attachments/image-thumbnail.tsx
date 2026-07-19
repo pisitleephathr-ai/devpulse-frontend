@@ -25,11 +25,11 @@ export function ImageThumbnail({ thumbnailUrl, secureUrl, name, onOpen }: Props)
       type="button"
       onClick={onOpen}
       aria-label={`ดูรูป ${name}`}
-      className="group block w-full overflow-hidden rounded-lg border border-zinc-200 text-left transition hover:border-teal-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+      className="group block w-full overflow-hidden rounded-lg border border-hairline bg-card text-left transition hover:border-teal-400/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/70"
     >
-      <div className="relative aspect-video w-full bg-zinc-100">
+      <div className="relative aspect-video w-full bg-muted">
         {errored ? (
-          <div className="flex h-full w-full items-center justify-center text-[11px] text-zinc-400">
+          <div className="flex h-full w-full items-center justify-center text-[11px] text-muted-foreground">
             แสดงรูปไม่ได้
           </div>
         ) : (
@@ -43,7 +43,7 @@ export function ImageThumbnail({ thumbnailUrl, secureUrl, name, onOpen }: Props)
           />
         )}
       </div>
-      <div className="truncate px-2 py-1 text-[11px] text-zinc-500" title={name}>
+      <div className="truncate px-2 py-1 text-[11px] text-muted-foreground" title={name}>
         {name}
       </div>
     </button>

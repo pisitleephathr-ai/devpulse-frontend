@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Paperclip } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Paperclip, Plus, X, Trash2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { toast } from "@/components/ui/toaster";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -9,6 +9,7 @@ import { useData } from "@/lib/store";
 import { isManagerOrAdmin } from "@/lib/permissions";
 import type { ApiTaskAttachment } from "@/lib/mappers";
 import { isImageUrl } from "@/components/forms/task-form";
+import { formatBytes } from "@/lib/upload-config";
 import { useUploadConfig } from "@/lib/use-upload-config";
 import { useTaskAttachments } from "@/lib/use-attachments";
 import { useUploadQueue } from "@/lib/use-upload-queue";
@@ -27,7 +28,6 @@ type Props = {
   canUpload: boolean;
 };
 
-/** Two-digit pad. */
 const p2 = (n: number) => String(n).padStart(2, "0");
 
 /** Auto name for a pasted screenshot: screenshot-YYYYMMDD-HHmmss.png */
@@ -38,23 +38,19 @@ function screenshotName(ext: string): string {
   )}${p2(d.getMinutes())}${p2(d.getSeconds())}.${ext}`;
 }
 
-type Rendered = {
-  att: ApiTaskAttachment;
-  isImage: boolean;
-  href: string;
-};
+type Rendered = { att: ApiTaskAttachment; isImage: boolean; href: string };
 
 /**
- * Full attachment section for a task: limit summary, dropzone (drag/click/paste),
- * live upload queue, and the saved attachments (image grid + document list).
- * Legacy URL attachments keep rendering exactly as before.
+ * Task attachment section: a compact header with a count, the saved attachments
+ * (image grid + document list), and a click-to-open uploader (dropzone + queue).
+ * Theme-aware; legacy URL attachments keep rendering as before.
  */
 export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: Props) {
   const me = useCurrentUser();
   const { users } = useData();
   const { config } = useUploadConfig();
   const { attachments, usage, refresh } = useTaskAttachments(taskId, initialAttachments);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [adding, setAdding] = useState(false);
 
   const remaining = usage
     ? { files: usage.remainingFileCount, bytes: usage.remainingBytes }
@@ -74,21 +70,20 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
   const uploaderName = (id?: string | null) =>
     id ? users.find((u) => u.id === id)?.name : undefined;
 
-  /** May the current user delete this attachment (UX gate; server re-checks). */
   const canDelete = (att: ApiTaskAttachment): boolean => {
     if (canManage) return true;
     if (att.uploadedById && me && att.uploadedById === me.id) return true;
-    // Legacy URL attachments: an uploader may delete if they can edit the task.
     if ((att.source ?? "URL") === "URL" && canUpload) return true;
     return false;
   };
 
-  const full =
-    !!usage &&
-    (usage.remainingFileCount <= 0 || usage.remainingBytes <= 0);
+  const full = !!usage && (usage.remainingFileCount <= 0 || usage.remainingBytes <= 0);
+  // Keep the uploader visible while files are still in the queue, even if the
+  // user collapsed it, so progress/errors never get hidden mid-upload.
+  const showUploader = canUpload && (adding || queue.items.length > 0);
 
-  // Clipboard paste — scoped to this component's lifetime (it only mounts while
-  // the task dialog is open), so we never hijack paste globally across the app.
+  // Clipboard paste — scoped to this component's lifetime (only mounts while the
+  // task dialog is open), so we never hijack paste globally.
   useEffect(() => {
     if (!canUpload) return;
     const onPaste = (e: ClipboardEvent) => {
@@ -104,6 +99,7 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
       }
       if (files.length) {
         e.preventDefault();
+        setAdding(true);
         queue.enqueue(files, (msg) => toast(msg));
       }
     };
@@ -145,17 +141,39 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
     ...config.allowed.documentMimeTypes,
   ].join(",");
 
+  const hasAny = rendered.length > 0;
+
   return (
-    <div ref={containerRef} className="flex flex-col gap-3">
-      <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-zinc-900">
-        <Paperclip className="size-3.5" />
-        ไฟล์แนบ
+    <div className="flex flex-col gap-3">
+      {/* Header: title + count, and a compact add toggle */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-foreground">
+          <Paperclip className="size-3.5" />
+          ไฟล์แนบ
+        </div>
+        {usage && (
+          <span className="text-[11px] tabular-nums text-muted-foreground">
+            {usage.fileCount}/{config.limits.maxFilesPerTask}
+          </span>
+        )}
+        <div className="flex-1" />
+        {canUpload && (
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-md border border-hairline px-2 py-1 text-[12px] font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={full && !showUploader}
+            aria-expanded={showUploader}
+          >
+            {showUploader ? <X className="size-3.5" /> : <Plus className="size-3.5" />}
+            {showUploader ? "ปิด" : "แนบไฟล์"}
+          </button>
+        )}
       </div>
 
-      {canUpload && <UploadLimitSummary usage={usage} config={config} />}
-
-      {canUpload && (
-        <>
+      {/* Uploader (revealed on demand / while uploading) */}
+      {showUploader && (
+        <div className="flex flex-col gap-2 rounded-xl border border-hairline bg-muted/30 p-2.5">
           <UploadDropzone
             onFiles={(files) => queue.enqueue(files, (msg) => toast(msg))}
             disabled={full}
@@ -166,20 +184,28 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
                 : "พื้นที่ของงานเต็มแล้ว กรุณาลบไฟล์เดิมก่อน"
             }
           />
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-0.5">
+            <span className="text-[11px] text-muted-foreground">
+              รูปภาพ ≤ {formatBytes(config.limits.imageMaxBytes)} · เอกสาร ≤{" "}
+              {formatBytes(config.limits.documentMaxBytes)} · สูงสุด{" "}
+              {config.limits.maxConcurrentUploads} ไฟล์/ครั้ง
+            </span>
+            <UploadLimitSummary usage={usage} config={config} />
+          </div>
           <UploadQueue
             items={queue.items}
             onCancel={queue.cancel}
             onRetry={queue.retry}
             onRemove={queue.remove}
           />
-        </>
+        </div>
       )}
 
       {/* Saved image attachments */}
       {images.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {images.map(({ att, href }) => (
-            <div key={att.id} className="relative">
+            <div key={att.id} className="group relative">
               <ImageThumbnail
                 thumbnailUrl={att.thumbnailUrl}
                 secureUrl={href}
@@ -191,11 +217,9 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
                   type="button"
                   onClick={() => setPendingDelete(att)}
                   aria-label={`ลบ ${att.fileName}`}
-                  className="absolute right-1 top-1 rounded-md bg-white/85 p-1 text-zinc-500 shadow-sm hover:bg-white hover:text-red-600"
+                  className="absolute right-1 top-1 rounded-md bg-card/85 p-1 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition hover:text-red-600 group-hover:opacity-100 focus-visible:opacity-100 dark:hover:text-red-400"
                 >
-                  <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 6h18M8 6V4h8v2m-9 0v14a1 1 0 001 1h8a1 1 0 001-1V6" />
-                  </svg>
+                  <Trash2 className="size-3.5" />
                 </button>
               )}
             </div>
@@ -223,8 +247,8 @@ export function TaskAttachments({ taskId, initialAttachments = [], canUpload }: 
         </div>
       )}
 
-      {rendered.length === 0 && !canUpload && (
-        <div className="text-[12px] text-zinc-400">ไม่มีไฟล์แนบ</div>
+      {!hasAny && !showUploader && (
+        <div className="text-[12px] text-muted-foreground">ยังไม่มีไฟล์แนบ</div>
       )}
 
       {lightbox && (
