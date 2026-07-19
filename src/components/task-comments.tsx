@@ -25,6 +25,45 @@ function mentionContext(
   return { start: at, query };
 }
 
+/**
+ * Render a comment, highlighting "@Name" for known users. The current user's
+ * own mentions get a stronger (amber) treatment so "you were tagged" stands out.
+ * Names are matched longest-first so "@Anna" wins over "@Ann".
+ */
+function renderMentions(
+  message: string,
+  names: string[],
+  meName?: string
+): React.ReactNode {
+  const valid = names.filter(Boolean).sort((a, b) => b.length - a.length);
+  if (valid.length === 0) return message;
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`@(${valid.map(esc).join("|")})`, "g");
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(message)) !== null) {
+    if (m.index > last) out.push(message.slice(last, m.index));
+    const name = m[1];
+    const isMe = !!meName && name === meName;
+    out.push(
+      <span
+        key={m.index}
+        className={
+          isMe
+            ? "rounded px-1 font-semibold text-amber-800 bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300"
+            : "rounded px-0.5 font-medium text-teal-700 dark:text-teal-300"
+        }
+      >
+        @{name}
+      </span>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < message.length) out.push(message.slice(last));
+  return out;
+}
+
 type ApiComment = {
   id: string;
   message: string;
@@ -37,6 +76,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
   const me = useCurrentUser();
   const { users } = useData();
   const canModerate = isManagerOrAdmin(me);
+  const userNames = users.map((u) => u.name);
 
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,7 +263,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
                     </div>
                   ) : (
                     <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-zinc-700">
-                      {c.message}
+                      {renderMentions(c.message, userNames, me?.name)}
                     </p>
                   )}
                 </div>
