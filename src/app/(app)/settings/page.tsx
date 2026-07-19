@@ -65,6 +65,16 @@ const REMINDER_OPTIONS = ["16:30 น.", "17:00 น.", "17:30 น."];
 const WEEKDAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const HOLIDAY_TYPE_LABEL: Record<string, string> = { COMPANY: "วันหยุดบริษัท", PUBLIC: "วันหยุดราชการ", SPECIAL: "วันหยุดพิเศษ" };
 
+// Settings are grouped into focused tabs so each screen stays light.
+const TABS = [
+  { id: "general", label: "ทั่วไป", icon: Building2, desc: "องค์กร วันทำงาน และรายงาน" },
+  { id: "leave", label: "การลาและวันหยุด", icon: Plane, desc: "นโยบายการลา ประเภท และวันหยุด" },
+  { id: "notify", label: "การแจ้งเตือน", icon: Bell, desc: "การแจ้งเตือนภายในแอป" },
+  { id: "line", label: "LINE OA", icon: MessageCircle, desc: "แจ้งเตือนและสรุปเข้ากลุ่ม LINE" },
+  { id: "storage", label: "พื้นที่จัดเก็บ", icon: HardDrive, desc: "การใช้งาน Cloudinary" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
 // TeamSetting-only fields (menu config is saved separately).
 const DEFAULT_SETTING: Setting = {
   teamName: "",
@@ -98,6 +108,7 @@ const pickSetting = (s: Record<string, unknown>): Setting =>
 
 export default function SettingsPage() {
 
+  const [tab, setTab] = useState<TabId>("general");
   const [setting, setSetting] = useState<Setting>(DEFAULT_SETTING);
   const [baseline, setBaseline] = useState<Setting>(DEFAULT_SETTING);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
@@ -224,9 +235,50 @@ export default function SettingsPage() {
           </div>
         ) : (
           <>
-            <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-              {/* Left column */}
-              <div className="flex flex-col gap-4">
+            <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start">
+              {/* Tab rail — horizontal scroll on mobile, sticky vertical column on desktop */}
+              <nav className="lg:sticky lg:top-6 lg:w-56 lg:flex-none">
+                <div className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 sm:-mx-7 sm:px-7 lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0 lg:pb-0">
+                  {TABS.map((t) => {
+                    const Icon = t.icon;
+                    const active = tab === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTab(t.id)}
+                        aria-current={active ? "page" : undefined}
+                        className={`group flex flex-none items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 lg:w-full ${
+                          active
+                            ? "border-teal-200 bg-teal-50 dark:border-teal-900 dark:bg-teal-950/40"
+                            : "border-transparent hover:bg-muted"
+                        }`}
+                      >
+                        <span
+                          className={`flex size-8 flex-none items-center justify-center rounded-lg transition-colors ${
+                            active
+                              ? "bg-teal-600 text-white"
+                              : "bg-muted text-muted-foreground group-hover:text-foreground"
+                          }`}
+                        >
+                          <Icon className="size-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={`block whitespace-nowrap text-[13px] font-semibold lg:whitespace-normal ${active ? "text-teal-700 dark:text-teal-300" : ""}`}>
+                            {t.label}
+                          </span>
+                          <span className="hidden text-[11px] text-muted-foreground lg:block">{t.desc}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </nav>
+
+              {/* Tab content */}
+              <div className="flex min-w-0 flex-1 flex-col gap-4">
+                {tab === "general" && (
+                  <>
                 <Section icon={<Building2 className="size-4" />} title="ข้อมูลองค์กร" desc="ชื่อทีมและเขตเวลาที่ใช้กับทั้งระบบ">
                   <div className="grid gap-3.5 sm:grid-cols-2">
                     <Field label="ชื่อทีม / องค์กร">
@@ -282,7 +334,11 @@ export default function SettingsPage() {
                     <SwitchRow label="กำหนดให้ผู้ใช้ใหม่ต้องส่งรายงานประจำวัน" checked={setting.requireDailyReportDefault} onChange={(v) => set("requireDailyReportDefault", v)} />
                   </div>
                 </Section>
+                  </>
+                )}
 
+                {tab === "leave" && (
+                  <>
                 <Section
                   icon={<Plane className="size-4" />}
                   title="การลา"
@@ -330,7 +386,7 @@ export default function SettingsPage() {
                     </button>
                   }
                 >
-                  <div className="max-h-[280px] divide-y divide-hairline-soft overflow-y-auto overflow-x-hidden rounded-lg border border-border">
+                  <div className="max-h-[420px] divide-y divide-hairline-soft overflow-y-auto overflow-x-hidden rounded-lg border border-border">
                     {holidays.map((h) => (
                       <div key={h.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
                         <span className="flex size-8 flex-none items-center justify-center rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-950/40">
@@ -354,10 +410,10 @@ export default function SettingsPage() {
                     {holidays.length === 0 && <div className="px-3.5 py-6 text-center text-[12.5px] text-muted-foreground">ยังไม่มีวันหยุดบริษัท</div>}
                   </div>
                 </Section>
-              </div>
+                  </>
+                )}
 
-              {/* Right column: notifications */}
-              <div className="flex flex-col gap-4">
+                {tab === "notify" && (
                 <Section icon={<Bell className="size-4" />} title="การแจ้งเตือนระบบ" desc="การแจ้งเตือนภายในแอป">
                   <div className="divide-y divide-hairline-soft">
                     <SwitchRow label="แจ้งเตือนให้ส่งรายงานประจำวัน" checked={setting.notifyReportReminder} onChange={(v) => set("notifyReportReminder", v)} />
@@ -365,10 +421,16 @@ export default function SettingsPage() {
                     <SwitchRow label="แจ้งเตือนงานที่ใกล้ครบกำหนด" checked={setting.notifyTaskDue} onChange={(v) => set("notifyTaskDue", v)} />
                   </div>
                 </Section>
+                )}
 
-                <CloudinaryUsageSection />
+                {tab === "storage" && <CloudinaryUsageSection />}
 
-                {lineStatus && (
+                {tab === "line" && (
+                  !lineStatus ? (
+                    <Section icon={<MessageCircle className="size-4" />} title="แจ้งเตือน LINE OA" desc="ส่งการ์ดแจ้งเตือนเข้ากลุ่ม LINE ของทีม">
+                      <div className="py-4 text-center text-[12.5px] text-muted-foreground">โหลดสถานะ LINE ไม่สำเร็จ</div>
+                    </Section>
+                  ) : (
                   <Section icon={<MessageCircle className="size-4" />} title="แจ้งเตือน LINE OA" desc="ส่งการ์ดแจ้งเตือนเข้ากลุ่ม LINE ของทีม">
                     <div className="divide-y divide-hairline-soft">
                       <div className="flex items-center justify-between py-2.5">
@@ -570,6 +632,7 @@ export default function SettingsPage() {
                       )}
                     </div>
                   </Section>
+                  )
                 )}
               </div>
             </div>
