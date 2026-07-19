@@ -145,9 +145,20 @@ export type ApiTaskDetail = ApiTask & {
   /** full checklist items (present on the detail endpoint) */
   checklist?: ApiChecklistItem[];
 };
+/** Admin-configured leave-type policy (source of the leave form's type list). */
+export type ApiLeaveType = {
+  id: string;
+  name: string;
+  daysLabel: string;
+  color: string;
+  autoApprove: boolean;
+  isActive: boolean;
+  sortOrder: number;
+};
 export type ApiLeave = {
   id: string;
-  type: LeaveTypeEnum;
+  /** freeform leave-type name (or a legacy enum code) */
+  type: string;
   startDate: string;
   endDate: string;
   days: number;
@@ -206,7 +217,9 @@ export const PRIORITY_TO_LABEL: Record<PriorityEnum, Priority> = {
   MEDIUM: "Medium",
   LOW: "Low",
 };
-export const LEAVE_TYPE_TO_TH: Record<LeaveTypeEnum, string> = {
+// Legacy enum-code → Thai. New leave types already store their (freeform) name,
+// so `mapLeave` falls back to the value itself for anything not listed here.
+export const LEAVE_TYPE_TO_TH: Record<string, string> = {
   VACATION: "ลาพักร้อน",
   SICK: "ลาป่วย",
   PERSONAL: "ลากิจ",
@@ -390,7 +403,8 @@ export type TaskInput = {
   attachments?: TaskAttachmentInput[];
 };
 export type LeaveInput = {
-  type: LeaveTypeEnum;
+  /** freeform leave-type name (a LeaveTypePolicy.name) */
+  type: string;
   startDate: string;
   endDate: string;
   reason: string;

@@ -32,6 +32,7 @@ import {
   type UserInput,
   type UserUpdateInput,
   type ApiRole,
+  type ApiLeaveType,
   type RoleInput,
   type RoleUpdateInput,
 } from "./mappers";
@@ -81,6 +82,8 @@ type DataContextValue = {
   deleteUser: (id: string) => Promise<boolean>;
 
   roles: ApiRole[];
+  /** Admin-configured leave types (for the leave form's type picker). */
+  leaveTypes: ApiLeaveType[];
   addRole: (data: RoleInput) => Promise<boolean>;
   updateRole: (id: string, data: RoleUpdateInput) => Promise<boolean>;
   deleteRole: (id: string) => Promise<boolean>;
@@ -98,6 +101,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [roles, setRoles] = useState<ApiRole[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<ApiLeaveType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportsHasMore, setReportsHasMore] = useState(false);
@@ -136,6 +140,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setRoles(rl.roles);
       } catch {
         setRoles([]);
+      }
+      // Configured leave types (for the leave form's type picker). Non-critical.
+      try {
+        const lt = await api.get<{ leaveTypes: ApiLeaveType[] }>(
+          "/api/settings/leave-types"
+        );
+        setLeaveTypes(lt.leaveTypes);
+      } catch {
+        setLeaveTypes([]);
       }
     } catch (err) {
       setError(
@@ -411,6 +424,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       toggleUser,
       deleteUser,
       roles,
+      leaveTypes,
       addRole,
       updateRole,
       deleteRole,
@@ -443,6 +457,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       toggleUser,
       deleteUser,
       roles,
+      leaveTypes,
       addRole,
       updateRole,
       deleteRole,

@@ -18,7 +18,6 @@ import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import {
   LEAVE_TYPE_COLORS,
-  LEAVE_TYPES_FORM,
   LEAVE_STATUS_OPTIONS,
   type Leave,
 } from "@/lib/mock-data";
@@ -31,7 +30,28 @@ import { X } from "lucide-react";
 const TEMPLATE = "160px 96px 150px 92px minmax(170px,1fr) 104px 172px";
 
 export default function LeavesPage() {
-  const { leaves, users, loading, setLeaveStatus, addLeave } = useData();
+  const { leaves, users, loading, setLeaveStatus, addLeave, leaveTypes } = useData();
+  // Filter options from the configured leave types (active, sorted).
+  const typeOptions = useMemo(
+    () =>
+      leaveTypes
+        .filter((t) => t.isActive)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((t) => t.name),
+    [leaveTypes]
+  );
+  // Badge colors: prefer the built-in palette, then the configured policy color
+  // (as a light tint + solid), then a neutral fallback.
+  const policyColor = useMemo(
+    () => new Map(leaveTypes.map((t) => [t.name, t.color])),
+    [leaveTypes]
+  );
+  const typeColors = (name: string): [string, string] => {
+    if (LEAVE_TYPE_COLORS[name]) return LEAVE_TYPE_COLORS[name];
+    const hex = policyColor.get(name);
+    if (hex) return [`${hex}22`, hex];
+    return ["#e4e4e7", "#3f3f46"];
+  };
   const me = useCurrentUser();
   // Anyone with approval rights can decide any pending leave — including their own.
   const canApprove = canApproveLeave(me);
@@ -111,7 +131,7 @@ export default function LeavesPage() {
           onChange={(e) => setType(e.target.value)}
         >
           <option value="all">ประเภททั้งหมด</option>
-          {LEAVE_TYPES_FORM.map((t) => (
+          {typeOptions.map((t) => (
             <option key={t}>{t}</option>
           ))}
         </Select>
@@ -170,7 +190,7 @@ export default function LeavesPage() {
               <span className="justify-self-start">
                 <StatusBadge
                   label={l.type}
-                  colors={LEAVE_TYPE_COLORS[l.type]}
+                  colors={typeColors(l.type)}
                   shape="tag"
                 />
               </span>
