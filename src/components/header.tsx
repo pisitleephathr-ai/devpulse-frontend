@@ -64,12 +64,12 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
           aria-label="บัญชีผู้ใช้"
           aria-expanded={menuOpen}
         >
-          <Avatar userKey={meKey} size={30} className="cursor-pointer" />
+          <Avatar userKey={meKey} name={me?.name} size={30} className="cursor-pointer" />
         </button>
         {menuOpen && (
           <div className="dp-menu absolute right-0 top-[calc(100%+8px)] z-40 w-56 overflow-hidden rounded-xl border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
             <div className="flex items-center gap-2.5 border-b border-hairline px-3.5 py-3">
-              <Avatar userKey={meKey} size={32} />
+              <Avatar userKey={meKey} name={me?.name} size={32} />
               <div className="min-w-0">
                 <div className="truncate text-[12.5px] font-semibold">
                   {meName}

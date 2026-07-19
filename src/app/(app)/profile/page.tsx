@@ -88,7 +88,7 @@ export default function ProfilePage() {
         <>
         {/* Profile header card */}
         <div className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-[22px] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-          <Avatar userKey={profile?.avatarKey ?? "?"} size={56} fontSize={20} />
+          <Avatar userKey={profile?.avatarKey ?? "?"} name={profile?.name} size={56} fontSize={20} />
           <div className="min-w-0 flex-1">
             <div className="text-[16px] font-semibold">
               {profile?.name ?? "…"}

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { usePersistedState } from "@/lib/use-persisted-state";
+import { api } from "@/lib/api";
 import Link from "next/link";
 import {
   Plus,
@@ -102,8 +103,17 @@ export default function ReportsPage() {
     reports.some(
       (r) => r.key === me.avatarKey && r.date === todayThai && r.status !== "ฉบับร่าง"
     );
+  // Suppress the "haven't submitted today" nudge on weekends / company holidays.
+  const [isWorkingDay, setIsWorkingDay] = useState(true);
+  useEffect(() => {
+    api
+      .get<{ isWorkingDay: boolean }>("/api/reports/workday")
+      .then((r) => setIsWorkingDay(r.isWorkingDay))
+      .catch(() => {});
+  }, []);
+
   const needsReportToday =
-    !!me && (meUser?.requiresDailyReport ?? true) && !submittedToday;
+    !!me && (meUser?.requiresDailyReport ?? true) && !submittedToday && isWorkingDay;
 
   // Role display name by avatar key (report data has no role of its own).
   const roleByKey = useMemo(

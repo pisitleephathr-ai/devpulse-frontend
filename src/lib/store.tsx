@@ -457,3 +457,13 @@ export function useData(): DataContextValue {
   if (!ctx) throw new Error("useData must be used within <DataProvider>");
   return ctx;
 }
+
+/**
+ * Resolve a user's display name from their avatar key. Non-throwing (returns a
+ * no-op lookup outside the provider) so presentational components like Avatar
+ * can derive initials from the name instead of the email-based avatar key.
+ */
+export function useDisplayNameByKey(): (key: string) => string | undefined {
+  const ctx = useContext(DataContext);
+  return (key: string) => ctx?.users.find((u) => u.key === key)?.name;
+}
