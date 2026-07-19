@@ -79,6 +79,9 @@ export default function TasksPage() {
   const [assigneeF, setAssigneeF] = usePersistedState("tasks.assignee", "all");
   const [projectF, setProjectF] = usePersistedState("tasks.project", "all");
   const [dueF, setDueF] = usePersistedState("tasks.due", "all");
+  // Exact due-date filter (YYYY-MM-DD); "" = off. Independent of the relative
+  // due filter above.
+  const [dueDateF, setDueDateF] = usePersistedState("tasks.dueDate", "");
 
   const [createStatus, setCreateStatus] = useState<TaskStatus | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -165,7 +168,8 @@ export default function TasksPage() {
     priorityF !== "all" ||
     assigneeF !== "all" ||
     projectF !== "all" ||
-    dueF !== "all";
+    dueF !== "all" ||
+    dueDateF !== "";
 
   const filtered = useMemo(() => {
     return tasks.filter(
@@ -175,9 +179,10 @@ export default function TasksPage() {
         (priorityF === "all" || t.pri === priorityF) &&
         (assigneeF === "all" || t.assignees.some((a) => a.key === assigneeF)) &&
         (projectF === "all" || t.proj === projectF) &&
-        matchDue(t.dueISO, dueF)
+        matchDue(t.dueISO, dueF) &&
+        (dueDateF === "" || t.dueISO?.slice(0, 10) === dueDateF)
     );
-  }, [tasks, search, statusF, priorityF, assigneeF, projectF, dueF]);
+  }, [tasks, search, statusF, priorityF, assigneeF, projectF, dueF, dueDateF]);
 
   const columns = useMemo(() => groupTasks(filtered), [filtered]);
   const detail = detailId ? tasks.find((t) => t.id === detailId) ?? null : null;
@@ -210,6 +215,7 @@ export default function TasksPage() {
     setAssigneeF("all");
     setProjectF("all");
     setDueF("all");
+    setDueDateF("");
   }
 
   function exportExcel() {
@@ -339,6 +345,14 @@ export default function TasksPage() {
           <option value="week">สัปดาห์นี้</option>
           <option value="month">เดือนนี้</option>
         </Select>
+        <input
+          type="date"
+          value={dueDateF}
+          onChange={(e) => setDueDateF(e.target.value)}
+          aria-label="กรองตามวันครบกำหนด"
+          title="เลือกวันครบกำหนด"
+          className="w-auto rounded-lg border border-border bg-card px-2.5 py-[7px] text-[12.5px] text-foreground"
+        />
         {filtersActive && (
           <button
             onClick={clearFilters}
@@ -436,6 +450,7 @@ export default function TasksPage() {
         onClose={() => setCreateStatus(null)}
         title="สร้างงานใหม่"
         description="เพิ่มงานลงในบอร์ด"
+        className="w-[880px]"
       >
         {createStatus !== null && (
           <TaskForm
@@ -645,6 +660,7 @@ export default function TasksPage() {
         open={editTask !== null}
         onClose={() => setEditTask(null)}
         title="แก้ไขงาน"
+        className="w-[880px]"
       >
         {editTask && (
           <TaskForm

@@ -251,7 +251,6 @@ export default function DashboardPage() {
         {canCreateTask && <QuickAction href="/tasks" icon={<KanbanSquare className="size-4" />} label="สร้างงาน" />}
         <QuickAction href="/reports/new" icon={<Plus className="size-4" />} label="เขียนรายงาน" />
         <QuickAction href="/leaves/new" icon={<CalendarClock className="size-4" />} label="ขอลา" />
-        <QuickAction href="/standup" icon={<ClipboardCheck className="size-4" />} label="ประชุมเช้า" />
         <QuickAction href="/reports" icon={<FileText className="size-4" />} label="ดูรายงาน" />
       </div>
 
@@ -345,8 +344,8 @@ export default function DashboardPage() {
           <Card className="xl:flex-none">
             <CardHeader>
               <CardTitle>สถานะรายงานวันนี้</CardTitle>
-              <Link href="/standup" className="text-[12.5px] font-medium text-teal-600 hover:underline">
-                ประชุมเช้า
+              <Link href="/reports" className="text-[12.5px] font-medium text-teal-600 hover:underline">
+                รายงานประจำวัน
               </Link>
             </CardHeader>
             <div className="px-[18px] py-3.5">
