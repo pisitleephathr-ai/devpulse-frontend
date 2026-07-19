@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Pencil,
   HardDrive,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,8 @@ type Setting = {
   lineDailyLeaveSummaryTime: string;
   lineDailyReportSummary: boolean;
   lineDailyReportSummaryTime: string;
+  lineWeeklyPerformance: boolean;
+  lineWeeklyPerformanceTime: string;
 };
 type LeaveType = { id: string; name: string; daysLabel: string; color: string; autoApprove: boolean; sortOrder: number };
 type Holiday = { id: string; name: string; date: string; description: string; type: string; isActive: boolean };
@@ -77,6 +80,8 @@ const DEFAULT_SETTING: Setting = {
   lineDailyLeaveSummaryTime: "09:00",
   lineDailyReportSummary: false,
   lineDailyReportSummaryTime: "18:00",
+  lineWeeklyPerformance: false,
+  lineWeeklyPerformanceTime: "09:00",
 };
 const SETTING_KEYS = Object.keys(DEFAULT_SETTING) as (keyof Setting)[];
 const pickSetting = (s: Record<string, unknown>): Setting =>
@@ -91,7 +96,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [addLeaveOpen, setAddLeaveOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<LeaveType | null>(null);
-  const [testingSummary, setTestingSummary] = useState<"leave" | "report" | null>(null);
+  const [testingSummary, setTestingSummary] = useState<
+    "leave" | "report" | "performance" | null
+  >(null);
   const [addHolidayOpen, setAddHolidayOpen] = useState(false);
   const [pendingLeaveDelete, setPendingLeaveDelete] = useState<LeaveType | null>(null);
   const [pendingHolidayDelete, setPendingHolidayDelete] = useState<Holiday | null>(null);
@@ -160,7 +167,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function testSummary(kind: "leave" | "report") {
+  async function testSummary(kind: "leave" | "report" | "performance") {
     setTestingSummary(kind);
     try {
       const r = await api.post<{ sent: boolean; reason?: string }>(`/api/settings/line/test/${kind}`, {});
@@ -517,6 +524,16 @@ export default function SettingsPage() {
                                 onTime={(v) => set("lineDailyReportSummaryTime", v)}
                                 onTest={() => testSummary("report")}
                                 testing={testingSummary === "report"}
+                              />
+                              <TimedSummaryRow
+                                icon={<Trophy className="size-3.5" />}
+                                label="สรุปผลงานทีม (ปิดงานตรงเวลา) — ทุกวันจันทร์"
+                                enabled={setting.lineWeeklyPerformance}
+                                onToggle={(v) => set("lineWeeklyPerformance", v)}
+                                time={setting.lineWeeklyPerformanceTime}
+                                onTime={(v) => set("lineWeeklyPerformanceTime", v)}
+                                onTest={() => testSummary("performance")}
+                                testing={testingSummary === "performance"}
                               />
                             </div>
                           </div>

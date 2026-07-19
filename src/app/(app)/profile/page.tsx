@@ -26,6 +26,8 @@ import { roleNameOf, type ApiUser } from "@/lib/mappers";
 
 type LinePrefs = {
   taskAssigned: boolean;
+  taskStatus: boolean;
+  mention: boolean;
   leaveDecision: boolean;
   leaveRequest: boolean;
   reportReminder: boolean;
@@ -46,9 +48,11 @@ type LineStatus = {
 /** Notification toggle metadata (only the role-allowed ones are shown). */
 const NOTIF_TOGGLES: { key: keyof LinePrefs; label: string; hint: string }[] = [
   { key: "taskAssigned", label: "งานที่ได้รับมอบหมาย", hint: "เมื่อมีคนมอบหมายงานให้คุณ" },
+  { key: "taskStatus", label: "สถานะงานของฉันเปลี่ยน", hint: "เมื่องานที่คุณรับผิดชอบถูกย้ายสถานะ" },
+  { key: "mention", label: "ถูกพูดถึง (@) ในคอมเมนต์", hint: "เมื่อมีคน @ ชื่อคุณในความคิดเห็น" },
   { key: "leaveDecision", label: "ผลอนุมัติการลา", hint: "เมื่อคำขอลาของคุณถูกอนุมัติ/ปฏิเสธ" },
   { key: "leaveRequest", label: "คำขอลาใหม่", hint: "เมื่อมีคนส่งคำขอลา (สำหรับผู้อนุมัติ)" },
-  { key: "reportReminder", label: "เตือนส่งรายงานประจำวัน", hint: "เมื่อผู้จัดการกดเตือนและคุณยังไม่ส่ง" },
+  { key: "reportReminder", label: "เตือนส่งรายงานประจำวัน", hint: "เมื่อยังไม่ส่งรายงานตอนเย็น" },
 ];
 type LinkCode = { code: string; expiresAt: string; addFriendUrl: string | null };
 

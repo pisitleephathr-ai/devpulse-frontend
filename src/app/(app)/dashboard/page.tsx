@@ -71,6 +71,8 @@ type Insights = {
     done: number;
     open: number;
     total: number;
+    closed?: number;
+    onTimeRate?: number | null;
   }[];
   recentlyCompleted: {
     id: string;
@@ -584,6 +586,21 @@ function WorkloadRow({
         {w.open === 0 && <span className="text-[11.5px] font-medium text-emerald-600">ว่าง</span>}
       </div>
       <div className="hidden w-[86px] flex-none sm:block">
+        {typeof w.onTimeRate === "number" && (
+          <div
+            className={cn(
+              "mb-0.5 text-[10px] font-semibold tabular-nums",
+              w.onTimeRate >= 80
+                ? "text-emerald-600"
+                : w.onTimeRate >= 50
+                  ? "text-amber-600"
+                  : "text-red-600"
+            )}
+            title={`ปิดงานตรงเวลา ${w.onTimeRate}% (${w.closed ?? 0} งาน)`}
+          >
+            ตรงเวลา {w.onTimeRate}%
+          </div>
+        )}
         <div className="mb-0.5 flex justify-between text-[10px] text-muted-foreground tabular-nums">
           <span>{w.done}/{w.total}</span>
           <span>{percent}%</span>

@@ -61,6 +61,8 @@ const PERMISSION_LABEL: Record<string, string> = Object.fromEntries(
 /** Personal-LINE notification types a role can be allowed to receive. */
 const NOTIF_OPTIONS = [
   { value: "taskAssigned", label: "งานที่ได้รับมอบหมาย" },
+  { value: "taskStatus", label: "สถานะงานของฉันเปลี่ยน" },
+  { value: "mention", label: "ถูกพูดถึง (@) ในคอมเมนต์" },
   { value: "leaveDecision", label: "ผลอนุมัติการลา (ของฉัน)" },
   { value: "leaveRequest", label: "คำขอลาใหม่ (สำหรับผู้อนุมัติ)" },
   { value: "reportReminder", label: "เตือนส่งรายงานประจำวัน" },
