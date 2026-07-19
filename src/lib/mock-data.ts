@@ -112,17 +112,6 @@ export const CURRENT_USER = {
   isManager: true,
 };
 
-/** Assignable / selectable team members (for report + task + leave forms). */
-export const TEAM_MEMBERS: { key: string; name: string }[] = [
-  { key: "Maya", name: "มายา เฉิน" },
-  { key: "Jonas", name: "โจนาส เวเบอร์" },
-  { key: "Priya", name: "ปรียา นาอีร์" },
-  { key: "Tom", name: "ทอม โอคาฟอร์" },
-  { key: "Sara", name: "ซาร่า ลินด์ควิสต์" },
-  { key: "Alex", name: "อเล็กซ์ รุยซ์" },
-  { key: "Lena", name: "เลนา ฮอฟฟ์แมน" },
-];
-
 /* ------------------------------------------------------------------ */
 /* Navigation                                                          */
 /* ------------------------------------------------------------------ */
@@ -172,13 +161,6 @@ export const PAGE_TITLES: Record<string, string> = {
 
 export type Stat = { label: string; value: string; sub: string; dot: string };
 
-export const DASHBOARD_STATS: Stat[] = [
-  { label: "รายงานวันนี้", value: "5/7", sub: "ซาร่ากำลังร่าง · เบนยังไม่ส่ง", dot: "#0d9488" },
-  { label: "คำขอลารออนุมัติ", value: "3", sub: "รอนานสุด 2 วัน", dot: "#f59e0b" },
-  { label: "งานกำลังทำ", value: "4", sub: "ครบกำหนด 2 งานในสัปดาห์นี้", dot: "#3b82f6" },
-  { label: "อุปสรรค", value: "2", sub: "ฐานข้อมูล Staging · ใบรับรอง Push", dot: "#e11d48" },
-];
-
 export type ReportStatusRow = {
   name: string;
   key: string;
@@ -187,35 +169,9 @@ export type ReportStatusRow = {
   status: string;
 };
 
-export const REPORT_STATUS: ReportStatusRow[] = [
-  { name: "มายา เฉิน", key: "Maya", proj: "Console Redesign", time: "08:42 น.", status: "ส่งแล้ว" },
-  { name: "โจนาส เวเบอร์", key: "Jonas", proj: "Atlas API", time: "09:05 น.", status: "ส่งแล้ว" },
-  { name: "ปรียา นาอีร์", key: "Priya", proj: "Atlas API", time: "09:12 น.", status: "ส่งแล้ว" },
-  { name: "ทอม โอคาฟอร์", key: "Tom", proj: "Orbit Mobile", time: "09:31 น.", status: "ส่งแล้ว" },
-  { name: "อเล็กซ์ รุยซ์", key: "Alex", proj: "Infra Hardening", time: "10:02 น.", status: "ส่งแล้ว" },
-  { name: "ซาร่า ลินด์ควิสต์", key: "Sara", proj: "Console Redesign", time: "—", status: "ฉบับร่าง" },
-  { name: "เบน คาร์เตอร์", key: "Ben", proj: "Atlas API", time: "—", status: "ยังไม่ส่ง" },
-];
-
 export type ProjectProgress = { name: string; done: number; total: number };
 
-export const PROJECT_PROGRESS: ProjectProgress[] = [
-  { name: "Atlas API", done: 13, total: 18 },
-  { name: "Console Redesign", done: 22, total: 25 },
-  { name: "Orbit Mobile", done: 9, total: 20 },
-  { name: "Infra Hardening", done: 6, total: 19 },
-];
-
 export type ActivityItem = { who: string; what: string; time: string; dot: string };
-
-export const TEAM_ACTIVITY: ActivityItem[] = [
-  { who: "ปรียา นาอีร์", what: 'ย้าย "ตรวจสอบคำขอลา" ไปขั้นรอรีวิว', time: "24 นาทีที่แล้ว", dot: "#7c3aed" },
-  { who: "อเล็กซ์ รุยซ์", what: 'ทำ "ปรับแต่ง CI cache" เสร็จแล้ว', time: "1 ชั่วโมงที่แล้ว", dot: "#10b981" },
-  { who: "ทอม โอคาฟอร์", what: "รายงานอุปสรรคในโปรเจกต์ Orbit Mobile", time: "2 ชั่วโมงที่แล้ว", dot: "#e11d48" },
-  { who: "โจนาส เวเบอร์", what: "ส่งรายงานประจำวันแล้ว", time: "3 ชั่วโมงที่แล้ว", dot: "#0d9488" },
-  { who: "มายา เฉิน", what: "ขอลากิจวันที่ 31 ก.ค.", time: "4 ชั่วโมงที่แล้ว", dot: "#f59e0b" },
-  { who: "ซาร่า ลินด์ควิสต์", what: 'คอมเมนต์ใน "แผน QA สำหรับรีลีส 2.4"', time: "เมื่อวาน", dot: "#a1a1aa" },
-];
 
 /* ------------------------------------------------------------------ */
 /* Daily reports                                                       */
@@ -344,8 +300,6 @@ export const REPORTS: Report[] = REPORTS_SEED.map((r, i) => ({
   ...r,
 }));
 
-export const PROJECTS = ["Atlas API", "Orbit Mobile", "Console Redesign", "Infra Hardening"];
-
 export const REPORT_STATUS_OPTIONS: ReportStatus[] = ["ส่งแล้ว", "ฉบับร่าง", "ส่งช้า"];
 
 /* ------------------------------------------------------------------ */
@@ -389,18 +343,10 @@ export const TASK_STATUS_META: { name: TaskStatus; dot: string }[] = [
   { name: "Ready to Test", dot: "#06b6d4" },
   { name: "Done", dot: "#10b981" },
 ];
-
 export const TASK_STATUSES: TaskStatus[] = TASK_STATUS_META.map((m) => m.name);
 export const PRIORITIES: Priority[] = ["High", "Medium", "Low"];
 
 /** Selectable projects with their card code + accent color. */
-export const TASK_PROJECTS = [
-  { name: "Atlas API", code: "ATLAS", color: "#0f766e" },
-  { name: "Orbit Mobile", code: "ORBIT", color: "#b45309" },
-  { name: "Console Redesign", code: "CONSOLE", color: "#7c3aed" },
-  { name: "Infra Hardening", code: "INFRA", color: "#be123c" },
-];
-
 const TASKS_SEED: Omit<
   Task,
   | "id"
@@ -477,7 +423,6 @@ export const LEAVES: Leave[] = LEAVES_SEED.map((l, i) => ({
   ...l,
 }));
 
-export const LEAVE_TYPES_FORM = ["ลาพักร้อน", "ลาป่วย", "ลากิจ", "ลาเลี้ยงดูบุตร"];
 export const LEAVE_STATUS_OPTIONS: LeaveStatus[] = ["รออนุมัติ", "อนุมัติแล้ว", "ปฏิเสธ"];
 
 export function pendingLeaveCount(leaves: Leave[] = LEAVES): number {
@@ -532,8 +477,6 @@ export const USERS: User[] = USERS_SEED.map((u, i) => ({
   ...u,
 }));
 
-export const ROLE_OPTIONS = ["หัวหน้าทีม", "ผู้ดูแลระบบ", "นักพัฒนา", "QA"];
-
 /* ------------------------------------------------------------------ */
 /* Team calendar — July 2026 (พ.ศ. 2569), 1 Jul falls on Wednesday     */
 /* ------------------------------------------------------------------ */
@@ -577,10 +520,3 @@ export type LeaveTypeSetting = {
   approvalBg: string;
   approvalFg: string;
 };
-
-export const LEAVE_TYPE_SETTINGS: LeaveTypeSetting[] = [
-  { name: "ลาพักร้อน", days: "20 วัน / ปี", color: "#0d9488", approval: "ต้องขออนุมัติ", approvalBg: "#fef3c7", approvalFg: "#b45309" },
-  { name: "ลาป่วย", days: "10 วัน / ปี", color: "#f59e0b", approval: "อนุมัติอัตโนมัติ", approvalBg: "#dcfce7", approvalFg: "#15803d" },
-  { name: "ลากิจ", days: "5 วัน / ปี", color: "#8b5cf6", approval: "ต้องขออนุมัติ", approvalBg: "#fef3c7", approvalFg: "#b45309" },
-  { name: "ลาเลี้ยงดูบุตร", days: "ตามนโยบายบริษัท", color: "#3b82f6", approval: "ต้องขออนุมัติ", approvalBg: "#fef3c7", approvalFg: "#b45309" },
-];

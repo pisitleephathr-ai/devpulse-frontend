@@ -59,6 +59,19 @@ export function isManagerOrAdmin(user: AuthUser | null): boolean {
  *  team-menu access configured for their role (they aren't team menus). */
 const PERSONAL_MENUS = ["profile"];
 
+/** Restricted menus → the capability that grants them. A role granted the
+ *  capability (directly or via a tier like TEAM_MANAGE/ADMIN_FULL) both SEES the
+ *  menu and can perform its actions — keeping menu visibility and enforcement in
+ *  sync. Menus not listed here are common to everyone. */
+const MENU_CAPABILITY: Record<string, string> = {
+  analytics: "TEAM_MANAGE",
+  projects: "PROJECT_MANAGE",
+  activity: "ACTIVITY_VIEW",
+  settings: "SETTINGS_MANAGE",
+  users: "USER_MANAGE",
+  roles: "ROLE_MANAGE",
+};
+
 export function canAccessMenu(user: AuthUser | null, menuKey: string): boolean {
   // Personal pages (e.g. /profile) are never gated by role menu config.
   if (PERSONAL_MENUS.includes(menuKey)) return true;
@@ -72,12 +85,13 @@ export function canAccessMenu(user: AuthUser | null, menuKey: string): boolean {
   const configured = role?.menuAccess;
   if (configured && configured.length > 0) return configured.includes(menuKey);
 
-  const allowed = MENU_ACCESS[menuKey];
-  if (!allowed) return true; // unknown menu → allow
-  // Menus common to everyone stay visible to ANY role — including custom role
-  // codes that aren't in the built-in ALL_ROLES list.
-  if (isCommonMenu(menuKey)) return true;
-  return allowed.includes(roleCode(user));
+  // Capability-gated menus follow the user's effective capabilities, so granting
+  // a capability from the roles page unlocks the matching menu too.
+  const cap = MENU_CAPABILITY[menuKey];
+  if (cap) return hasPermission(user, cap);
+
+  // Everything else is a common menu → visible to any role.
+  return true;
 }
 
 /** Menu visible to every role — shown while the current user is still loading. */
