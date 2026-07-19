@@ -61,7 +61,8 @@ const PERMISSION_LABEL: Record<string, string> = Object.fromEntries(
 /** Personal-LINE notification types a role can be allowed to receive. */
 const NOTIF_OPTIONS = [
   { value: "taskAssigned", label: "งานที่ได้รับมอบหมาย" },
-  { value: "leaveDecision", label: "ผลอนุมัติการลา" },
+  { value: "leaveDecision", label: "ผลอนุมัติการลา (ของฉัน)" },
+  { value: "leaveRequest", label: "คำขอลาใหม่ (สำหรับผู้อนุมัติ)" },
   { value: "reportReminder", label: "เตือนส่งรายงานประจำวัน" },
 ] as const;
 const ALL_NOTIF_KEYS = NOTIF_OPTIONS.map((n) => n.value);
@@ -215,7 +216,12 @@ export default function RolesPage() {
       )}
 
       {/* Add */}
-      <Dialog open={adding} onClose={() => setAdding(false)} title="เพิ่มบทบาทใหม่">
+      <Dialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="เพิ่มบทบาทใหม่"
+        className="w-[900px]"
+      >
         <RoleForm
           menuOptions={menuOptions}
           onSubmit={async (data) => {
@@ -236,6 +242,7 @@ export default function RolesPage() {
         onClose={() => setEditing(null)}
         title="แก้ไขบทบาท"
         description={editing?.code}
+        className="w-[900px]"
       >
         {editing && (
           <RoleForm
@@ -382,21 +389,24 @@ function RoleForm({
   return (
     <div className="flex flex-col gap-4">
       {error && <p className="text-[12px] text-red-600">{error}</p>}
-      <Field label="ชื่อบทบาท">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น Designer, PM, BA" />
-      </Field>
-      <Field label="รหัส (code)" hint={isEdit ? "แก้ไขไม่ได้" : "เช่น DESIGNER, PM"}>
-        <Input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          disabled={isEdit}
-          placeholder="DESIGNER"
-          className={`font-mono ${isEdit ? "bg-zinc-100 text-zinc-500" : ""}`}
-        />
-      </Field>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="ชื่อบทบาท">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น Designer, PM, BA" />
+        </Field>
+        <Field label="รหัส (code)" hint={isEdit ? "แก้ไขไม่ได้" : "เช่น DESIGNER, PM"}>
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            disabled={isEdit}
+            placeholder="DESIGNER"
+            className={`font-mono ${isEdit ? "bg-muted text-muted-foreground" : ""}`}
+          />
+        </Field>
+      </div>
       <Field label="คำอธิบาย" hint="ไม่บังคับ">
         <Input value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
       <Field label="สิทธิ์การเข้าถึง" hint={canEditPerms ? "ไม่บังคับ" : "บทบาทผู้ดูแลระบบ — สิทธิ์เต็มเสมอ"}>
         <div className="flex flex-col gap-1.5">
           {PERMISSION_OPTIONS.map((p) => (
@@ -439,6 +449,7 @@ function RoleForm({
           </span>
         </label>
       </Field>
+      </div>
       <Field
         label="เมนูที่มองเห็น"
         hint="เลือกเมนูที่บทบาทนี้เห็นในแถบด้านซ้าย"

@@ -27,6 +27,7 @@ import { roleNameOf, type ApiUser } from "@/lib/mappers";
 type LinePrefs = {
   taskAssigned: boolean;
   leaveDecision: boolean;
+  leaveRequest: boolean;
   reportReminder: boolean;
 };
 type LineStatus = {
@@ -44,6 +45,7 @@ type LineStatus = {
 const NOTIF_TOGGLES: { key: keyof LinePrefs; label: string; hint: string }[] = [
   { key: "taskAssigned", label: "งานที่ได้รับมอบหมาย", hint: "เมื่อมีคนมอบหมายงานให้คุณ" },
   { key: "leaveDecision", label: "ผลอนุมัติการลา", hint: "เมื่อคำขอลาของคุณถูกอนุมัติ/ปฏิเสธ" },
+  { key: "leaveRequest", label: "คำขอลาใหม่", hint: "เมื่อมีคนส่งคำขอลา (สำหรับผู้อนุมัติ)" },
   { key: "reportReminder", label: "เตือนส่งรายงานประจำวัน", hint: "เมื่อผู้จัดการกดเตือนและคุณยังไม่ส่ง" },
 ];
 type LinkCode = { code: string; expiresAt: string; addFriendUrl: string | null };
