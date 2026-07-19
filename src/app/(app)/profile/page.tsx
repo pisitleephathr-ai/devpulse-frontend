@@ -34,6 +34,8 @@ type LineStatus = {
   linked: boolean;
   linkedAt: string | null;
   lineEnabled: boolean;
+  /** team-wide master switch for personal DMs (admin-controlled) */
+  personalEnabled?: boolean;
   addFriendUrl: string | null;
   /** notification keys this user's role allows (drives which toggles show).
    *  Optional so an older API response can't crash the page (falls back to all). */
@@ -343,6 +345,13 @@ export default function ProfilePage() {
                   {line.linkedAt && ` เมื่อ ${formatThaiDate(line.linkedAt)}`} —
                   เลือกได้ว่าจะรับแจ้งเตือนอะไรบ้างทาง LINE ส่วนตัว
                 </p>
+
+                {line.personalEnabled === false && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                    <TriangleAlert className="mt-0.5 size-3.5 flex-none" />
+                    ผู้ดูแลปิดระบบแจ้งเตือน LINE ส่วนตัวไว้ชั่วคราว — การตั้งค่าด้านล่างจะมีผลเมื่อเปิดใช้งานอีกครั้ง
+                  </div>
+                )}
 
                 {/* Per-user DM preferences — only the types the role allows. */}
                 {(() => {

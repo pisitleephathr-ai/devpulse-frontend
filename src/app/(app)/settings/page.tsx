@@ -41,6 +41,7 @@ type Setting = {
   notifyReportReminder: boolean;
   notifyLeaveApproval: boolean;
   notifyTaskDue: boolean;
+  linePersonalEnabled: boolean;
   lineNotifyNewTask: boolean;
   lineNotifyStatuses: string[];
   lineNotifyLeave: boolean;
@@ -68,6 +69,7 @@ const DEFAULT_SETTING: Setting = {
   notifyReportReminder: true,
   notifyLeaveApproval: true,
   notifyTaskDue: true,
+  linePersonalEnabled: true,
   lineNotifyNewTask: true,
   lineNotifyStatuses: ["TODO", "DONE"],
   lineNotifyLeave: true,
@@ -428,6 +430,20 @@ export default function SettingsPage() {
                         ) : null)}
                       {lineStatus.enabled && (
                         <div className="flex flex-col gap-2.5 py-2.5">
+                          <div className="rounded-lg border border-hairline bg-muted/30 p-3">
+                            <SwitchRow
+                              label="เปิดแจ้งเตือน LINE ส่วนตัว (DM รายคน)"
+                              checked={setting.linePersonalEnabled}
+                              onChange={(v) => set("linePersonalEnabled", v)}
+                            />
+                            <p className="mt-1 text-[11.5px] text-muted-foreground">
+                              ถ้าปิด จะไม่ส่ง DM ส่วนตัวถึงผู้ใช้ (งานที่มอบหมาย · ผลลา · คำขอลา · เตือนรายงาน) — ไม่กระทบการแจ้งเข้ากลุ่มด้านล่าง
+                            </p>
+                          </div>
+
+                          <div className="mt-1 text-[13px] font-semibold text-muted-foreground">
+                            แจ้งเข้ากลุ่ม LINE
+                          </div>
                           <SwitchRow
                             label="แจ้ง “งานใหม่” เข้ากลุ่ม LINE"
                             checked={setting.lineNotifyNewTask}
