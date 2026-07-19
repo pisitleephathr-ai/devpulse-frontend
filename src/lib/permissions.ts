@@ -57,7 +57,7 @@ export function isManagerOrAdmin(user: AuthUser | null): boolean {
 
 /** Personal pages every signed-in user can always reach, regardless of the
  *  team-menu access configured for their role (they aren't team menus). */
-const PERSONAL_MENUS = ["profile"];
+const PERSONAL_MENUS = ["profile", "my-day"];
 
 export function canAccessMenu(user: AuthUser | null, menuKey: string): boolean {
   // Personal pages (e.g. /profile) are never gated by role menu config.

@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   BarChart3,
+  Sun,
   Pencil,
   Check,
   X,
@@ -55,6 +56,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   SlidersHorizontal,
   BarChart3,
+  Sun,
 };
 
 export function Sidebar({

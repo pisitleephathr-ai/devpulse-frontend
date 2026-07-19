@@ -126,6 +126,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "แดชบอร์ด", href: "/dashboard", icon: "LayoutDashboard" },
+  { id: "my-day", label: "งานของฉัน", href: "/my-day", icon: "Sun" },
   { id: "standup", label: "ประชุมเช้า", href: "/standup", icon: "Presentation" },
   { id: "reports", label: "รายงานประจำวัน", href: "/reports", icon: "FileText" },
   { id: "tasks", label: "บอร์ดงาน", href: "/tasks", icon: "KanbanSquare" },
