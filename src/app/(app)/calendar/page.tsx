@@ -2,13 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, CalendarDays, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  X,
+  FileText,
+  Plane,
+  CalendarOff,
+  KanbanSquare,
+  CalendarClock,
+  type LucideIcon,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { CalendarSkeleton } from "@/components/skeletons";
 import { WEEKDAYS } from "@/lib/mock-data";
 import { bangkokDateISO } from "@/lib/thai-datetime";
+import { formatThaiDate } from "@/lib/mappers";
 
 type CalType = "TASK" | "REPORT" | "LEAVE" | "EVENT" | "HOLIDAY";
 
@@ -28,12 +40,15 @@ type CalItem = {
   entityId: string;
 };
 
-const TYPE_META: Record<CalType, { label: string; cls: string; dot: string; href: string }> = {
-  HOLIDAY: { label: "วันหยุด", cls: "cal-pill-holiday", dot: "#e11d48", href: "/calendar" },
-  TASK: { label: "งาน", cls: "cal-pill-task", dot: "#2563eb", href: "/tasks" },
-  REPORT: { label: "รายงาน", cls: "cal-pill-report", dot: "#0d9488", href: "/reports" },
-  LEAVE: { label: "ลา", cls: "cal-pill-leave", dot: "#d97706", href: "/leaves" },
-  EVENT: { label: "กิจกรรม", cls: "cal-pill-event", dot: "#7c3aed", href: "/calendar" },
+const TYPE_META: Record<
+  CalType,
+  { label: string; cls: string; dot: string; href: string; icon: LucideIcon }
+> = {
+  HOLIDAY: { label: "วันหยุด", cls: "cal-pill-holiday", dot: "#e11d48", href: "/calendar", icon: CalendarOff },
+  TASK: { label: "งาน", cls: "cal-pill-task", dot: "#2563eb", href: "/tasks", icon: KanbanSquare },
+  REPORT: { label: "รายงาน", cls: "cal-pill-report", dot: "#0d9488", href: "/reports", icon: FileText },
+  LEAVE: { label: "ลา", cls: "cal-pill-leave", dot: "#d97706", href: "/leaves", icon: Plane },
+  EVENT: { label: "กิจกรรม", cls: "cal-pill-event", dot: "#7c3aed", href: "/calendar", icon: CalendarClock },
 };
 
 /** Flag a day when this many distinct people (or more) are on leave. */
@@ -295,9 +310,14 @@ export default function CalendarPage() {
                       {shown.map((it) => (
                         <div
                           key={it.id}
-                          className={`flex items-center gap-1 truncate rounded-[4px] px-1.5 py-0.5 text-[10.5px] font-medium ${TYPE_META[it.type].cls}`}
+                          className={`flex items-center gap-1.5 overflow-hidden rounded-[5px] px-1.5 py-[3px] text-[10.5px] font-medium ${TYPE_META[it.type].cls}`}
                           title={`${TYPE_META[it.type].label}: ${itemLabel(it)}`}
                         >
+                          <span
+                            className="size-1.5 flex-none rounded-full"
+                            style={{ background: it.project?.color ?? TYPE_META[it.type].dot }}
+                            aria-hidden
+                          />
                           <span className="truncate">{itemLabel(it)}</span>
                         </div>
                       ))}
@@ -347,30 +367,58 @@ function DayModal({
           </button>
         </div>
         <div className="flex max-h-[calc(80vh-64px)] flex-col divide-y divide-hairline-soft overflow-y-auto">
-          {items.map((it) => (
-            <Link
-              key={it.id}
-              href={
-                it.type === "TASK"
-                  ? `/tasks?task=${it.entityId}`
-                  : TYPE_META[it.type].href
-              }
-              className="flex items-center gap-2.5 px-[22px] py-3 transition-colors hover:bg-zinc-50"
-            >
-              <span className={`rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-semibold ${TYPE_META[it.type].cls}`}>
-                {TYPE_META[it.type].label}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-medium">{itemLabel(it)}</div>
-                {it.type === "HOLIDAY" && it.description ? (
-                  <div className="truncate text-[11.5px] text-muted-foreground">{it.description}</div>
-                ) : it.project ? (
-                  <div className="truncate text-[11.5px] text-muted-foreground">{it.project.name}</div>
-                ) : null}
-              </div>
-              {it.user && <Avatar userKey={it.user.avatarKey} size={22} fontSize={9} />}
-            </Link>
-          ))}
+          {items.map((it) => {
+            const meta = TYPE_META[it.type];
+            const Icon = meta.icon;
+            const isRange =
+              !!it.endDate && it.endDate.slice(0, 10) !== it.date.slice(0, 10);
+            return (
+              <Link
+                key={it.id}
+                href={
+                  it.type === "TASK"
+                    ? `/tasks?task=${it.entityId}`
+                    : meta.href
+                }
+                className="flex items-start gap-3 px-[22px] py-3 transition-colors hover:bg-muted/50"
+              >
+                <span
+                  className="mt-0.5 flex size-8 flex-none items-center justify-center rounded-lg"
+                  style={{ background: `${meta.dot}1a`, color: meta.dot }}
+                >
+                  <Icon className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-medium">{itemLabel(it)}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-muted-foreground">
+                    <span className="font-medium" style={{ color: meta.dot }}>
+                      {meta.label}
+                    </span>
+                    {it.project && (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="size-1.5 rounded-full" style={{ background: it.project.color }} />
+                        {it.project.name}
+                      </span>
+                    )}
+                    {it.type === "TASK" && it.status && <span>สถานะ: {it.status}</span>}
+                    {isRange && (
+                      <span>
+                        {formatThaiDate(it.date)} – {formatThaiDate(it.endDate!)}
+                      </span>
+                    )}
+                    {it.type === "HOLIDAY" && it.description && (
+                      <span className="truncate">{it.description}</span>
+                    )}
+                  </div>
+                </div>
+                {it.user && (
+                  <div className="flex flex-none flex-col items-center gap-1 pt-0.5">
+                    <Avatar userKey={it.user.avatarKey} size={26} fontSize={10} />
+                  </div>
+                )}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>
