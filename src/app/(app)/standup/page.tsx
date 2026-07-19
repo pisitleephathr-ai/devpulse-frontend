@@ -33,9 +33,17 @@ import {
   Paperclip,
   Link2,
   Loader2,
+  Plus,
+  Trash2,
+  Circle,
+  CornerUpLeft,
+  ListTodo,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { useData } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
 import { ReportItemsSections } from "@/components/report-items";
 import { EmptyState } from "@/components/empty-state";
@@ -100,6 +108,24 @@ type Standup = {
   onLeaveUsers?: ApiUserMini[];
   exemptUsers: ApiUserMini[];
   blockers: { id: string; user: ApiUserMini; text: string; project: Proj | null }[];
+};
+
+type ActionItem = {
+  id: string;
+  text: string;
+  status: "OPEN" | "DONE";
+  date: string;
+  dueDate: string | null;
+  completedAt: string | null;
+  assignee: ApiUserMini | null;
+  createdBy: ApiUserMini;
+  carried: boolean;
+};
+type ActionResp = {
+  date: string;
+  open: ActionItem[];
+  doneToday: ActionItem[];
+  openCount: number;
 };
 
 /* -------------------------- task presentation --------------------------- */
@@ -318,7 +344,7 @@ export default function StandupPage() {
           </button>
         </div>
       ) : data ? (
-        <Overview data={data} canManage={canManage} onRemind={load} onStart={() => setMode("meeting")} />
+        <Overview data={data} canManage={canManage} meId={me?.id} onRemind={load} onStart={() => setMode("meeting")} />
       ) : null}
       </div>
       {taskModal}
@@ -331,11 +357,13 @@ export default function StandupPage() {
 function Overview({
   data,
   canManage,
+  meId,
   onRemind,
   onStart,
 }: {
   data: Standup;
   canManage: boolean;
+  meId?: string;
   onRemind: () => void;
   onStart: () => void;
 }) {
@@ -500,6 +528,9 @@ function Overview({
               </div>
             )}
           </Card>
+
+          {/* Action items (DB-backed, team-wide) */}
+          <ActionItems date={data.date} meId={meId} canManage={canManage} />
 
           {/* Meeting notes (local, manager) */}
           {canManage && <MeetingNotes date={data.date} />}
@@ -1099,6 +1130,250 @@ function MetaBox({ label, children }: { label: string; children: React.ReactNode
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{children}</div>;
+}
+
+/* ----------------------------- Action items ----------------------------- */
+
+function actionShortThai(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+  }).format(d);
+}
+
+function ActionItems({
+  date,
+  meId,
+  canManage,
+}: {
+  date: string;
+  meId?: string;
+  canManage: boolean;
+}) {
+  const { users } = useData();
+  const [open, setOpen] = useState<ActionItem[]>([]);
+  const [doneToday, setDoneToday] = useState<ActionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [due, setDue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  function load() {
+    api
+      .get<ActionResp>(`/api/action-items?date=${date}`)
+      .then((r) => {
+        setOpen(r.open);
+        setDoneToday(r.doneToday);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
+
+  async function add() {
+    const t = text.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    try {
+      await api.post("/api/action-items", {
+        text: t,
+        date,
+        assigneeId: assigneeId || null,
+        dueDate: due || null,
+      });
+      setText("");
+      setAssigneeId("");
+      setDue("");
+      load();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "เพิ่มไม่สำเร็จ");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggle(it: ActionItem) {
+    // Optimistic move between the two lists.
+    const next = it.status === "DONE" ? "OPEN" : "DONE";
+    try {
+      await api.patch(`/api/action-items/${it.id}`, { status: next });
+      load();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "อัปเดตไม่สำเร็จ");
+    }
+  }
+
+  async function remove(it: ActionItem) {
+    try {
+      await api.del(`/api/action-items/${it.id}`);
+      load();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "ลบไม่สำเร็จ");
+    }
+  }
+
+  const canRemove = (it: ActionItem) => canManage || it.createdBy.id === meId;
+
+  return (
+    <Card className="flex max-h-[460px] flex-col">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-1.5">
+          <ListTodo className="size-4 text-teal-600" />
+          Action Items ({open.length})
+        </CardTitle>
+        <span className="text-[11px] text-muted-foreground">ติดตามจนเสร็จ</span>
+      </CardHeader>
+
+      {/* Create */}
+      <div className="flex flex-col gap-2 border-b border-hairline-soft px-[18px] py-3">
+        <Input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") add();
+          }}
+          placeholder="เพิ่มสิ่งที่ต้องทำ / ติดตาม…"
+          className="text-[13px]"
+        />
+        <div className="flex items-center gap-2">
+          <Select
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
+            className="flex-1 py-[7px] text-[12.5px]"
+          >
+            <option value="">— ผู้รับผิดชอบ —</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </Select>
+          <Input
+            type="date"
+            value={due}
+            onChange={(e) => setDue(e.target.value)}
+            className="w-auto py-[7px] text-[12.5px] text-zinc-600 dark:text-zinc-300"
+            title="กำหนดเสร็จ (ไม่บังคับ)"
+          />
+          <button
+            onClick={add}
+            disabled={!text.trim() || busy}
+            className="flex size-[34px] flex-none items-center justify-center rounded-lg bg-teal-600 text-white transition-colors hover:bg-teal-700 disabled:opacity-40"
+            aria-label="เพิ่ม"
+          >
+            <Plus className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex flex-col overflow-y-auto">
+        {loading ? (
+          <div className="px-[18px] py-4">
+            <div className="h-8 animate-pulse rounded bg-muted" />
+          </div>
+        ) : open.length === 0 && doneToday.length === 0 ? (
+          <div className="px-[18px] py-6 text-center text-[12.5px] text-muted-foreground">
+            ยังไม่มี action item — เพิ่มสิ่งที่ทีมต้องติดตามได้เลย
+          </div>
+        ) : (
+          <div className="flex flex-col divide-y divide-hairline-soft">
+            {open.map((it) => (
+              <ActionRow key={it.id} it={it} onToggle={toggle} onRemove={remove} canRemove={canRemove(it)} />
+            ))}
+            {doneToday.length > 0 && (
+              <div className="px-[18px] py-2.5">
+                <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">
+                  เสร็จวันนี้ ({doneToday.length})
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {doneToday.map((it) => (
+                    <ActionRow key={it.id} it={it} onToggle={toggle} onRemove={remove} canRemove={canRemove(it)} compact />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function ActionRow({
+  it,
+  onToggle,
+  onRemove,
+  canRemove,
+  compact,
+}: {
+  it: ActionItem;
+  onToggle: (it: ActionItem) => void;
+  onRemove: (it: ActionItem) => void;
+  canRemove: boolean;
+  compact?: boolean;
+}) {
+  const done = it.status === "DONE";
+  const due = it.dueDate ? dueInfo(it.dueDate) : null;
+  return (
+    <div className={cn("group flex items-start gap-2.5", compact ? "" : "px-[18px] py-2.5")}>
+      <button
+        onClick={() => onToggle(it)}
+        className="mt-0.5 flex-none"
+        aria-label={done ? "ทำเครื่องหมายยังไม่เสร็จ" : "ทำเครื่องหมายเสร็จ"}
+      >
+        {done ? (
+          <CheckCircle2 className="size-[18px] text-emerald-500" />
+        ) : (
+          <Circle className="size-[18px] text-zinc-300 transition-colors hover:text-teal-500 dark:text-zinc-600" />
+        )}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className={cn("text-[13px] leading-snug [overflow-wrap:anywhere]", done ? "text-muted-foreground line-through" : "text-zinc-700 dark:text-zinc-200")}>
+          {it.text}
+        </div>
+        {!compact && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]">
+            {it.carried && (
+              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-px font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                <CornerUpLeft className="size-3" /> ค้างจาก {actionShortThai(it.date)}
+              </span>
+            )}
+            {it.assignee && (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Avatar userKey={it.assignee.avatarKey} size={16} fontSize={7.5} />
+                {it.assignee.name}
+              </span>
+            )}
+            {due && (
+              <span className={cn("flex items-center gap-1", due.overdue && !done ? "font-semibold text-rose-600 dark:text-rose-400" : due.dueToday && !done ? "font-semibold text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
+                <CalendarClock className="size-3" />
+                {due.label}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      {canRemove && (
+        <button
+          onClick={() => onRemove(it)}
+          className="flex-none text-zinc-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 dark:text-zinc-600"
+          aria-label="ลบ"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 /* --------------------------- Meeting notes (local) ---------------------- */
