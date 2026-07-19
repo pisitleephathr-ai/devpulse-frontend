@@ -23,7 +23,7 @@ import {
   type Leave,
 } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
-import { canApproveLeave, isAdmin } from "@/lib/permissions";
+import { canApproveLeave } from "@/lib/permissions";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 import { X } from "lucide-react";
@@ -33,10 +33,8 @@ const TEMPLATE = "160px 96px 150px 92px minmax(170px,1fr) 104px 172px";
 export default function LeavesPage() {
   const { leaves, users, loading, setLeaveStatus } = useData();
   const me = useCurrentUser();
+  // Anyone with approval rights can decide any pending leave — including their own.
   const canApprove = canApproveLeave(me);
-  // A user can't approve/reject their own leave (admins may override).
-  const canDecide = (l: Leave) =>
-    canApprove && (isAdmin(me) || l.key !== me?.avatarKey);
 
   const [search, setSearch] = usePersistedState("leaves.search", "");
   const [member, setMember] = usePersistedState("leaves.member", "all");
@@ -194,7 +192,7 @@ export default function LeavesPage() {
                 >
                   ดู
                 </button>
-                {canDecide(l) && l.status === "รออนุมัติ" && (
+                {canApprove && l.status === "รออนุมัติ" && (
                   <>
                     <button
                       onClick={() => decide(l, "อนุมัติแล้ว")}
@@ -223,7 +221,7 @@ export default function LeavesPage() {
         onClose={() => setViewing(null)}
         title="รายละเอียดคำขอลา"
         footer={
-          viewing && canDecide(viewing) && viewing.status === "รออนุมัติ" ? (
+          viewing && canApprove && viewing.status === "รออนุมัติ" ? (
             <>
               <button
                 onClick={() => {
