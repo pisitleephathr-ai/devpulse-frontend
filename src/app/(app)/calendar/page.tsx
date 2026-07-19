@@ -84,6 +84,72 @@ function buildCells(year: number, month: number, working: Set<number>): Cell[] {
   return cells;
 }
 
+const MAX_LANES = 4;
+type WeekBar = { it: CalItem; startCol: number; span: number; lane: number; startDay: number };
+type Week = { cells: Cell[]; bars: WeekBar[]; lanes: number; overflow: number };
+
+/**
+ * Lay items out as continuous horizontal bars per week: each item occupies one
+ * segment per week it overlaps (spanning grid columns), stacked into lanes so a
+ * multi-day item reads as a single bar rather than a repeated pill.
+ */
+function buildWeeks(cells: Cell[], items: CalItem[], year: number, month: number): Week[] {
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const inMonth = (d: Date) => d.getUTCFullYear() === year && d.getUTCMonth() === month - 1;
+  const ranges = items.map((it) => {
+    const s = new Date(it.date);
+    const e = it.endDate ? new Date(it.endDate) : s;
+    const a = inMonth(s) ? s.getUTCDate() : 1;
+    const b = inMonth(e) ? e.getUTCDate() : daysInMonth;
+    return { it, sd: Math.min(a, b), ed: Math.max(a, b) };
+  });
+
+  const weeks: Week[] = [];
+  for (let w = 0; w < cells.length; w += 7) {
+    const wcells = cells.slice(w, w + 7);
+    const dayToCol = new Map<number, number>();
+    let firstDay = Infinity;
+    let lastDay = -Infinity;
+    wcells.forEach((c, col) => {
+      if (c.day) {
+        dayToCol.set(c.day, col);
+        firstDay = Math.min(firstDay, c.day);
+        lastDay = Math.max(lastDay, c.day);
+      }
+    });
+
+    const segs = ranges
+      .map((r) => {
+        const segStart = Math.max(r.sd, firstDay);
+        const segEnd = Math.min(r.ed, lastDay);
+        if (!isFinite(firstDay) || segStart > segEnd) return null;
+        return { it: r.it, startCol: dayToCol.get(segStart)!, endCol: dayToCol.get(segEnd)!, startDay: segStart };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.startCol - b.startCol || b.endCol - b.startCol - (a.endCol - a.startCol));
+
+    const laneEnds: number[] = [];
+    const bars: WeekBar[] = [];
+    let overflow = 0;
+    for (const s of segs) {
+      let lane = laneEnds.findIndex((end) => end < s.startCol);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(s.endCol);
+      } else {
+        laneEnds[lane] = s.endCol;
+      }
+      if (lane < MAX_LANES) {
+        bars.push({ it: s.it, startCol: s.startCol, span: s.endCol - s.startCol + 1, lane, startDay: s.startDay });
+      } else {
+        overflow += 1;
+      }
+    }
+    weeks.push({ cells: wcells, bars, lanes: Math.min(laneEnds.length, MAX_LANES), overflow });
+  }
+  return weeks;
+}
+
 /** Bucket items into day-of-month → items, expanding ranged items (leave/event). */
 function toDayMap(items: CalItem[], year: number, month: number): Record<number, CalItem[]> {
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -158,6 +224,7 @@ export default function CalendarPage() {
   );
   const dayMap = useMemo(() => toDayMap(visible, year, month), [visible, year, month]);
   const cells = useMemo(() => buildCells(year, month, workingSet), [year, month, workingSet]);
+  const weeks = useMemo(() => buildWeeks(cells, visible, year, month), [cells, visible, year, month]);
   const hasItems = visible.length > 0;
 
   function step(delta: number) {
@@ -250,87 +317,102 @@ export default function CalendarPage() {
             <div key={w} className="p-2.5 text-center text-[11.5px] font-semibold text-muted-foreground">{w}</div>
           ))}
         </div>
-        <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7">
-          {cells.map((cell, i) => {
-            const dayItems = cell.day ? dayMap[cell.day] ?? [] : [];
-            const hasHoliday = dayItems.some((it) => it.type === "HOLIDAY");
-            // Count distinct people on leave so we can warn about overlaps.
-            const leaveCount = new Set(
-              dayItems
-                .filter((it) => it.type === "LEAVE")
-                .map((it) => it.user?.id ?? it.entityId)
-            ).size;
-            const leaveOverlap = leaveCount >= LEAVE_OVERLAP_THRESHOLD;
-            const shown = dayItems.slice(0, 3);
-            const extra = dayItems.length - shown.length;
-            const nonWorking = cell.offday || hasHoliday;
-            return (
-              <div
-                key={i}
-                className={`flex min-h-0 flex-col overflow-hidden border-b border-r border-hairline-soft p-2 ${
-                  !cell.day
-                    ? "bg-muted/40"
-                    : nonWorking
-                    ? "bg-rose-50/50 dark:bg-rose-950/15"
-                    : "bg-card"
-                } ${cell.day && dayItems.length ? "cursor-pointer hover:bg-muted/60" : ""}`}
-                onClick={() => cell.day && dayItems.length && setOpenDay(cell.day)}
-              >
-                {cell.day && (
-                  <>
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <div
-                        className={`flex size-6 items-center justify-center rounded-full text-xs ${
-                          cell.today
-                            ? "font-bold text-white"
-                            : cell.offday
-                            ? "font-medium text-rose-500 dark:text-rose-400"
-                            : "text-zinc-700 dark:text-zinc-200"
-                        }`}
-                        style={cell.today ? { background: "#0d9488" } : undefined}
-                      >
-                        {cell.day}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {leaveOverlap && (
-                          <span
-                            className="rounded-full bg-amber-100 px-1.5 text-[9.5px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                            title={`${leaveCount} คนลาในวันนี้ — ระวังคนทำงานไม่พอ`}
-                          >
-                            ⚠ {leaveCount} ลา
-                          </span>
-                        )}
-                        {nonWorking && !cell.today && (
-                          <span className="text-[9.5px] font-semibold text-rose-500/80 dark:text-rose-400/80">หยุด</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-[3px]">
-                      {shown.map((it) => (
+        <div
+          className="grid min-h-0 flex-1"
+          style={{ gridTemplateRows: `repeat(${weeks.length}, minmax(0, 1fr))` }}
+        >
+          {weeks.map((week, wi) => (
+            <div
+              key={wi}
+              className="relative grid grid-cols-7 overflow-hidden border-b border-hairline-soft last:border-b-0"
+              style={{ gridTemplateRows: `26px repeat(${week.lanes}, 19px) 1fr` }}
+            >
+              {/* Day cells (full-height backgrounds) + number + warnings. */}
+              {week.cells.map((cell, c) => {
+                const dayItems = cell.day ? dayMap[cell.day] ?? [] : [];
+                const hasHoliday = dayItems.some((it) => it.type === "HOLIDAY");
+                const leaveCount = new Set(
+                  dayItems.filter((it) => it.type === "LEAVE").map((it) => it.user?.id ?? it.entityId)
+                ).size;
+                const leaveOverlap = leaveCount >= LEAVE_OVERLAP_THRESHOLD;
+                const nonWorking = cell.offday || hasHoliday;
+                return (
+                  <div
+                    key={c}
+                    style={{ gridColumn: c + 1, gridRow: "1 / -1" }}
+                    className={`border-r border-hairline-soft last:border-r-0 ${
+                      !cell.day
+                        ? "bg-muted/40"
+                        : nonWorking
+                        ? "bg-rose-50/50 dark:bg-rose-950/15"
+                        : "bg-card"
+                    } ${cell.day && dayItems.length ? "cursor-pointer hover:bg-muted/40" : ""}`}
+                    onClick={() => cell.day && dayItems.length && setOpenDay(cell.day)}
+                  >
+                    {cell.day && (
+                      <div className="flex items-center justify-between px-1.5 pt-1">
                         <div
-                          key={it.id}
-                          className={`flex items-center gap-1.5 overflow-hidden rounded-[5px] px-1.5 py-[3px] text-[10.5px] font-medium ${TYPE_META[it.type].cls}`}
-                          title={`${TYPE_META[it.type].label}: ${itemLabel(it)}`}
+                          className={`flex size-6 items-center justify-center rounded-full text-xs ${
+                            cell.today
+                              ? "font-bold text-white"
+                              : cell.offday
+                              ? "font-medium text-rose-500 dark:text-rose-400"
+                              : "text-zinc-700 dark:text-zinc-200"
+                          }`}
+                          style={cell.today ? { background: "#0d9488" } : undefined}
                         >
-                          <span
-                            className="size-1.5 flex-none rounded-full"
-                            style={{ background: it.project?.color ?? TYPE_META[it.type].dot }}
-                            aria-hidden
-                          />
-                          <span className="truncate">{itemLabel(it)}</span>
+                          {cell.day}
                         </div>
-                      ))}
-                      {extra > 0 && (
-                        <div className="px-1.5 text-[10.5px] font-medium text-zinc-400">
-                          +{extra} เพิ่มเติม
+                        <div className="flex items-center gap-1">
+                          {leaveOverlap && (
+                            <span
+                              className="rounded-full bg-amber-100 px-1.5 text-[9.5px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                              title={`${leaveCount} คนลาในวันนี้ — ระวังคนทำงานไม่พอ`}
+                            >
+                              ⚠ {leaveCount} ลา
+                            </span>
+                          )}
+                          {nonWorking && !cell.today && (
+                            <span className="text-[9.5px] font-semibold text-rose-500/80 dark:text-rose-400/80">หยุด</span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Continuous bars spanning their day range within this week. */}
+              {week.bars.map((b) => (
+                <div
+                  key={b.it.id}
+                  style={{ gridColumn: `${b.startCol + 1} / span ${b.span}`, gridRow: b.lane + 2 }}
+                  className={`z-10 mx-[3px] flex items-center gap-1.5 overflow-hidden rounded-[5px] px-1.5 text-[10.5px] font-medium ${TYPE_META[b.it.type].cls}`}
+                  title={`${TYPE_META[b.it.type].label}: ${itemLabel(b.it)}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDay(b.startDay);
+                  }}
+                >
+                  <span
+                    className="size-1.5 flex-none rounded-full"
+                    style={{ background: b.it.project?.color ?? TYPE_META[b.it.type].dot }}
+                    aria-hidden
+                  />
+                  <span className="truncate">{itemLabel(b.it)}</span>
+                </div>
+              ))}
+
+              {week.overflow > 0 && (
+                <div
+                  style={{ gridColumn: "1 / -1", gridRow: week.lanes + 2 }}
+                  className="z-10 px-1.5 text-[10px] font-medium text-zinc-400"
+                >
+                  +{week.overflow} เพิ่มเติม
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
       )}
