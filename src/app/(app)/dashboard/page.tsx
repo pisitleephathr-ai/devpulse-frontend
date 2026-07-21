@@ -41,9 +41,10 @@ type Insights = {
     total: number;
     todo: number;
     inProgress: number;
-    review: number;
-    readyToTest: number;
-    done: number;
+    devReview: number;
+    devDone: number;
+    deliveryDone: number;
+    deliveryFail: number;
     overdue: number;
     dueToday: number;
     dueThisWeek: number;
@@ -67,8 +68,10 @@ type Insights = {
     onLeave?: boolean;
     todo: number;
     inProgress: number;
-    review: number;
-    done: number;
+    devReview: number;
+    devDone: number;
+    deliveryDone: number;
+    deliveryFail: number;
     open: number;
     total: number;
     closed?: number;
@@ -186,8 +189,8 @@ export default function DashboardPage() {
 
   const kpis = [
     { label: "งานทั้งหมด", value: t?.total, sub: `${t?.completionRate ?? 0}% เสร็จ`, icon: <KanbanSquare className="size-[18px]" />, color: "#3b82f6" },
-    { label: "กำลังทำ", value: t?.inProgress, sub: `รอตรวจ ${t?.review ?? 0} · พร้อมทดสอบ ${t?.readyToTest ?? 0}`, icon: <Loader2 className="size-[18px]" />, color: "#7c3aed" },
-    { label: "เสร็จแล้ว", value: t?.done, sub: "งานที่ปิดแล้ว", icon: <CheckCircle2 className="size-[18px]" />, color: "#10b981" },
+    { label: "กำลังทำ", value: t?.inProgress, sub: `รีวิวโค้ด ${t?.devReview ?? 0} · Dev เสร็จ ${t?.devDone ?? 0}`, icon: <Loader2 className="size-[18px]" />, color: "#7c3aed" },
+    { label: "ส่งมอบสำเร็จ", value: t?.deliveryDone, sub: `ไม่ผ่าน ${t?.deliveryFail ?? 0}`, icon: <CheckCircle2 className="size-[18px]" />, color: "#10b981" },
     { label: "เกินกำหนด", value: t?.overdue, sub: `วันนี้ ${t?.dueToday ?? 0}`, icon: <AlarmClock className="size-[18px]" />, color: "#e11d48" },
     { label: "รายงานวันนี้", value: r ? `${r.submittedCount}/${r.totalMembers}` : undefined, sub: "ส่งแล้ว", icon: <ClipboardCheck className="size-[18px]" />, color: "#0d9488" },
     { label: "อุปสรรค", value: insights?.topBlockers.length, sub: "ต้องช่วยแก้", icon: <TriangleAlert className="size-[18px]" />, color: "#f59e0b" },
@@ -533,7 +536,8 @@ function MiniStat({ label, value, total, tone }: { label: string; value: number;
 
 const PILLS = [
   { key: "inProgress", label: "กำลังทำ", cls: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
-  { key: "review", label: "รอตรวจ", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
+  { key: "devReview", label: "รีวิว", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
+  { key: "devDone", label: "Dev เสร็จ", cls: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300" },
   { key: "todo", label: "รอทำ", cls: "bg-muted text-zinc-600 dark:text-zinc-300" },
 ] as const;
 
@@ -548,7 +552,7 @@ function WorkloadRow({
   hasBlocker: boolean;
   showReport: boolean;
 }) {
-  const percent = w.total ? Math.round((w.done / w.total) * 100) : 0;
+  const percent = w.total ? Math.round((w.deliveryDone / w.total) * 100) : 0;
   return (
     <div className="flex items-center gap-3 border-b border-hairline-soft px-4 py-2.5 last:border-b-0">
       <Avatar userKey={w.avatarKey} size={30} fontSize={11} />
@@ -602,7 +606,7 @@ function WorkloadRow({
           </div>
         )}
         <div className="mb-0.5 flex justify-between text-[10px] text-muted-foreground tabular-nums">
-          <span>{w.done}/{w.total}</span>
+          <span>{w.deliveryDone}/{w.total}</span>
           <span>{percent}%</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">

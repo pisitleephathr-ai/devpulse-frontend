@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import {
   PRIORITY_COLORS,
+  isClosedStatus,
   type KanbanColumn,
   type Task,
   type TaskStatus,
@@ -22,6 +23,9 @@ type KanbanBoardProps = {
   showAdd?: boolean;
   /** whether a given card may be dragged (RBAC). Defaults to always. */
   canDrag?: (task: Task) => boolean;
+  /** whether a dragged card may be dropped into a given column (workflow +
+   *  role). When it returns false the column is dimmed and rejects the drop. */
+  canDropTo?: (task: Task, status: TaskStatus) => boolean;
   /** multi-select mode: cards become checkboxes and drag is disabled. */
   selectMode?: boolean;
   selectedIds?: Set<string>;
@@ -36,6 +40,7 @@ export function KanbanBoard({
   onAddInColumn,
   showAdd = true,
   canDrag,
+  canDropTo,
   selectMode,
   selectedIds,
   onToggleSelect,
@@ -44,18 +49,31 @@ export function KanbanBoard({
   const [overCol, setOverCol] = useState<TaskStatus | null>(null);
   const selecting = !!selectMode;
 
+  // The card currently being dragged (to resolve which columns accept it).
+  const draggingCard = dragId
+    ? columns.flatMap((c) => c.cards).find((c) => c.id === dragId) ?? null
+    : null;
+  const columnAccepts = (status: TaskStatus) =>
+    !draggingCard || !canDropTo || canDropTo(draggingCard, status);
+
   return (
-    <div className="grid min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(5,minmax(220px,1fr))] [grid-template-rows:minmax(0,1fr)]">
-      {columns.map((col) => (
+    <div className="grid min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(6,minmax(210px,1fr))] [grid-template-rows:minmax(0,1fr)]">
+      {columns.map((col) => {
+        const accepts = columnAccepts(col.name);
+        return (
         <div
           key={col.name}
           onDragOver={(e) => {
+            // preventDefault enables the drop; skip it (and the highlight) for
+            // columns this card can't move to, so the cursor shows "no drop".
+            if (!accepts) return;
             e.preventDefault();
             setOverCol(col.name);
           }}
           onDragLeave={() => setOverCol((c) => (c === col.name ? null : c))}
           onDrop={(e) => {
             e.preventDefault();
+            if (!accepts) return;
             const id = e.dataTransfer.getData("text/plain") || dragId;
             if (id) onDropTask(id, col.name);
             setOverCol(null);
@@ -67,7 +85,9 @@ export function KanbanBoard({
             // columns scroll their cards internally instead of growing the page.
             "flex h-full min-h-[240px] flex-col gap-2.5 rounded-xl bg-zinc-100 p-2.5 transition-colors",
             overCol === col.name &&
-              "bg-teal-50 ring-1 ring-teal-200 dark:bg-teal-950/50 dark:ring-teal-800"
+              "bg-teal-50 ring-1 ring-teal-200 dark:bg-teal-950/50 dark:ring-teal-800",
+            // Dim columns that reject the card currently being dragged.
+            draggingCard && !accepts && "opacity-40"
           )}
         >
           <div className="flex items-center gap-2 px-1.5 py-0.5">
@@ -212,7 +232,7 @@ export function KanbanBoard({
                   // Flag overdue / due-soon dates so managers spot risk at a glance
                   // (done cards never look overdue).
                   const urgency =
-                    card.status === "Done" ? null : dueUrgency(card.dueISO);
+                    isClosedStatus(card.status) ? null : dueUrgency(card.dueISO);
                   return (
                     <span
                       className={cn(
@@ -241,7 +261,8 @@ export function KanbanBoard({
           })}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
