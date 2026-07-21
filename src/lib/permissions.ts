@@ -17,6 +17,7 @@ const MENU_ACCESS: Record<string, string[]> = {
   leaves: ALL_ROLES,
   calendar: ALL_ROLES,
   analytics: ["ADMIN", "MANAGER"],
+  plan: ["ADMIN", "MANAGER"],
   projects: ["ADMIN", "MANAGER"],
   activity: ["ADMIN", "MANAGER"],
   users: ["ADMIN", "MANAGER"],

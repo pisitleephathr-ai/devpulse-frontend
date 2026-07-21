@@ -131,6 +131,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "reports", label: "รายงานประจำวัน", href: "/reports", icon: "FileText" },
   { id: "tasks", label: "บอร์ดงาน", href: "/tasks", icon: "KanbanSquare" },
   { id: "analytics", label: "วิเคราะห์ทีม", href: "/analytics", icon: "BarChart3" },
+  { id: "plan", label: "แผนงานสัปดาห์", href: "/plan", icon: "CalendarRange" },
   { id: "kudos", label: "ชื่นชมเพื่อน", href: "/kudos", icon: "Award" },
   { id: "projects", label: "โปรเจกต์", href: "/projects", icon: "FolderKanban" },
   { id: "leaves", label: "คำขอลา", href: "/leaves", icon: "CalendarClock" },
