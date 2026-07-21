@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { usePersistedState } from "@/lib/use-persisted-state";
-import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, ExternalLink, Download, CheckSquare } from "lucide-react";
+import { Plus, Pencil, Trash2, X, KanbanSquare, Link2, ExternalLink, Download, CheckSquare, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
@@ -78,6 +78,23 @@ function matchDue(iso: string | null, f: string): boolean {
   return true;
 }
 
+/**
+ * Whether a task's due day falls inside the [from, to] range (inclusive).
+ * Either bound may be empty (open-ended). ISO day strings (YYYY-MM-DD) compare
+ * chronologically as plain strings; bounds are normalised so a reversed range
+ * (from > to) still works.
+ */
+function matchDueRange(iso: string | null, from: string, to: string): boolean {
+  if (!from && !to) return true;
+  if (!iso) return false;
+  const d = iso.slice(0, 10);
+  const lo = from && to ? (from <= to ? from : to) : from;
+  const hi = from && to ? (from <= to ? to : from) : to;
+  if (lo && d < lo) return false;
+  if (hi && d > hi) return false;
+  return true;
+}
+
 export default function TasksPage() {
   const { tasks, projects, users, loading, addTask, updateTask, deleteTask, moveTask, reworkTask } =
     useData();
@@ -99,9 +116,10 @@ export default function TasksPage() {
   const [assigneeF, setAssigneeF] = usePersistedState("tasks.assignee", "all");
   const [projectF, setProjectF] = usePersistedState("tasks.project", "all");
   const [dueF, setDueF] = usePersistedState("tasks.due", "all");
-  // Exact due-date filter (YYYY-MM-DD); "" = off. Independent of the relative
-  // due filter above.
-  const [dueDateF, setDueDateF] = usePersistedState("tasks.dueDate", "");
+  // Due-date range filter (YYYY-MM-DD each; "" = open-ended). Independent of the
+  // relative due filter above.
+  const [dueFromF, setDueFromF] = usePersistedState("tasks.dueFrom", "");
+  const [dueToF, setDueToF] = usePersistedState("tasks.dueTo", "");
 
   const [createStatus, setCreateStatus] = useState<TaskStatus | null>(null);
   // Delivery Fail flow: the card being marked failed (opens the reason dialog).
@@ -191,7 +209,8 @@ export default function TasksPage() {
     assigneeF !== "all" ||
     projectF !== "all" ||
     dueF !== "all" ||
-    dueDateF !== "";
+    dueFromF !== "" ||
+    dueToF !== "";
 
   const filtered = useMemo(() => {
     return tasks.filter(
@@ -202,9 +221,9 @@ export default function TasksPage() {
         (assigneeF === "all" || t.assignees.some((a) => a.key === assigneeF)) &&
         (projectF === "all" || t.proj === projectF) &&
         matchDue(t.dueISO, dueF) &&
-        (dueDateF === "" || t.dueISO?.slice(0, 10) === dueDateF)
+        matchDueRange(t.dueISO, dueFromF, dueToF)
     );
-  }, [tasks, search, statusF, priorityF, assigneeF, projectF, dueF, dueDateF]);
+  }, [tasks, search, statusF, priorityF, assigneeF, projectF, dueF, dueFromF, dueToF]);
 
   const columns = useMemo(() => groupTasks(filtered), [filtered]);
   const detail = detailId ? tasks.find((t) => t.id === detailId) ?? null : null;
@@ -237,7 +256,8 @@ export default function TasksPage() {
     setAssigneeF("all");
     setProjectF("all");
     setDueF("all");
-    setDueDateF("");
+    setDueFromF("");
+    setDueToF("");
   }
 
   function exportExcel() {
@@ -367,14 +387,48 @@ export default function TasksPage() {
           <option value="week">สัปดาห์นี้</option>
           <option value="month">เดือนนี้</option>
         </Select>
-        <input
-          type="date"
-          value={dueDateF}
-          onChange={(e) => setDueDateF(e.target.value)}
-          aria-label="กรองตามวันครบกำหนด"
-          title="เลือกวันครบกำหนด"
-          className="w-auto rounded-lg border border-border bg-card px-2.5 py-[7px] text-[12.5px] text-foreground"
-        />
+        {/* Due-date range (จาก–ถึง). Reads as one unit; each bound is optional. */}
+        <div
+          className={`flex items-center gap-1.5 rounded-lg border bg-card px-2 py-[5px] text-[12.5px] text-foreground transition-colors [color-scheme:light] dark:[color-scheme:dark] ${
+            dueFromF || dueToF ? "border-teal-500" : "border-border"
+          }`}
+        >
+          <CalendarRange
+            className={`size-3.5 flex-none ${dueFromF || dueToF ? "text-teal-600" : "text-muted-foreground"}`}
+          />
+          <input
+            type="date"
+            value={dueFromF}
+            max={dueToF || undefined}
+            onChange={(e) => setDueFromF(e.target.value)}
+            aria-label="ครบกำหนดตั้งแต่วันที่"
+            title="ครบกำหนดตั้งแต่วันที่"
+            className="w-[122px] bg-transparent text-foreground outline-none"
+          />
+          <span className="flex-none text-muted-foreground">–</span>
+          <input
+            type="date"
+            value={dueToF}
+            min={dueFromF || undefined}
+            onChange={(e) => setDueToF(e.target.value)}
+            aria-label="ครบกำหนดถึงวันที่"
+            title="ครบกำหนดถึงวันที่"
+            className="w-[122px] bg-transparent text-foreground outline-none"
+          />
+          {(dueFromF || dueToF) && (
+            <button
+              onClick={() => {
+                setDueFromF("");
+                setDueToF("");
+              }}
+              aria-label="ล้างช่วงวันครบกำหนด"
+              title="ล้างช่วงวันครบกำหนด"
+              className="flex-none rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
         {filtersActive && (
           <button
             onClick={clearFilters}
