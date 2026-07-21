@@ -22,6 +22,7 @@ export type TaskStatusEnum =
   | "IN_PROGRESS"
   | "DEV_REVIEW"
   | "DEV_DONE"
+  | "TESTING"
   | "DELIVERY_DONE"
   | "DELIVERY_FAIL";
 export type PriorityEnum = "HIGH" | "MEDIUM" | "LOW";
@@ -154,6 +155,8 @@ export type ApiTask = {
   /** actual start (first IN_PROGRESS) / dev finished (DEV_DONE) / delivered */
   startedAt?: string | null;
   devDoneAt?: string | null;
+  /** when the tester actually started testing (card entered TESTING) */
+  testStartedAt?: string | null;
   completedAt?: string | null;
   project: ApiProject;
   assignee: ApiUserMini | null;
@@ -246,6 +249,7 @@ export const TASK_STATUS_TO_LABEL: Record<TaskStatusEnum, TaskStatus> = {
   IN_PROGRESS: "In Progress",
   DEV_REVIEW: "Dev Review",
   DEV_DONE: "Dev Done",
+  TESTING: "Testing",
   DELIVERY_DONE: "Delivery Done",
   DELIVERY_FAIL: "Delivery Fail",
 };
@@ -399,6 +403,7 @@ export function mapTask(t: ApiTask): Task {
     estimatedFinishISO: t.estimatedFinishAt ?? null,
     startedISO: t.startedAt ?? null,
     devDoneISO: t.devDoneAt ?? null,
+    testStartedISO: t.testStartedAt ?? null,
     completedISO: t.completedAt ?? null,
     linkCount: t._count?.links ?? 0,
     attachmentCount: t._count?.attachments ?? 0,

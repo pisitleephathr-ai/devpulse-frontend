@@ -332,6 +332,7 @@ export type TaskStatus =
   | "In Progress"
   | "Dev Review"
   | "Dev Done"
+  | "Testing"
   | "Delivery Done"
   | "Delivery Fail";
 export type Priority = "High" | "Medium" | "Low";
@@ -360,6 +361,8 @@ export type Task = {
   /** actual-time stamps captured as the card moves through the pipeline */
   startedISO: string | null;
   devDoneISO: string | null;
+  /** when the tester actually started testing (card entered Testing) */
+  testStartedISO: string | null;
   completedISO: string | null;
   linkCount: number;
   attachmentCount: number;
@@ -376,6 +379,7 @@ export const TASK_STATUS_META: { name: TaskStatus; dot: string }[] = [
   { name: "In Progress", dot: "#3b82f6" },
   { name: "Dev Review", dot: "#8b5cf6" },
   { name: "Dev Done", dot: "#06b6d4" },
+  { name: "Testing", dot: "#f59e0b" },
   { name: "Delivery Done", dot: "#10b981" },
   { name: "Delivery Fail", dot: "#ef4444" },
 ];
@@ -392,18 +396,26 @@ export const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   Todo: ["In Progress"],
   "In Progress": ["Dev Review"],
   "Dev Review": ["Dev Done"],
-  "Dev Done": ["Delivery Done", "Delivery Fail"],
+  "Dev Done": ["Testing"],
+  Testing: ["Delivery Done", "Delivery Fail"],
   "Delivery Done": [],
   "Delivery Fail": [],
 };
-/** Delivery-side targets — reserved for the handoff tester (or a manager). */
+/** Delivery verdicts (final tester decisions). */
 export const DELIVERY_TARGETS: TaskStatus[] = ["Delivery Done", "Delivery Fail"];
 export const isDeliveryTarget = (s: TaskStatus) => DELIVERY_TARGETS.includes(s);
+/**
+ * Tester-owned targets — moving a card INTO any of these is the handoff tester's
+ * job (start the test, then the delivery verdict), not the dev's.
+ */
+export const TESTER_TARGETS: TaskStatus[] = ["Testing", "Delivery Done", "Delivery Fail"];
+export const isTesterTarget = (s: TaskStatus) => TESTER_TARGETS.includes(s);
 
 /**
  * Whether `who` may drag `task` from its current status to `to`. Managers
  * override everything; otherwise it must be a legal forward step, dev-side
- * moves need an assignee and delivery-side moves need the handoff tester.
+ * moves need an assignee and tester-side moves (into Testing / delivery) need
+ * the handoff tester.
  */
 export function canMoveTask(
   task: Task,
@@ -414,7 +426,7 @@ export function canMoveTask(
   if (who.isManager) return true;
   if (!(ALLOWED_TRANSITIONS[task.status] ?? []).includes(to)) return false;
   if (!who.id) return false;
-  if (isDeliveryTarget(to)) return task.handoff?.id === who.id;
+  if (isTesterTarget(to)) return task.handoff?.id === who.id;
   return task.assignees.some((a) => a.id === who.id);
 }
 
@@ -435,6 +447,7 @@ const TASKS_SEED: Omit<
   | "estimatedFinishISO"
   | "startedISO"
   | "devDoneISO"
+  | "testStartedISO"
   | "completedISO"
 >[] = [
   { title: "Rate limiting สำหรับ Public API", proj: "ATLAS", projFg: "#0f766e", key: "Jonas", pri: "High", due: "14 ก.ค.", status: "Todo" },
@@ -458,6 +471,7 @@ export const TASKS: Task[] = TASKS_SEED.map((t, i) => ({
   estimatedFinishISO: null,
   startedISO: null,
   devDoneISO: null,
+  testStartedISO: null,
   completedISO: null,
   linkCount: 0,
   attachmentCount: 0,

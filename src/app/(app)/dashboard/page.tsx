@@ -43,6 +43,7 @@ type Insights = {
     inProgress: number;
     devReview: number;
     devDone: number;
+    testing: number;
     deliveryDone: number;
     deliveryFail: number;
     overdue: number;
@@ -70,6 +71,7 @@ type Insights = {
     inProgress: number;
     devReview: number;
     devDone: number;
+    testing: number;
     deliveryDone: number;
     deliveryFail: number;
     open: number;
@@ -538,6 +540,7 @@ const PILLS = [
   { key: "inProgress", label: "กำลังทำ", cls: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
   { key: "devReview", label: "รีวิว", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
   { key: "devDone", label: "Dev เสร็จ", cls: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300" },
+  { key: "testing", label: "ทดสอบ", cls: "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300" },
   { key: "todo", label: "รอทำ", cls: "bg-muted text-zinc-600 dark:text-zinc-300" },
 ] as const;
 

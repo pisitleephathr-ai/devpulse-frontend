@@ -30,6 +30,7 @@ const STATUS_META: Record<string, { color: string }> = {
   "In Progress": { color: "#3b82f6" },
   "Dev Review": { color: "#8b5cf6" },
   "Dev Done": { color: "#06b6d4" },
+  Testing: { color: "#f59e0b" },
   "Delivery Done": { color: "#10b981" },
   "Delivery Fail": { color: "#ef4444" },
 };

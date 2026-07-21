@@ -43,6 +43,7 @@ const STATUS_DOT: Record<string, string> = {
   IN_PROGRESS: "#3b82f6",
   DEV_REVIEW: "#8b5cf6",
   DEV_DONE: "#06b6d4",
+  TESTING: "#f59e0b",
   DELIVERY_DONE: "#10b981",
   DELIVERY_FAIL: "#ef4444",
 };
