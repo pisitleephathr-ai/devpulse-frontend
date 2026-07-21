@@ -533,7 +533,7 @@ export default function TasksPage() {
         onClose={() => setCreateStatus(null)}
         title="สร้างงานใหม่"
         description="เพิ่มงานลงในบอร์ด"
-        className="w-[880px]"
+        className="w-[960px]"
       >
         {createStatus !== null && (
           <TaskForm
@@ -553,7 +553,7 @@ export default function TasksPage() {
         open={detail !== null}
         onClose={() => closeTask()}
         title="รายละเอียดงาน"
-        className="w-[880px]"
+        className="w-[960px]"
         footer={
           detail ? (
             <>
@@ -663,7 +663,7 @@ export default function TasksPage() {
               </div>
 
               {/* SIDEBAR — properties + checklist */}
-              <div className="flex flex-col gap-4 md:w-[248px] md:flex-none">
+              <div className="flex flex-col gap-4 md:w-[272px] md:flex-none">
                 <div className="flex flex-col gap-3.5 rounded-xl border border-hairline bg-muted/30 p-3.5">
                   <div>
                     <div className="mb-1 text-[11px] font-medium text-muted-foreground">
@@ -843,7 +843,7 @@ export default function TasksPage() {
         open={editTask !== null}
         onClose={() => setEditTask(null)}
         title="แก้ไขงาน"
-        className="w-[880px]"
+        className="w-[960px]"
       >
         {editTask && (
           <TaskForm
