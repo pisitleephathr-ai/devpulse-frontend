@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Avatar } from "@/components/ui/avatar";
@@ -95,9 +95,21 @@ export default function PlanPage() {
 
   // Bangkok "today" via the shared helper (keeps render pure — no Date.now()).
   const todayStr = bangkokDateISO();
+  // Show only working days — drop weekends / company holidays from the columns.
+  const days = plan ? plan.days.filter((d) => d.isWorkingDay) : [];
   const gridCols = plan
-    ? `190px repeat(${plan.days.length}, minmax(84px, 1fr))`
+    ? `190px repeat(${days.length}, minmax(84px, 1fr))`
     : undefined;
+
+  // Quick summary groups (derived — no side effects).
+  const working = plan ? plan.people.filter((p) => p.openCount > 0) : [];
+  const idle = plan ? plan.people.filter((p) => p.openCount === 0) : [];
+  const freeing = plan
+    ? plan.people
+        .filter((p) => p.freeFrom)
+        .sort((a, b) => (a.freeFrom! < b.freeFrom! ? -1 : 1))
+    : [];
+  const busyNoEstimate = working.filter((p) => !p.freeFrom).length;
 
   return (
     <div className="px-4 py-6 sm:px-7">
@@ -139,7 +151,72 @@ export default function PlanPage() {
             />
           </div>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <>
+          {/* quick summary — who's working, who's free, who frees up when */}
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <SummaryCard tone="amber" title="กำลังทำงาน" count={working.length}>
+              {working.length ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {working.slice(0, 8).map((p) => (
+                    <span key={p.id} className="flex items-center gap-1 rounded-full bg-muted/60 py-0.5 pl-0.5 pr-2 text-[11.5px]">
+                      <Avatar userKey={p.avatarKey} size={18} fontSize={8} />
+                      <span className="max-w-[92px] truncate">{p.name}</span>
+                    </span>
+                  ))}
+                  {working.length > 8 && (
+                    <span className="text-[11.5px] text-muted-foreground">+{working.length - 8}</span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-[12px] text-muted-foreground">ไม่มีใครมีงานค้าง</span>
+              )}
+            </SummaryCard>
+
+            <SummaryCard tone="emerald" title="ยังว่าง" count={idle.length}>
+              {idle.length ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {idle.slice(0, 8).map((p) => (
+                    <span key={p.id} className="flex items-center gap-1 rounded-full bg-muted/60 py-0.5 pl-0.5 pr-2 text-[11.5px]">
+                      <Avatar userKey={p.avatarKey} size={18} fontSize={8} />
+                      <span className="max-w-[92px] truncate">{p.name}</span>
+                    </span>
+                  ))}
+                  {idle.length > 8 && (
+                    <span className="text-[11.5px] text-muted-foreground">+{idle.length - 8}</span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-[12px] text-muted-foreground">ทุกคนมีงานอยู่</span>
+              )}
+            </SummaryCard>
+
+            <SummaryCard tone="teal" title="เริ่มว่างเมื่อไร" count={freeing.length}>
+              {freeing.length ? (
+                <ul className="flex flex-col gap-1">
+                  {freeing.slice(0, 4).map((p) => (
+                    <li key={p.id} className="flex items-center justify-between gap-2 text-[12px]">
+                      <span className="truncate font-medium">{p.name}</span>
+                      <span className="flex-none tabular-nums text-muted-foreground">
+                        {freeLabel(p.freeFrom).replace("ว่าง ", "")}
+                      </span>
+                    </li>
+                  ))}
+                  {freeing.length > 4 && (
+                    <li className="text-[11.5px] text-muted-foreground">และอีก {freeing.length - 4} คน</li>
+                  )}
+                </ul>
+              ) : (
+                <span className="text-[12px] text-muted-foreground">ยังไม่มีคิวว่างที่ระบุ</span>
+              )}
+              {busyNoEstimate > 0 && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  มีงานแต่ยังไม่ระบุคาดการณ์เสร็จ {busyNoEstimate} คน
+                </p>
+              )}
+            </SummaryCard>
+          </div>
+
+          <div className="mt-3 overflow-x-auto rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
             <div className="min-w-[820px]">
               {/* header: day columns */}
               <div
@@ -149,14 +226,12 @@ export default function PlanPage() {
                 <div className="sticky left-0 z-10 flex items-end bg-card px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   สมาชิก
                 </div>
-                {plan.days.map((d) => {
+                {days.map((d) => {
                   const isToday = d.date === todayStr;
                   return (
                     <div
                       key={d.date}
-                      className={`border-l border-hairline-soft px-1.5 py-2 text-center ${
-                        d.isWorkingDay ? "" : "bg-muted/50"
-                      }`}
+                      className="border-l border-hairline-soft px-1.5 py-2 text-center"
                     >
                       <div className="text-[10.5px] text-muted-foreground">{WD_TH[d.weekday]}</div>
                       <div
@@ -171,11 +246,6 @@ export default function PlanPage() {
                           day: "numeric",
                         })}
                       </div>
-                      {d.holiday && (
-                        <div className="mt-0.5 truncate text-[9px] text-rose-500" title={d.holiday}>
-                          {d.holiday}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -223,15 +293,15 @@ export default function PlanPage() {
                     </div>
 
                     {/* day cells */}
-                    {plan.days.map((d) => {
+                    {days.map((d) => {
                       const onLeave = leaveSet.has(d.date);
                       const tks = byDay.get(d.date) ?? [];
                       return (
                         <div
                           key={d.date}
                           className={`min-h-[54px] border-l border-hairline-soft p-1 ${
-                            !d.isWorkingDay ? "bg-muted/40" : ""
-                          } ${onLeave ? "bg-rose-50 dark:bg-rose-950/30" : ""}`}
+                            onLeave ? "bg-rose-50 dark:bg-rose-950/30" : ""
+                          }`}
                         >
                           {onLeave && (
                             <div className="mb-1 rounded bg-rose-100 px-1 py-0.5 text-center text-[9.5px] font-semibold text-rose-600 dark:bg-rose-900/40 dark:text-rose-300">
@@ -265,6 +335,7 @@ export default function PlanPage() {
               })}
             </div>
           </div>
+          </>
         )}
 
         {/* legend */}
@@ -279,13 +350,41 @@ export default function PlanPage() {
             <span className="flex items-center gap-1.5">
               <span className="inline-block size-3 rounded bg-rose-100 dark:bg-rose-900/40" /> วันลา
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block size-3 rounded bg-muted" /> วันหยุด/ไม่ทำงาน
-            </span>
-            <span>งานวางตามวัน “คาดการณ์เสร็จ”</span>
+            <span>แสดงเฉพาะวันทำงาน · งานวางตามวัน “คาดการณ์เสร็จ”</span>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** A compact summary card with a colored count chip. */
+function SummaryCard({
+  title,
+  count,
+  tone,
+  children,
+}: {
+  title: string;
+  count: number;
+  tone: "amber" | "emerald" | "teal";
+  children: ReactNode;
+}) {
+  const toneCls =
+    tone === "amber"
+      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+      : tone === "emerald"
+        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+        : "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300";
+  return (
+    <div className="rounded-xl border border-border bg-card p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-[12.5px] font-semibold">{title}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${toneCls}`}>
+          {count}
+        </span>
+      </div>
+      {children}
     </div>
   );
 }
