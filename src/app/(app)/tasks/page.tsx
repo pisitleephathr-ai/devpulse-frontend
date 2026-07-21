@@ -607,22 +607,31 @@ export default function TasksPage() {
               <div className="text-[15px] font-semibold leading-snug [overflow-wrap:anywhere]">
                 {detail.title}
               </div>
-              {detail.description && (
-                <div className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-500">
-                  {detail.description}
-                </div>
-              )}
             </div>
 
             {/* Two columns on desktop: main content (left) + properties (right).
                 On mobile they stack with properties first. */}
             <div className="flex flex-col-reverse gap-5 md:flex-row md:gap-6">
-              {/* MAIN — links, attachments, comments */}
+              {/* MAIN — description, links, attachments, comments */}
               <div className="flex min-w-0 flex-1 flex-col gap-4">
+                {/* Task description (left side, not full-width under the title). */}
+                <div>
+                  <div className="mb-1.5 text-[12.5px] font-medium text-zinc-900 dark:text-zinc-100">
+                    รายละเอียดงาน
+                  </div>
+                  {detail.description ? (
+                    <div className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 [overflow-wrap:anywhere]">
+                      {detail.description}
+                    </div>
+                  ) : (
+                    <div className="text-[12.5px] text-muted-foreground">— ไม่มีรายละเอียด —</div>
+                  )}
+                </div>
+
                 {/* Reference links */}
                 {detailData && detailData.links.length > 0 && (
-                  <div>
-                    <div className="mb-1.5 text-[12.5px] font-medium text-zinc-900">
+                  <div className="border-t border-hairline pt-4">
+                    <div className="mb-1.5 text-[12.5px] font-medium text-zinc-900 dark:text-zinc-100">
                       ลิงก์ที่เกี่ยวข้อง
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -645,7 +654,7 @@ export default function TasksPage() {
 
                 {/* Attachments — mounts once the full detail has loaded. */}
                 {detailData?.id === detail.id && (
-                  <div className={detailData.links.length > 0 ? "border-t border-hairline pt-4" : ""}>
+                  <div className="border-t border-hairline pt-4">
                     {/* View-only in the detail dialog — add/delete is in edit mode. */}
                     <TaskAttachments
                       key={detail.id}
