@@ -14,7 +14,6 @@ import {
   CalendarOff,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { Avatar } from "@/components/ui/avatar";
 import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { api, ApiError } from "@/lib/api";
@@ -22,16 +21,17 @@ import { toast } from "@/components/ui/toaster";
 import { bangkokDateISO, formatThaiDateFull } from "@/lib/thai-datetime";
 import { formatThaiDate } from "@/lib/mappers";
 import { cn } from "@/lib/utils";
-import type { Task } from "@/lib/mock-data";
+import { isClosedStatus, type Task } from "@/lib/mock-data";
 
 /* --------------------------------- meta --------------------------------- */
 
 const STATUS_META: Record<string, { color: string }> = {
   Todo: { color: "#a1a1aa" },
   "In Progress": { color: "#3b82f6" },
-  Review: { color: "#8b5cf6" },
-  "Ready to Test": { color: "#06b6d4" },
-  Done: { color: "#10b981" },
+  "Dev Review": { color: "#8b5cf6" },
+  "Dev Done": { color: "#06b6d4" },
+  "Delivery Done": { color: "#10b981" },
+  "Delivery Fail": { color: "#ef4444" },
 };
 const PRIORITY_META: Record<string, { label: string; color: string }> = {
   High: { label: "สูง", color: "#e11d48" },
@@ -87,7 +87,7 @@ export default function MyDayPage() {
   /* ---- my open tasks, grouped by urgency ---- */
   const groups = useMemo(() => {
     const mine = tasks.filter(
-      (t) => t.status !== "Done" && me && t.assignees.some((a) => a.id === me.id)
+      (t) => !isClosedStatus(t.status) && me && t.assignees.some((a) => a.id === me.id)
     );
     const weekEnd = new Date();
     weekEnd.setDate(weekEnd.getDate() + 7);

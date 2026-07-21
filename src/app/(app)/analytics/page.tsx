@@ -6,6 +6,7 @@ import { useData } from "@/lib/store";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/ui/avatar";
 import { bangkokDateISO, thaiDateShortFromISO } from "@/lib/thai-datetime";
+import { isClosedStatus } from "@/lib/mock-data";
 import {
   TrendingUp,
   TriangleAlert,
@@ -35,9 +36,10 @@ type Insights = {
     total: number;
     todo: number;
     inProgress: number;
-    review: number;
-    readyToTest: number;
-    done: number;
+    devReview: number;
+    devDone: number;
+    deliveryDone: number;
+    deliveryFail: number;
     overdue: number;
     dueToday: number;
     dueThisWeek: number;
@@ -61,9 +63,10 @@ type Insights = {
     onLeave?: boolean;
     todo: number;
     inProgress: number;
-    review: number;
-    readyToTest?: number;
-    done: number;
+    devReview: number;
+    devDone: number;
+    deliveryDone: number;
+    deliveryFail: number;
     open: number;
     total: number;
     closed?: number;
@@ -144,17 +147,19 @@ function ageColor(days: number) {
 const STATUS_META: Record<string, { label: string; color: string }> = {
   TODO: { label: "รอดำเนินการ", color: "#a1a1aa" },
   IN_PROGRESS: { label: "กำลังทำ", color: "#3b82f6" },
-  REVIEW: { label: "รอตรวจ", color: "#8b5cf6" },
-  READY_TO_TEST: { label: "พร้อมทดสอบ", color: "#06b6d4" },
-  DONE: { label: "เสร็จแล้ว", color: "#10b981" },
+  DEV_REVIEW: { label: "รีวิวโค้ด", color: "#8b5cf6" },
+  DEV_DONE: { label: "Dev เสร็จ", color: "#06b6d4" },
+  DELIVERY_DONE: { label: "ส่งมอบสำเร็จ", color: "#10b981" },
+  DELIVERY_FAIL: { label: "ส่งมอบไม่ผ่าน", color: "#ef4444" },
 };
 // Blue ordinal ramp (pipeline stages, TODO→Done). Theme-aware light/dark steps
 // applied via CSS custom properties on the wrapper (see STAGE_VARS).
-const STAGE_KEYS = ["--st1", "--st2", "--st3", "--st4", "--st5"] as const;
+const STAGE_KEYS = ["--st1", "--st2", "--st3", "--st4", "--st5", "--st6"] as const;
 // Tailwind arbitrary-property classes so the ordinal ramp re-steps for dark mode.
+// st1–st5 = blue ordinal ramp (forward pipeline); st6 = red (Delivery Fail).
 const STAGE_VARS =
-  "[--st1:#86b6ef] [--st2:#5598e7] [--st3:#2a78d6] [--st4:#1c5cab] [--st5:#104281] " +
-  "dark:[--st1:#9ec5f4] dark:[--st2:#6da7ec] dark:[--st3:#3987e5] dark:[--st4:#256abf] dark:[--st5:#184f95]";
+  "[--st1:#86b6ef] [--st2:#5598e7] [--st3:#2a78d6] [--st4:#1c5cab] [--st5:#104281] [--st6:#d03b3b] " +
+  "dark:[--st1:#9ec5f4] dark:[--st2:#6da7ec] dark:[--st3:#3987e5] dark:[--st4:#256abf] dark:[--st5:#184f95] dark:[--st6:#e8706e]";
 
 /* ================================= Page ================================= */
 
@@ -231,18 +236,19 @@ export default function AnalyticsPage() {
     ? [
         { label: "รอดำเนินการ", value: t.todo },
         { label: "กำลังทำ", value: t.inProgress },
-        { label: "รอตรวจ", value: t.review },
-        { label: "พร้อมทดสอบ", value: t.readyToTest },
-        { label: "เสร็จแล้ว", value: t.done },
+        { label: "รีวิวโค้ด", value: t.devReview },
+        { label: "Dev เสร็จ", value: t.devDone },
+        { label: "ส่งมอบสำเร็จ", value: t.deliveryDone },
+        { label: "ส่งมอบไม่ผ่าน", value: t.deliveryFail },
       ]
     : [];
-  const wip = t ? t.inProgress + t.review + t.readyToTest : 0;
+  const wip = t ? t.inProgress + t.devReview + t.devDone : 0;
 
   /* priority mix of OPEN tasks (client store) */
   const priorityMix = useMemo(() => {
     const m = { High: 0, Medium: 0, Low: 0 } as Record<string, number>;
     for (const task of tasks) {
-      if (task.status === "Done") continue;
+      if (isClosedStatus(task.status)) continue;
       if (task.pri in m) m[task.pri] += 1;
     }
     return m;
@@ -260,8 +266,10 @@ export default function AnalyticsPage() {
       const acc =
         byCode.get(task.proj) ?? { total: 0, done: 0, open: 0, overdue: 0 };
       acc.total += 1;
-      if (task.status === "Done") acc.done += 1;
-      else {
+      if (task.status === "Delivery Done") acc.done += 1;
+      else if (task.status === "Delivery Fail") {
+        // terminal failure — neither delivered nor open work
+      } else {
         acc.open += 1;
         if (task.dueISO && task.dueISO < todayIso) acc.overdue += 1;
       }
@@ -349,7 +357,7 @@ export default function AnalyticsPage() {
           icon={<Gauge className="size-[18px]" />}
           label="อัตรางานเสร็จ"
           value={t ? `${t.completionRate}%` : "—"}
-          sub={t ? `${t.done}/${t.total} งาน` : undefined}
+          sub={t ? `${t.deliveryDone}/${t.total} งาน` : undefined}
           ring={t?.completionRate ?? 0}
           ringColor={TEAL}
           loading={loading}

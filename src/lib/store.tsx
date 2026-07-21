@@ -69,6 +69,8 @@ type DataContextValue = {
   updateTask: (id: string, data: Partial<TaskInput>) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
   moveTask: (id: string, statusLabel: TaskStatus) => Promise<boolean>;
+  /** Delivery Fail → create a fresh Todo rework task from a failed card. */
+  reworkTask: (id: string, comment: string) => Promise<Task | null>;
   /** Keep a board card's attachment count in sync after an upload/delete. */
   setTaskAttachmentCount: (id: string, count: number) => void;
 
@@ -390,6 +392,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }),
     [run]
   );
+  /** Delivery Fail → spawn a fresh Todo rework task referencing the original. */
+  const reworkTask = useCallback(
+    async (id: string, comment: string): Promise<Task | null> => {
+      mutationsRef.current++;
+      try {
+        const { task } = await api.post<{ task: ApiTask }>(
+          `/api/tasks/${id}/rework`,
+          { comment }
+        );
+        const mapped = mapTask(task);
+        setTasks((prev) => [...prev, mapped]);
+        toast("สร้างงานแก้ไขใหม่ใน To Do แล้ว");
+        return mapped;
+      } catch (err) {
+        toast(err instanceof ApiError ? err.message : "สร้างงานแก้ไขไม่สำเร็จ");
+        return null;
+      } finally {
+        mutationsRef.current--;
+      }
+    },
+    []
+  );
   const setTaskAttachmentCount = useCallback((id: string, count: number) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, attachmentCount: count } : t))
@@ -515,6 +539,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      reworkTask,
       setTaskAttachmentCount,
       addLeave,
       setLeaveStatus,
@@ -548,6 +573,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      reworkTask,
       setTaskAttachmentCount,
       addLeave,
       setLeaveStatus,

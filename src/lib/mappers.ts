@@ -17,7 +17,13 @@ import type {
 
 export type RoleEnum = "MANAGER" | "ADMIN" | "DEVELOPER" | "QA";
 export type ReportStatusEnum = "SUBMITTED" | "DRAFT" | "LATE";
-export type TaskStatusEnum = "TODO" | "IN_PROGRESS" | "REVIEW" | "READY_TO_TEST" | "DONE";
+export type TaskStatusEnum =
+  | "TODO"
+  | "IN_PROGRESS"
+  | "DEV_REVIEW"
+  | "DEV_DONE"
+  | "DELIVERY_DONE"
+  | "DELIVERY_FAIL";
 export type PriorityEnum = "HIGH" | "MEDIUM" | "LOW";
 export type LeaveTypeEnum = "VACATION" | "SICK" | "PERSONAL" | "PARENTAL";
 export type LeaveStatusEnum = "PENDING" | "APPROVED" | "REJECTED";
@@ -143,8 +149,16 @@ export type ApiTask = {
   priority: PriorityEnum;
   status: TaskStatusEnum;
   dueDate: string | null;
+  /** planning estimate, date + time (ISO) */
+  estimatedFinishAt?: string | null;
+  /** actual start (first IN_PROGRESS) / dev finished (DEV_DONE) / delivered */
+  startedAt?: string | null;
+  devDoneAt?: string | null;
+  completedAt?: string | null;
   project: ApiProject;
   assignee: ApiUserMini | null;
+  /** the tester the card is handed to after DEV_DONE */
+  handoffUser?: ApiUserMini | null;
   /** full assignee set (multi-assignee); falls back to [assignee] */
   assignees?: ApiUserMini[];
   _count?: { links: number; attachments: number };
@@ -163,6 +177,9 @@ export type ApiTaskDetail = ApiTask & {
   attachments: ApiTaskAttachment[];
   /** full checklist items (present on the detail endpoint) */
   checklist?: ApiChecklistItem[];
+  /** the card this was reworked from + any reworks spawned from it */
+  originTask?: { id: string; title: string; status: TaskStatusEnum } | null;
+  reworkTasks?: { id: string; title: string; status: TaskStatusEnum }[];
 };
 /** Admin-configured leave-type policy (source of the leave form's type list). */
 export type ApiLeaveType = {
@@ -227,9 +244,10 @@ export const REPORT_STATUS_TO_TH: Record<ReportStatusEnum, string> = {
 export const TASK_STATUS_TO_LABEL: Record<TaskStatusEnum, TaskStatus> = {
   TODO: "Todo",
   IN_PROGRESS: "In Progress",
-  REVIEW: "Review",
-  READY_TO_TEST: "Ready to Test",
-  DONE: "Done",
+  DEV_REVIEW: "Dev Review",
+  DEV_DONE: "Dev Done",
+  DELIVERY_DONE: "Delivery Done",
+  DELIVERY_FAIL: "Delivery Fail",
 };
 export const PRIORITY_TO_LABEL: Record<PriorityEnum, Priority> = {
   HIGH: "High",
@@ -375,6 +393,13 @@ export function mapTask(t: ApiTask): Task {
     due: t.dueDate ? formatThaiDate(t.dueDate) : "—",
     dueISO: t.dueDate ?? null,
     status: TASK_STATUS_TO_LABEL[t.status],
+    handoff: t.handoffUser
+      ? { id: t.handoffUser.id, key: t.handoffUser.avatarKey, name: t.handoffUser.name }
+      : null,
+    estimatedFinishISO: t.estimatedFinishAt ?? null,
+    startedISO: t.startedAt ?? null,
+    devDoneISO: t.devDoneAt ?? null,
+    completedISO: t.completedAt ?? null,
     linkCount: t._count?.links ?? 0,
     attachmentCount: t._count?.attachments ?? 0,
     checklistTotal: t.checklistTotal ?? 0,
@@ -440,9 +465,13 @@ export type TaskInput = {
   projectId: string;
   assigneeId?: string | null;
   assigneeIds?: string[];
+  /** tester the card is handed to after Dev Done */
+  handoffUserId?: string | null;
   priority?: PriorityEnum;
   status?: TaskStatusEnum;
   dueDate?: string | null;
+  /** planning estimate, date + time (ISO) */
+  estimatedFinishAt?: string | null;
   description?: string;
   links?: TaskLinkInput[];
   attachments?: TaskAttachmentInput[];

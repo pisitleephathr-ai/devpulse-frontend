@@ -133,9 +133,10 @@ type ActionResp = {
 const STATUS_META: Record<string, { label: string; color: string }> = {
   TODO: { label: "รอดำเนินการ", color: "#a1a1aa" },
   IN_PROGRESS: { label: "กำลังทำ", color: "#3b82f6" },
-  REVIEW: { label: "รอตรวจ", color: "#8b5cf6" },
-  READY_TO_TEST: { label: "พร้อมทดสอบ", color: "#06b6d4" },
-  DONE: { label: "เสร็จแล้ว", color: "#10b981" },
+  DEV_REVIEW: { label: "รีวิวโค้ด", color: "#8b5cf6" },
+  DEV_DONE: { label: "Dev เสร็จ", color: "#06b6d4" },
+  DELIVERY_DONE: { label: "ส่งมอบสำเร็จ", color: "#10b981" },
+  DELIVERY_FAIL: { label: "ส่งมอบไม่ผ่าน", color: "#ef4444" },
 };
 const PRIORITY_META: Record<string, { label: string; color: string }> = {
   HIGH: { label: "สูง", color: "#e11d48" },
@@ -182,7 +183,7 @@ function TaskCard({ t, size = "sm" }: { t: MiniTask; size?: "sm" | "lg" }) {
   const due = dueInfo(t.dueDate);
   const accent = t.project?.color ?? "#14b8a6";
   const lg = size === "lg";
-  const isDone = t.status === "DONE";
+  const isDone = t.status === "DELIVERY_DONE";
 
   return (
     <button
@@ -947,7 +948,7 @@ function TaskDetailModal({ id, onClose }: { id: string; onClose: () => void }) {
   const assignees = task?.assignees ?? (task?.assignee ? [task.assignee] : []);
   const checklist = task?.checklist ?? [];
   const checkDone = checklist.filter((c) => c.done).length;
-  const isDone = task?.status === "DONE";
+  const isDone = task?.status === "DELIVERY_DONE";
   const accent = task?.project?.color ?? "#14b8a6";
 
   return (

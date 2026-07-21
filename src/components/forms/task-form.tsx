@@ -60,11 +60,27 @@ type Values = {
   title: string;
   projectId: string;
   assigneeIds: string[];
+  /** tester the card is handed to after Dev Done ("" = none) */
+  handoffUserId: string;
   priority: PriorityEnum;
   status: TaskStatusEnum;
   dueDate: string;
+  /** planning estimate as a datetime-local value (Bangkok wall clock) */
+  estimatedFinishAt: string;
   description: string;
 };
+
+/** UTC ISO → "YYYY-MM-DDTHH:mm" in Bangkok wall-clock, for <input datetime-local>. */
+function isoToBkkInput(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(new Date(iso).getTime() + 7 * 3_600_000).toISOString().slice(0, 16);
+}
+/** Bangkok "YYYY-MM-DDTHH:mm" → UTC ISO (treats the input as Asia/Bangkok time). */
+function bkkInputToIso(local: string): string | null {
+  if (!local) return null;
+  const d = new Date(`${local}:00+07:00`);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 type LinkRow = { title: string; url: string };
 
@@ -109,6 +125,7 @@ export function TaskForm({
     title: task?.title ?? "",
     projectId: "",
     assigneeIds: task?.assignees.map((a) => a.id) ?? [],
+    handoffUserId: task?.handoff?.id ?? "",
     priority: task ? LABEL_TO_PRIORITY[task.pri] : "MEDIUM",
     status: task
       ? LABEL_TO_TASK_STATUS[task.status]
@@ -116,6 +133,7 @@ export function TaskForm({
         ? LABEL_TO_TASK_STATUS[defaultStatus]
         : "TODO",
     dueDate: task ? thaiToIso(task.due) : defaultDueIso(),
+    estimatedFinishAt: isoToBkkInput(task?.estimatedFinishISO ?? null),
     description: task?.description ?? "",
   }));
   const [links, setLinks] = useState<LinkRow[]>(
@@ -227,9 +245,11 @@ export function TaskForm({
       title: values.title.trim(),
       projectId: proj.id,
       assigneeIds: values.assigneeIds,
+      handoffUserId: values.handoffUserId || null,
       priority: values.priority,
       status: values.status,
       dueDate: values.dueDate || null,
+      estimatedFinishAt: bkkInputToIso(values.estimatedFinishAt),
       description: values.description.trim(),
       links: cleanLinks,
     };
@@ -318,6 +338,17 @@ export function TaskForm({
         )}
       </Field>
 
+      <Field label="ผู้รับต่อ (ผู้ทดสอบ)" hint="รับงานอัตโนมัติเมื่อการ์ดถึง Dev Done">
+        <Select value={values.handoffUserId} onChange={(e) => set("handoffUserId", e.target.value)}>
+          <option value="">— ไม่มี —</option>
+          {assigneeOptions.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <Field label="ความสำคัญ">
           <Select value={values.priority} onChange={(e) => set("priority", e.target.value as PriorityEnum)}>
@@ -341,6 +372,14 @@ export function TaskForm({
           <Input type="date" value={values.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
         </Field>
       </div>
+
+      <Field label="คาดการณ์เสร็จ (วัน + เวลา)" hint="ใช้วางแผนงานรายสัปดาห์">
+        <Input
+          type="datetime-local"
+          value={values.estimatedFinishAt}
+          onChange={(e) => set("estimatedFinishAt", e.target.value)}
+        />
+      </Field>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">

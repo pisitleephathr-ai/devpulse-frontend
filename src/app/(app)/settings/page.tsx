@@ -89,7 +89,7 @@ const DEFAULT_SETTING: Setting = {
   notifyTaskDue: true,
   linePersonalEnabled: true,
   lineNotifyNewTask: true,
-  lineNotifyStatuses: ["TODO", "DONE"],
+  lineNotifyStatuses: ["TODO", "DELIVERY_DONE"],
   lineNotifyLeave: true,
   lineDailyLeaveSummary: false,
   lineDailyLeaveSummaryTime: "09:00",

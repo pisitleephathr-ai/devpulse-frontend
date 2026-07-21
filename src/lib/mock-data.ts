@@ -326,7 +326,13 @@ export const REPORT_STATUS_OPTIONS: ReportStatus[] = ["ส่งแล้ว", "
 /* Task board                                                          */
 /* ------------------------------------------------------------------ */
 
-export type TaskStatus = "Todo" | "In Progress" | "Review" | "Ready to Test" | "Done";
+export type TaskStatus =
+  | "Todo"
+  | "In Progress"
+  | "Dev Review"
+  | "Dev Done"
+  | "Delivery Done"
+  | "Delivery Fail";
 export type Priority = "High" | "Medium" | "Low";
 
 export type Task = {
@@ -346,6 +352,14 @@ export type Task = {
   /** ISO due date for date-range filtering (null if none). */
   dueISO: string | null;
   status: TaskStatus;
+  /** the tester the card is handed to after Dev Done (null if none) */
+  handoff: { id: string; key: string; name: string } | null;
+  /** planning estimate (date+time ISO) shown on the weekly plan */
+  estimatedFinishISO: string | null;
+  /** actual-time stamps captured as the card moves through the pipeline */
+  startedISO: string | null;
+  devDoneISO: string | null;
+  completedISO: string | null;
   linkCount: number;
   attachmentCount: number;
   /** checklist/subtask progress shown on the card */
@@ -355,15 +369,54 @@ export type Task = {
 
 export type KanbanColumn = { name: TaskStatus; dot: string; cards: Task[] };
 
-/** Column order + dot colors for the board. */
+/** Column order + dot colors for the board (dataviz-validated hues). */
 export const TASK_STATUS_META: { name: TaskStatus; dot: string }[] = [
   { name: "Todo", dot: "#a1a1aa" },
   { name: "In Progress", dot: "#3b82f6" },
-  { name: "Review", dot: "#8b5cf6" },
-  { name: "Ready to Test", dot: "#06b6d4" },
-  { name: "Done", dot: "#10b981" },
+  { name: "Dev Review", dot: "#8b5cf6" },
+  { name: "Dev Done", dot: "#06b6d4" },
+  { name: "Delivery Done", dot: "#10b981" },
+  { name: "Delivery Fail", dot: "#ef4444" },
 ];
 export const TASK_STATUSES: TaskStatus[] = TASK_STATUS_META.map((m) => m.name);
+/** Terminal columns — a card here is "closed" (delivered or failed). */
+export const CLOSED_STATUSES: TaskStatus[] = ["Delivery Done", "Delivery Fail"];
+export const isClosedStatus = (s: TaskStatus) => CLOSED_STATUSES.includes(s);
+
+/**
+ * Board workflow (mirrors the backend). A card moves one forward step at a
+ * time; the only backward path is Delivery Fail → a fresh Todo rework task.
+ */
+export const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
+  Todo: ["In Progress"],
+  "In Progress": ["Dev Review"],
+  "Dev Review": ["Dev Done"],
+  "Dev Done": ["Delivery Done", "Delivery Fail"],
+  "Delivery Done": [],
+  "Delivery Fail": [],
+};
+/** Delivery-side targets — reserved for the handoff tester (or a manager). */
+export const DELIVERY_TARGETS: TaskStatus[] = ["Delivery Done", "Delivery Fail"];
+export const isDeliveryTarget = (s: TaskStatus) => DELIVERY_TARGETS.includes(s);
+
+/**
+ * Whether `who` may drag `task` from its current status to `to`. Managers
+ * override everything; otherwise it must be a legal forward step, dev-side
+ * moves need an assignee and delivery-side moves need the handoff tester.
+ */
+export function canMoveTask(
+  task: Task,
+  to: TaskStatus,
+  who: { id: string | null; isManager: boolean }
+): boolean {
+  if (task.status === to) return false;
+  if (who.isManager) return true;
+  if (!(ALLOWED_TRANSITIONS[task.status] ?? []).includes(to)) return false;
+  if (!who.id) return false;
+  if (isDeliveryTarget(to)) return task.handoff?.id === who.id;
+  return task.assignees.some((a) => a.id === who.id);
+}
+
 export const PRIORITIES: Priority[] = ["High", "Medium", "Low"];
 
 /** Selectable projects with their card code + accent color. */
@@ -377,6 +430,11 @@ const TASKS_SEED: Omit<
   | "assignees"
   | "checklistTotal"
   | "checklistDone"
+  | "handoff"
+  | "estimatedFinishISO"
+  | "startedISO"
+  | "devDoneISO"
+  | "completedISO"
 >[] = [
   { title: "Rate limiting สำหรับ Public API", proj: "ATLAS", projFg: "#0f766e", key: "Jonas", pri: "High", due: "14 ก.ค.", status: "Todo" },
   { title: "Empty state หน้ารายการรายงาน", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Low", due: "18 ก.ค.", status: "Todo" },
@@ -385,16 +443,21 @@ const TASKS_SEED: Omit<
   { title: "กราฟแดชบอร์ด v2", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Medium", due: "15 ก.ค.", status: "In Progress" },
   { title: "Push Notification (Android)", proj: "ORBIT", projFg: "#b45309", key: "Tom", pri: "High", due: "11 ก.ค.", status: "In Progress" },
   { title: "เก็บกวาด Terraform module", proj: "INFRA", projFg: "#be123c", key: "Alex", pri: "Low", due: "21 ก.ค.", status: "In Progress" },
-  { title: "ตรวจสอบคำขอลา (validation)", proj: "ATLAS", projFg: "#0f766e", key: "Priya", pri: "Medium", due: "9 ก.ค.", status: "Review" },
-  { title: "UI เช็กลิสต์ onboarding", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Low", due: "9 ก.ค.", status: "Review" },
-  { title: "ปรับแต่ง CI cache", proj: "INFRA", projFg: "#be123c", key: "Alex", pri: "Medium", due: "8 ก.ค.", status: "Done" },
-  { title: "ส่งออกรายงานเป็น CSV", proj: "ATLAS", projFg: "#0f766e", key: "Priya", pri: "Low", due: "7 ก.ค.", status: "Done" },
+  { title: "ตรวจสอบคำขอลา (validation)", proj: "ATLAS", projFg: "#0f766e", key: "Priya", pri: "Medium", due: "9 ก.ค.", status: "Dev Review" },
+  { title: "UI เช็กลิสต์ onboarding", proj: "CONSOLE", projFg: "#7c3aed", key: "Maya", pri: "Low", due: "9 ก.ค.", status: "Dev Review" },
+  { title: "ปรับแต่ง CI cache", proj: "INFRA", projFg: "#be123c", key: "Alex", pri: "Medium", due: "8 ก.ค.", status: "Delivery Done" },
+  { title: "ส่งออกรายงานเป็น CSV", proj: "ATLAS", projFg: "#0f766e", key: "Priya", pri: "Low", due: "7 ก.ค.", status: "Delivery Done" },
 ];
 
 export const TASKS: Task[] = TASKS_SEED.map((t, i) => ({
   id: `t${i + 1}`,
   description: "",
   dueISO: null,
+  handoff: null,
+  estimatedFinishISO: null,
+  startedISO: null,
+  devDoneISO: null,
+  completedISO: null,
   linkCount: 0,
   attachmentCount: 0,
   checklistTotal: 0,

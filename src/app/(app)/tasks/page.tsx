@@ -34,6 +34,8 @@ import type {
 } from "@/lib/mappers";
 import {
   groupTasks,
+  canMoveTask,
+  ALLOWED_TRANSITIONS,
   PRIORITY_COLORS,
   TASK_STATUSES,
   type Task,
@@ -41,6 +43,18 @@ import {
 } from "@/lib/mock-data";
 
 const PRIORITIES = ["High", "Medium", "Low"];
+
+/** Compact Bangkok date+time label for the card timeline (— when absent). */
+function fmtBkkDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 /** Client-side due-date preset matcher. */
 function matchDue(iso: string | null, f: string): boolean {
@@ -65,7 +79,7 @@ function matchDue(iso: string | null, f: string): boolean {
 }
 
 export default function TasksPage() {
-  const { tasks, projects, users, loading, addTask, updateTask, deleteTask, moveTask } =
+  const { tasks, projects, users, loading, addTask, updateTask, deleteTask, moveTask, reworkTask } =
     useData();
   const me = useCurrentUser();
   const canManage = canManageTasks(me);
@@ -87,6 +101,8 @@ export default function TasksPage() {
   const [dueDateF, setDueDateF] = usePersistedState("tasks.dueDate", "");
 
   const [createStatus, setCreateStatus] = useState<TaskStatus | null>(null);
+  // Delivery Fail flow: the card being marked failed (opens the reason dialog).
+  const [failCard, setFailCard] = useState<Task | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailData, setDetailData] = useState<ApiTaskDetail | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -422,13 +438,20 @@ export default function TasksPage() {
           columns={columns}
           showAdd={canCreate}
           canDrag={(t) => canEdit(t)}
+          canDropTo={(t, status) =>
+            canMoveTask(t, status, { id: me?.id ?? null, isManager: isManagerOrAdmin(me) })
+          }
           onCardClick={(t) => openTask(t.id)}
           onDropTask={(id, status) => {
             const task = tasks.find((t) => t.id === id);
-            if (task && task.status !== status) {
-              // Optimistic move handles the UI; the store toasts on failure.
-              moveTask(id, status);
+            if (!task || task.status === status) return;
+            // Delivery Fail always spawns a rework task — collect the reason first.
+            if (status === "Delivery Fail") {
+              setFailCard(task);
+              return;
             }
+            // Optimistic move handles the UI; the store toasts on failure.
+            moveTask(id, status);
           }}
           onAddInColumn={(status) => setCreateStatus(status)}
           selectMode={selectMode}
@@ -607,6 +630,20 @@ export default function TasksPage() {
                     )}
                   </div>
 
+                  {detail.handoff && (
+                    <div>
+                      <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                        ผู้รับต่อ (ผู้ทดสอบ)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Avatar userKey={detail.handoff.key} size={24} fontSize={10} />
+                        <span className="text-[12.5px] font-medium [overflow-wrap:anywhere]">
+                          {detail.handoff.name}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <div className="mb-1 text-[11px] font-medium text-muted-foreground">
                       ความสำคัญ
@@ -633,15 +670,93 @@ export default function TasksPage() {
                       value={detail.status}
                       disabled={!canEdit(detail)}
                       onChange={(e) => {
+                        const next = e.target.value as TaskStatus;
+                        if (next === detail.status) return;
+                        // Delivery Fail collects a reason + spawns a rework task.
+                        if (next === "Delivery Fail") {
+                          setFailCard(detail);
+                          return;
+                        }
                         // Optimistic update handles the UI; the store toasts on failure.
-                        moveTask(detail.id, e.target.value as TaskStatus);
+                        moveTask(detail.id, next);
                       }}
                     >
-                      {TASK_STATUSES.map((s) => (
+                      {/* Managers can jump anywhere; others see only the current
+                          status + its allowed forward steps. */}
+                      {(isManagerOrAdmin(me)
+                        ? TASK_STATUSES
+                        : [detail.status, ...(ALLOWED_TRANSITIONS[detail.status] ?? [])]
+                      ).map((s) => (
                         <option key={s}>{s}</option>
                       ))}
                     </Select>
                   </div>
+
+                  {/* Workflow timeline — actual-time stamps + the planning estimate. */}
+                  {(detail.estimatedFinishISO ||
+                    detail.startedISO ||
+                    detail.devDoneISO ||
+                    detail.completedISO) && (
+                    <div className="border-t border-hairline pt-3">
+                      <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">
+                        ไทม์ไลน์
+                      </div>
+                      <dl className="flex flex-col gap-1 text-[12px]">
+                        {detail.estimatedFinishISO && (
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-muted-foreground">คาดว่าเสร็จ</dt>
+                            <dd className="font-medium tabular-nums">{fmtBkkDateTime(detail.estimatedFinishISO)}</dd>
+                          </div>
+                        )}
+                        {detail.startedISO && (
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-muted-foreground">เริ่มจริง</dt>
+                            <dd className="font-medium tabular-nums">{fmtBkkDateTime(detail.startedISO)}</dd>
+                          </div>
+                        )}
+                        {detail.devDoneISO && (
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-muted-foreground">Dev เสร็จ</dt>
+                            <dd className="font-medium tabular-nums">{fmtBkkDateTime(detail.devDoneISO)}</dd>
+                          </div>
+                        )}
+                        {detail.completedISO && (
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-muted-foreground">ส่งมอบ</dt>
+                            <dd className="font-medium tabular-nums text-teal-600">{fmtBkkDateTime(detail.completedISO)}</dd>
+                          </div>
+                        )}
+                      </dl>
+                    </div>
+                  )}
+
+                  {/* Rework lineage (origin ↔ reworks). */}
+                  {(detailData?.originTask || (detailData?.reworkTasks?.length ?? 0) > 0) && (
+                    <div className="border-t border-hairline pt-3">
+                      <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">
+                        งานที่เกี่ยวข้อง
+                      </div>
+                      <div className="flex flex-col gap-1 text-[12px]">
+                        {detailData?.originTask && (
+                          <button
+                            onClick={() => openTask(detailData.originTask!.id)}
+                            className="truncate text-left text-teal-600 hover:underline"
+                          >
+                            ↩ แก้ไขจาก: {detailData.originTask.title}
+                          </button>
+                        )}
+                        {detailData?.reworkTasks?.map((rt) => (
+                          <button
+                            key={rt.id}
+                            onClick={() => openTask(rt.id)}
+                            className="truncate text-left text-teal-600 hover:underline"
+                          >
+                            ↪ งานแก้ไข: {rt.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Checklist / subtasks */}
@@ -695,6 +810,82 @@ export default function TasksPage() {
         confirmLabel="ลบงาน"
         destructive
       />
+
+      {/* Delivery Fail → reason + spawn a rework task in To Do */}
+      <DeliveryFailDialog
+        card={failCard}
+        onClose={() => setFailCard(null)}
+        onConfirm={async (reason) => {
+          if (!failCard) return;
+          // Mark the card failed, then spawn the rework task from it.
+          const moved = await moveTask(failCard.id, "Delivery Fail");
+          if (moved) await reworkTask(failCard.id, reason);
+          setFailCard(null);
+        }}
+      />
     </div>
+  );
+}
+
+/** Collects the failure reason, then marks the card failed + creates a rework task. */
+function DeliveryFailDialog({
+  card,
+  onClose,
+  onConfirm,
+}: {
+  card: Task | null;
+  onClose: () => void;
+  onConfirm: (reason: string) => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (card) setReason("");
+  }, [card]);
+
+  return (
+    <Dialog
+      open={card !== null}
+      onClose={saving ? () => {} : onClose}
+      title="ส่งมอบไม่ผ่าน"
+      className="w-[520px]"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            ยกเลิก
+          </Button>
+          <Button
+            variant="danger"
+            disabled={saving || !reason.trim()}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onConfirm(reason.trim());
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving ? "กำลังบันทึก…" : "ยืนยัน + สร้างงานแก้ไข"}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <p className="text-[13px] text-muted-foreground">
+          ระบุเหตุผลที่งาน <b className="text-foreground">{card?.title}</b> ไม่ผ่าน —
+          ระบบจะบันทึกเป็นคอมเมนต์บนการ์ดนี้ และสร้างงานแก้ไขใหม่ใน To Do ที่อ้างอิงงานเดิม
+        </p>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={4}
+          autoFocus
+          placeholder="เช่น ปุ่มบันทึกยังไม่ทำงานบนมือถือ / ผลลัพธ์ไม่ตรงกับที่ออกแบบ"
+          className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50"
+        />
+      </div>
+    </Dialog>
   );
 }
