@@ -86,8 +86,11 @@ export default function TasksPage() {
   // Creating board tasks can be granted to a role via the TASK_CREATE capability
   // (managers/admins always have it).
   const canCreate = canCreateTask(me);
+  // A card is "yours" if you're an assignee OR the handoff tester (the tester is
+  // intentionally kept out of assignees but still owns the card once handed off).
   const ownsTask = (t: Task) =>
-    !!me && t.assignees.some((a) => a.key === me.avatarKey);
+    !!me &&
+    (t.assignees.some((a) => a.key === me.avatarKey) || t.handoff?.key === me.avatarKey);
   const canEdit = (t: Task) => isManagerOrAdmin(me) || ownsTask(t);
 
   const [search, setSearch] = usePersistedState("tasks.search", "");
@@ -696,6 +699,7 @@ export default function TasksPage() {
                   {(detail.estimatedFinishISO ||
                     detail.startedISO ||
                     detail.devDoneISO ||
+                    detail.testStartedISO ||
                     detail.completedISO) && (
                     <div className="border-t border-hairline pt-3">
                       <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">
@@ -718,6 +722,12 @@ export default function TasksPage() {
                           <div className="flex justify-between gap-2">
                             <dt className="text-muted-foreground">Dev เสร็จ</dt>
                             <dd className="font-medium tabular-nums">{fmtBkkDateTime(detail.devDoneISO)}</dd>
+                          </div>
+                        )}
+                        {detail.testStartedISO && (
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-muted-foreground">เริ่มทดสอบ</dt>
+                            <dd className="font-medium tabular-nums">{fmtBkkDateTime(detail.testStartedISO)}</dd>
                           </div>
                         )}
                         {detail.completedISO && (

@@ -135,6 +135,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   IN_PROGRESS: { label: "กำลังทำ", color: "#3b82f6" },
   DEV_REVIEW: { label: "รีวิวโค้ด", color: "#8b5cf6" },
   DEV_DONE: { label: "Dev เสร็จ", color: "#06b6d4" },
+  TESTING: { label: "กำลังทดสอบ", color: "#f59e0b" },
   DELIVERY_DONE: { label: "ส่งมอบสำเร็จ", color: "#10b981" },
   DELIVERY_FAIL: { label: "ส่งมอบไม่ผ่าน", color: "#ef4444" },
 };

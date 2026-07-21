@@ -57,7 +57,7 @@ export function KanbanBoard({
     !draggingCard || !canDropTo || canDropTo(draggingCard, status);
 
   return (
-    <div className="grid min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(6,minmax(210px,1fr))] [grid-template-rows:minmax(0,1fr)]">
+    <div className="grid min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(7,minmax(200px,1fr))] [grid-template-rows:minmax(0,1fr)]">
       {columns.map((col) => {
         const accepts = columnAccepts(col.name);
         return (

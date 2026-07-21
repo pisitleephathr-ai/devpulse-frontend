@@ -38,6 +38,7 @@ type Insights = {
     inProgress: number;
     devReview: number;
     devDone: number;
+    testing: number;
     deliveryDone: number;
     deliveryFail: number;
     overdue: number;
@@ -65,6 +66,7 @@ type Insights = {
     inProgress: number;
     devReview: number;
     devDone: number;
+    testing: number;
     deliveryDone: number;
     deliveryFail: number;
     open: number;
@@ -149,17 +151,19 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   IN_PROGRESS: { label: "กำลังทำ", color: "#3b82f6" },
   DEV_REVIEW: { label: "รีวิวโค้ด", color: "#8b5cf6" },
   DEV_DONE: { label: "Dev เสร็จ", color: "#06b6d4" },
+  TESTING: { label: "กำลังทดสอบ", color: "#f59e0b" },
   DELIVERY_DONE: { label: "ส่งมอบสำเร็จ", color: "#10b981" },
   DELIVERY_FAIL: { label: "ส่งมอบไม่ผ่าน", color: "#ef4444" },
 };
 // Blue ordinal ramp (pipeline stages, TODO→Done). Theme-aware light/dark steps
 // applied via CSS custom properties on the wrapper (see STAGE_VARS).
-const STAGE_KEYS = ["--st1", "--st2", "--st3", "--st4", "--st5", "--st6"] as const;
+const STAGE_KEYS = ["--st1", "--st2", "--st3", "--st4", "--st5", "--st6", "--st7"] as const;
 // Tailwind arbitrary-property classes so the ordinal ramp re-steps for dark mode.
-// st1–st5 = blue ordinal ramp (forward pipeline); st6 = red (Delivery Fail).
+// st1–st6 = blue ordinal ramp (forward pipeline, TODO→Delivery Done); st7 = red
+// (Delivery Fail).
 const STAGE_VARS =
-  "[--st1:#86b6ef] [--st2:#5598e7] [--st3:#2a78d6] [--st4:#1c5cab] [--st5:#104281] [--st6:#d03b3b] " +
-  "dark:[--st1:#9ec5f4] dark:[--st2:#6da7ec] dark:[--st3:#3987e5] dark:[--st4:#256abf] dark:[--st5:#184f95] dark:[--st6:#e8706e]";
+  "[--st1:#8bb9f0] [--st2:#619ee8] [--st3:#3a80da] [--st4:#2062b2] [--st5:#154a8a] [--st6:#0d3666] [--st7:#d03b3b] " +
+  "dark:[--st1:#a6caf5] dark:[--st2:#78afee] dark:[--st3:#4a90e6] dark:[--st4:#2f74c2] dark:[--st5:#1d5799] dark:[--st6:#123f70] dark:[--st7:#e8706e]";
 
 /* ================================= Page ================================= */
 
@@ -238,11 +242,12 @@ export default function AnalyticsPage() {
         { label: "กำลังทำ", value: t.inProgress },
         { label: "รีวิวโค้ด", value: t.devReview },
         { label: "Dev เสร็จ", value: t.devDone },
+        { label: "กำลังทดสอบ", value: t.testing },
         { label: "ส่งมอบสำเร็จ", value: t.deliveryDone },
         { label: "ส่งมอบไม่ผ่าน", value: t.deliveryFail },
       ]
     : [];
-  const wip = t ? t.inProgress + t.devReview + t.devDone : 0;
+  const wip = t ? t.inProgress + t.devReview + t.devDone + t.testing : 0;
 
   /* priority mix of OPEN tasks (client store) */
   const priorityMix = useMemo(() => {

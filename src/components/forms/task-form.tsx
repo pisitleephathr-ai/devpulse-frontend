@@ -338,7 +338,7 @@ export function TaskForm({
         )}
       </Field>
 
-      <Field label="ผู้รับต่อ (ผู้ทดสอบ)" hint="รับงานอัตโนมัติเมื่อการ์ดถึง Dev Done">
+      <Field label="ผู้รับต่อ (ผู้ทดสอบ)" hint="รับช่วงทดสอบเมื่อการ์ดถึง Dev Done (แยกจากผู้รับผิดชอบ)">
         <Select value={values.handoffUserId} onChange={(e) => set("handoffUserId", e.target.value)}>
           <option value="">— ไม่มี —</option>
           {assigneeOptions.map((u) => (
