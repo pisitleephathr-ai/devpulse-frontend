@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { api, ApiError } from "./api";
 import { getToken } from "./auth";
 import { toast } from "@/components/ui/toaster";
@@ -257,6 +258,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", onFocus);
     };
   }, [silentRefresh]);
+
+  // Refetch on in-app navigation. Switching menu tabs uses client-side <Link>,
+  // which keeps this provider mounted and does NOT fire window focus — so a
+  // store-backed page (leaves/users/tasks/reports lists) would otherwise show
+  // the last poll's snapshot until the next 15s tick. Silently re-sync on each
+  // route change so a menu switch shows fresh data immediately (no skeleton).
+  const pathname = usePathname();
+  const routeInitRef = useRef(false);
+  const lastRouteSyncRef = useRef(0);
+  useEffect(() => {
+    // Skip the first run — the mount effect already did a full refresh().
+    if (!routeInitRef.current) {
+      routeInitRef.current = true;
+      return;
+    }
+    // Throttle so clicking quickly through several tabs doesn't spam the API
+    // (silentRefresh also has its own in-flight guard).
+    const now = Date.now();
+    if (now - lastRouteSyncRef.current < 4000) return;
+    lastRouteSyncRef.current = now;
+    void silentRefresh();
+  }, [pathname, silentRefresh]);
 
   /**
    * Run a mutation, surface failures via a toast, keep state in sync, and
