@@ -59,24 +59,37 @@ body {
   height: 100%;
 }
 
+/*
+  Slightly enlarge the whole UI for readability. `zoom` (not root font-size)
+  because the app uses many arbitrary px sizes (text-[12.5px] …) that would NOT
+  scale with a font-size change. Applied on <html> so fixed elements (modal
+  scrim, toasts) scale correctly too. Also compensates for Angsana New's small
+  glyphs. Tune 1.08–1.15 if needed.
+*/
+html {
+  zoom: 1.1;
+}
+
 body {
   margin: 0;
   background: var(--canvas);
   color: var(--foreground);
-  /* Direct reference to the next/font variable — guaranteed to resolve. */
-  font-family: var(--font-noto-sans-thai), ui-sans-serif, system-ui, "Segoe UI",
-    "Helvetica Neue", Arial, sans-serif;
+  /* Angsana New first (installed on Windows/Office); Maitree (next/font) as the
+     web serif fallback for everyone else; then generic serifs. */
+  font-family: "Angsana New", "AngsanaUPC", "TH Sarabun New",
+    var(--font-thai-serif), ui-serif, Georgia, "Times New Roman", serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /*
   Font utilities — un-layered so they override Tailwind's default `font-sans`
-  / `font-mono` everywhere (Noto Sans Thai primary, next/font-driven).
+  / `font-mono` everywhere. `.font-sans` is used app-wide, so pointing it at the
+  Angsana-first serif stack switches the whole system to Angsana New.
 */
 .font-sans {
-  font-family: var(--font-noto-sans-thai), ui-sans-serif, system-ui, "Segoe UI",
-    "Helvetica Neue", Arial, sans-serif;
+  font-family: "Angsana New", "AngsanaUPC", "TH Sarabun New",
+    var(--font-thai-serif), ui-serif, Georgia, "Times New Roman", serif;
 }
 .font-mono {
   font-family: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
