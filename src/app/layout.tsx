@@ -1,17 +1,14 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Maitree } from "next/font/google";
+import { Geist_Mono, Noto_Sans_Thai } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-// Web fallback for the Angsana-New-first stack: a free Thai serif (looped,
-// with feet) that reads close to Angsana New on devices that don't have it
-// installed (Mac / iOS / Android / Linux). Windows/Office users get real
-// Angsana New via the CSS font stack; this covers everyone else.
-const thaiSerif = Maitree({
-  variable: "--font-thai-serif",
+// Primary UI typeface — clean, modern, Thai + Latin.
+const notoSansThai = Noto_Sans_Thai({
+  variable: "--font-noto-sans-thai",
   subsets: ["thai", "latin"],
-  weight: ["200", "300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -32,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="th" className="h-full" suppressHydrationWarning>
       <body
-        className={`${thaiSerif.variable} ${geistMono.variable} min-h-full font-sans antialiased`}
+        className={`${notoSansThai.variable} ${geistMono.variable} min-h-full font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

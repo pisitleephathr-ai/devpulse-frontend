@@ -63,67 +63,24 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--foreground);
-  /* Angsana New first (installed on Windows/Office); Maitree (next/font) as the
-     web serif fallback for everyone else; then generic serifs. */
-  font-family: "Angsana New", "AngsanaUPC", "TH Sarabun New",
-    var(--font-thai-serif), ui-serif, Georgia, "Times New Roman", serif;
+  /* Direct reference to the next/font variable — guaranteed to resolve. */
+  font-family: var(--font-noto-sans-thai), ui-sans-serif, system-ui, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /*
   Font utilities — un-layered so they override Tailwind's default `font-sans`
-  / `font-mono` everywhere. `.font-sans` is used app-wide, so pointing it at the
-  Angsana-first serif stack switches the whole system to Angsana New.
+  / `font-mono` everywhere (Noto Sans Thai primary, next/font-driven).
 */
 .font-sans {
-  font-family: "Angsana New", "AngsanaUPC", "TH Sarabun New",
-    var(--font-thai-serif), ui-serif, Georgia, "Times New Roman", serif;
+  font-family: var(--font-noto-sans-thai), ui-sans-serif, system-ui, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
 }
 .font-mono {
   font-family: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
-
-/*
-  Global text-size bump (~+30%). The app hardcodes font sizes as arbitrary px
-  (text-[12.5px] …) which don't scale with root font-size, so instead of zooming
-  the whole UI (which enlarges spacing/modals and looks off) we override just the
-  font-size of every size utility actually used. Un-layered so these win over
-  Tailwind's layered utilities; only text grows, layout/spacing stays put.
-  Tune the values here to taste.
-*/
-.text-\[9px\] { font-size: 13px; }
-.text-\[9\.5px\] { font-size: 13.5px; }
-.text-\[10px\] { font-size: 14px; }
-.text-\[10\.5px\] { font-size: 15px; }
-.text-\[11px\] { font-size: 15.5px; }
-.text-\[11\.5px\] { font-size: 16.5px; }
-.text-\[12px\] { font-size: 17px; }
-.text-\[12\.5px\] { font-size: 17.5px; }
-.text-\[13px\] { font-size: 18px; }
-.text-\[13\.5px\] { font-size: 19px; }
-.text-\[14px\] { font-size: 20px; }
-.text-\[14\.5px\] { font-size: 21px; }
-.text-\[15px\] { font-size: 21.5px; }
-.text-\[15\.5px\] { font-size: 22px; }
-.text-\[16px\] { font-size: 23px; }
-.text-\[17px\] { font-size: 24px; }
-.text-\[18px\] { font-size: 25px; }
-.text-\[19px\] { font-size: 27px; }
-.text-\[22px\] { font-size: 31px; }
-.text-\[26px\] { font-size: 36px; }
-.text-\[28px\] { font-size: 39px; }
-.text-\[30px\] { font-size: 42px; }
-.text-\[32px\] { font-size: 45px; }
-.text-\[34px\] { font-size: 47px; }
-.text-\[44px\] { font-size: 61px; }
-.text-\[46px\] { font-size: 64px; }
-/* Standard Tailwind size utilities used in a few spots. */
-.text-xs { font-size: 17px; }
-.text-sm { font-size: 20px; }
-.text-base { font-size: 23px; }
-.text-lg { font-size: 25px; }
-.text-xl { font-size: 29px; }
 
 /* Consistent focus treatment matching the handoff */
 input:focus-visible,
