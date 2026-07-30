@@ -101,7 +101,7 @@ export default function ProjectsPage() {
       toast(archive ? `เก็บถาวร "${p.name}" แล้ว` : `กู้คืน "${p.name}" แล้ว`);
       afterMutation();
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ", "error");
     }
   }
 
@@ -111,7 +111,7 @@ export default function ProjectsPage() {
       toast(`ลบ "${p.name}" แล้ว`);
       afterMutation();
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ลบไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ลบไม่สำเร็จ", "error");
     }
   }
 

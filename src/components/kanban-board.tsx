@@ -24,8 +24,11 @@ type KanbanBoardProps = {
   /** whether a given card may be dragged (RBAC). Defaults to always. */
   canDrag?: (task: Task) => boolean;
   /** whether a dragged card may be dropped into a given column (workflow +
-   *  role). When it returns false the column is dimmed and rejects the drop. */
+   *  role). When it returns false the column is dimmed. */
   canDropTo?: (task: Task, status: TaskStatus) => boolean;
+  /** called when a card is dropped on a column it can't move to, so the caller
+   *  can explain why (e.g. a toast). */
+  onRejectedDrop?: (task: Task, status: TaskStatus) => void;
   /** multi-select mode: cards become checkboxes and drag is disabled. */
   selectMode?: boolean;
   selectedIds?: Set<string>;
@@ -41,6 +44,7 @@ export function KanbanBoard({
   showAdd = true,
   canDrag,
   canDropTo,
+  onRejectedDrop,
   selectMode,
   selectedIds,
   onToggleSelect,
@@ -64,18 +68,21 @@ export function KanbanBoard({
         <div
           key={col.name}
           onDragOver={(e) => {
-            // preventDefault enables the drop; skip it (and the highlight) for
-            // columns this card can't move to, so the cursor shows "no drop".
-            if (!accepts) return;
+            // Allow the drop everywhere so we can explain a rejection; only the
+            // accepting columns get the teal highlight (others stay dimmed).
             e.preventDefault();
-            setOverCol(col.name);
+            setOverCol(accepts ? col.name : null);
           }}
           onDragLeave={() => setOverCol((c) => (c === col.name ? null : c))}
           onDrop={(e) => {
             e.preventDefault();
-            if (!accepts) return;
             const id = e.dataTransfer.getData("text/plain") || dragId;
-            if (id) onDropTask(id, col.name);
+            const card =
+              columns.flatMap((c) => c.cards).find((c) => c.id === id) ?? null;
+            if (id) {
+              if (accepts) onDropTask(id, col.name);
+              else if (card) onRejectedDrop?.(card, col.name);
+            }
             setOverCol(null);
             setDragId(null);
           }}

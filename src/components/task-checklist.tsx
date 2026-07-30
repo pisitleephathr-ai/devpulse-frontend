@@ -38,7 +38,7 @@ export function TaskChecklist({
       setItems((prev) => [...prev, item]);
       setText("");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "เพิ่มรายการไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "เพิ่มรายการไม่สำเร็จ", "error");
     } finally {
       setAdding(false);
     }
@@ -57,7 +57,7 @@ export function TaskChecklist({
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, done: item.done } : i))
       );
-      toast("อัปเดตไม่สำเร็จ");
+      toast("อัปเดตไม่สำเร็จ", "error");
     }
   }
 
@@ -68,7 +68,7 @@ export function TaskChecklist({
       await api.del(`/api/tasks/${taskId}/checklist/${id}`);
     } catch {
       setItems(prev);
-      toast("ลบไม่สำเร็จ");
+      toast("ลบไม่สำเร็จ", "error");
     }
   }
 

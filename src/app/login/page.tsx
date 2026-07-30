@@ -16,6 +16,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,7 @@ export default function LoginPage() {
         { email, password },
         false
       );
-      setSession(token, user);
+      setSession(token, user, remember);
       router.push("/dashboard");
     } catch (err) {
       setError(
@@ -114,7 +115,8 @@ export default function LoginPage() {
           <label className="mb-[18px] flex cursor-pointer items-center gap-2 text-[13px] text-zinc-700">
             <input
               type="checkbox"
-              defaultChecked
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
               className="size-[15px] accent-teal-600"
             />
             จดจำฉันไว้ในระบบ

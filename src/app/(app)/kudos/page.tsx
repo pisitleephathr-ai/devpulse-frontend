@@ -83,7 +83,7 @@ export default function KudosPage() {
       load();
       toast("ส่งคำชมแล้ว 🎉");
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "ส่งไม่สำเร็จ");
+      toast(e instanceof ApiError ? e.message : "ส่งไม่สำเร็จ", "error");
     } finally {
       setSending(false);
     }
@@ -94,7 +94,7 @@ export default function KudosPage() {
       await api.del(`/api/kudos/${k.id}`);
       setData((d) => (d ? { ...d, kudos: d.kudos.filter((x) => x.id !== k.id) } : d));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "ลบไม่สำเร็จ");
+      toast(e instanceof ApiError ? e.message : "ลบไม่สำเร็จ", "error");
     }
   }
 

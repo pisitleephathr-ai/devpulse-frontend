@@ -270,7 +270,7 @@ export function TaskForm({
       );
       const failed = results.filter((r) => r.status === "rejected").length;
       for (const p of pending) if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
-      if (failed > 0) toast(`อัปโหลดไฟล์ไม่สำเร็จ ${failed} รายการ`);
+      if (failed > 0) toast(`อัปโหลดไฟล์ไม่สำเร็จ ${failed} รายการ`, "error");
     }
 
     toast(mode === "create" ? "สร้างงานใหม่แล้ว" : "บันทึกการแก้ไขงานแล้ว");

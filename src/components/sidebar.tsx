@@ -147,7 +147,7 @@ export function Sidebar({
       setDraft([]);
       toast("บันทึกเมนูแล้ว");
     } catch {
-      toast("บันทึกเมนูไม่สำเร็จ");
+      toast("บันทึกเมนูไม่สำเร็จ", "error");
     } finally {
       setSaving(false);
     }
@@ -162,7 +162,7 @@ export function Sidebar({
       window.dispatchEvent(new Event(MENU_UPDATED_EVENT));
       toast("รีเซ็ตเมนูเป็นค่าเริ่มต้นแล้ว");
     } catch {
-      toast("รีเซ็ตไม่สำเร็จ");
+      toast("รีเซ็ตไม่สำเร็จ", "error");
     } finally {
       setSaving(false);
     }

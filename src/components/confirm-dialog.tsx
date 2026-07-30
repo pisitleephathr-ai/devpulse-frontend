@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 type ConfirmDialogProps = {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  /** May be async — the dialog stays open with a busy state until it resolves. */
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmLabel?: string;
@@ -14,7 +16,9 @@ type ConfirmDialogProps = {
   destructive?: boolean;
 };
 
-/** Confirmation modal, e.g. before deleting mock data. */
+/** Confirmation modal with an in-flight state so it doesn't close before the
+ *  (possibly async) action finishes. Stays open if the action throws so the
+ *  user sees the resulting error toast. */
 export function ConfirmDialog({
   open,
   onClose,
@@ -25,25 +29,38 @@ export function ConfirmDialog({
   cancelLabel = "ยกเลิก",
   destructive = false,
 }: ConfirmDialogProps) {
+  const [busy, setBusy] = useState(false);
+
+  async function handleConfirm() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onConfirm();
+      onClose();
+    } catch {
+      // Leave the dialog open; the action's own error toast explains what failed.
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={busy ? () => {} : onClose}
       title={title}
       className="w-[440px]"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
             {cancelLabel}
           </Button>
           <Button
             variant={destructive ? "danger" : "primary"}
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
+            onClick={handleConfirm}
+            disabled={busy}
           >
-            {confirmLabel}
+            {busy ? "กำลังดำเนินการ…" : confirmLabel}
           </Button>
         </>
       }

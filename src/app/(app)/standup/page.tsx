@@ -376,7 +376,7 @@ function Overview({
     const names = data.missingUsers.map((u) => u.name).join(", ");
     navigator.clipboard?.writeText(names).then(
       () => toast(`คัดลอก ${data.missingUsers.length} รายชื่อแล้ว`),
-      () => toast("คัดลอกไม่สำเร็จ")
+      () => toast("คัดลอกไม่สำเร็จ", "error")
     );
   }
   async function remind() {
@@ -386,7 +386,7 @@ function Overview({
       toast(`แจ้งเตือน ${r.notified} คนแล้ว`);
       onRemind();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "แจ้งเตือนไม่สำเร็จ");
+      toast(e instanceof ApiError ? e.message : "แจ้งเตือนไม่สำเร็จ", "error");
     } finally {
       setReminding(false);
     }
@@ -1197,7 +1197,7 @@ function ActionItems({
       setDue("");
       load();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "เพิ่มไม่สำเร็จ");
+      toast(e instanceof ApiError ? e.message : "เพิ่มไม่สำเร็จ", "error");
     } finally {
       setBusy(false);
     }
@@ -1210,7 +1210,7 @@ function ActionItems({
       await api.patch(`/api/action-items/${it.id}`, { status: next });
       load();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "อัปเดตไม่สำเร็จ");
+      toast(e instanceof ApiError ? e.message : "อัปเดตไม่สำเร็จ", "error");
     }
   }
 
@@ -1219,7 +1219,7 @@ function ActionItems({
       await api.del(`/api/action-items/${it.id}`);
       load();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "ลบไม่สำเร็จ");
+      toast(e instanceof ApiError ? e.message : "ลบไม่สำเร็จ", "error");
     }
   }
 

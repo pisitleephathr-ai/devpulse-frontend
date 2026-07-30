@@ -113,7 +113,7 @@ export default function ProfilePage() {
       const c = await api.post<LinkCode>("/api/profile/line/link-code");
       setLinkCode(c);
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "สร้างรหัสไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "สร้างรหัสไม่สำเร็จ", "error");
     } finally {
       setLineBusy(false);
     }
@@ -125,7 +125,7 @@ export default function ProfilePage() {
       await api.post("/api/profile/line/test");
       toast("ส่งข้อความทดสอบแล้ว — ตรวจสอบ LINE ของคุณ");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ส่งข้อความไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ส่งข้อความไม่สำเร็จ", "error");
     } finally {
       setLineBusy(false);
     }
@@ -139,7 +139,7 @@ export default function ProfilePage() {
       await refreshLine();
       toast("ยกเลิกการเชื่อมต่อ LINE แล้ว");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ยกเลิกไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ยกเลิกไม่สำเร็จ", "error");
     } finally {
       setLineBusy(false);
     }
@@ -158,7 +158,7 @@ export default function ProfilePage() {
       setLine((l) => (l ? { ...l, prefs } : l));
     } catch (err) {
       setLine((l) => (l ? { ...l, prefs: prev } : l));
-      toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ", "error");
     }
   }
 
@@ -177,7 +177,7 @@ export default function ProfilePage() {
       updateStoredUser(user as unknown as AuthUser); // header/sidebar update live
       toast("บันทึกข้อมูลแล้ว");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ", "error");
     } finally {
       setSavingInfo(false);
     }

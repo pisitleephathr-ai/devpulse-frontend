@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { FormSkeleton } from "@/components/skeletons";
 import { EmptyState } from "@/components/empty-state";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { bangkokDateISO } from "@/lib/thai-datetime";
 import { CalendarRange } from "lucide-react";
 
@@ -78,21 +78,30 @@ export default function PlanPage() {
   const [weeks, setWeeks] = useState<1 | 2>(1);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     let active = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
+    setError(null);
     api
       .get<Plan>(`/api/dashboard/plan?weeks=${weeks}`)
       .then((p) => active && setPlan(p))
-      .catch(() => active && setPlan(null))
+      .catch((e) => {
+        if (!active) return;
+        // Keep error distinct from "empty" so a failed request doesn't look
+        // like a genuinely empty plan.
+        setPlan(null);
+        setError(e instanceof ApiError ? e.message : "โหลดแผนงานไม่สำเร็จ");
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [weeks]);
+  }, [weeks, reloadKey]);
 
   // Bangkok "today" via the shared helper (keeps render pure — no Date.now()).
   const todayStr = bangkokDateISO();
@@ -142,6 +151,17 @@ export default function PlanPage() {
         {loading ? (
           <div className="mt-4">
             <FormSkeleton sections={3} />
+          </div>
+        ) : error ? (
+          <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-border bg-card px-6 py-10 text-center">
+            <p className="text-[13.5px] text-muted-foreground">{error}</p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="rounded-lg bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-teal-700"
+            >
+              ลองใหม่
+            </button>
           </div>
         ) : !plan || plan.people.length === 0 ? (
           <div className="mt-4">

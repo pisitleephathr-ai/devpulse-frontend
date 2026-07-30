@@ -35,6 +35,7 @@ import type {
 import {
   groupTasks,
   canMoveTask,
+  moveBlockReason,
   ALLOWED_TRANSITIONS,
   PRIORITY_COLORS,
   TASK_STATUSES,
@@ -498,6 +499,13 @@ export default function TasksPage() {
           canDropTo={(t, status) =>
             canMoveTask(t, status, { id: me?.id ?? null, isManager: isManagerOrAdmin(me) })
           }
+          onRejectedDrop={(t, status) => {
+            const reason = moveBlockReason(t, status, {
+              id: me?.id ?? null,
+              isManager: isManagerOrAdmin(me),
+            });
+            if (reason) toast(reason, "error");
+          }}
           onCardClick={(t) => openTask(t.id)}
           onDropTask={(id, status) => {
             const task = tasks.find((t) => t.id === id);
