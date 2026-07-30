@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Activity, TriangleAlert, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,9 @@ export default function LoginPage() {
     if (params.get("demo") === "1" || params.get("email")) {
       setEmail(params.get("email") || DEMO_EMAIL);
       setNotice("บัญชีทดลอง: กรอกรหัสผ่านที่ผู้ดูแลให้ไว้เพื่อเข้าสู่ระบบ");
+    }
+    if (params.get("reset") === "1") {
+      setNotice("ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่");
     }
     if (window.sessionStorage.getItem("devpulse_session_expired")) {
       window.sessionStorage.removeItem("devpulse_session_expired");
@@ -101,9 +105,15 @@ export default function LoginPage() {
             className="mb-3.5"
           />
 
-          <label className="mb-1.5 block text-[12.5px] font-medium">
-            รหัสผ่าน
-          </label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-[12.5px] font-medium">รหัสผ่าน</label>
+            <Link
+              href="/forgot-password"
+              className="text-[12px] font-medium text-teal-600 hover:underline"
+            >
+              ลืมรหัสผ่าน?
+            </Link>
+          </div>
           <Input
             type="password"
             value={password}
