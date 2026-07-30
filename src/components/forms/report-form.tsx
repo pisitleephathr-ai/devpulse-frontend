@@ -137,7 +137,7 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
       });
       toast(`ดึงงานค้าง ${carry.length} รายการมาแล้ว`);
     } catch {
-      toast("ดึงรายงานล่าสุดไม่สำเร็จ");
+      toast("ดึงรายงานล่าสุดไม่สำเร็จ", "error");
     } finally {
       setPulling(false);
     }
@@ -279,6 +279,9 @@ export function ReportForm({ mode, report, onSubmit, onCancel }: ReportFormProps
       <FormActions>
         {mode === "create" ? (
           <>
+            <Button type="button" variant="ghost" disabled={submitting} onClick={onCancel}>
+              ยกเลิก
+            </Button>
             <Button type="button" variant="secondary" disabled={submitting} onClick={() => submit("DRAFT")}>
               บันทึกฉบับร่าง
             </Button>

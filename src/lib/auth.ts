@@ -15,9 +15,21 @@ export type AuthUser = {
   active: boolean;
 };
 
+// Session lives in localStorage when "remember me" is on (persists across
+// browser restarts) or sessionStorage when off (cleared when the tab closes).
+// Reads check both so the rest of the app doesn't care which one holds it.
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  return (
+    window.localStorage.getItem(TOKEN_KEY) ??
+    window.sessionStorage.getItem(TOKEN_KEY)
+  );
+}
+
+function tokenStore(): Storage {
+  return window.localStorage.getItem(TOKEN_KEY) !== null
+    ? window.localStorage
+    : window.sessionStorage;
 }
 
 // Lightweight pub/sub so the header/sidebar react to auth/profile changes.
@@ -30,21 +42,28 @@ function notifyAuthChange() {
   listeners.forEach((l) => l());
 }
 
-export function setSession(token: string, user: AuthUser) {
-  window.localStorage.setItem(TOKEN_KEY, token);
-  window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+export function setSession(token: string, user: AuthUser, remember = true) {
+  const target = remember ? window.localStorage : window.sessionStorage;
+  const other = remember ? window.sessionStorage : window.localStorage;
+  // Never leave a stale copy in the other store.
+  other.removeItem(TOKEN_KEY);
+  other.removeItem(USER_KEY);
+  target.setItem(TOKEN_KEY, token);
+  target.setItem(USER_KEY, JSON.stringify(user));
   notifyAuthChange();
 }
 
-/** Update the stored user (keeps the token) and notify subscribers. */
+/** Update the stored user (keeps the token in whichever store holds it). */
 export function updateStoredUser(user: AuthUser) {
-  window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  tokenStore().setItem(USER_KEY, JSON.stringify(user));
   notifyAuthChange();
 }
 
 export function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(USER_KEY);
+  const raw =
+    window.localStorage.getItem(USER_KEY) ??
+    window.sessionStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AuthUser;
@@ -55,8 +74,10 @@ export function getStoredUser(): AuthUser | null {
 
 export function clearSession() {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.localStorage.removeItem(USER_KEY);
+  for (const s of [window.localStorage, window.sessionStorage]) {
+    s.removeItem(TOKEN_KEY);
+    s.removeItem(USER_KEY);
+  }
   notifyAuthChange();
 }
 

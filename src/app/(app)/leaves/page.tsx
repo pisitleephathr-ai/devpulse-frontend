@@ -323,10 +323,9 @@ export default function LeavesPage() {
           <LeaveForm
             onSubmit={async (data) => {
               const ok = await addLeave(data);
-              if (ok) {
-                setCreating(false);
-                toast("ส่งคำขอลาแล้ว — รอการอนุมัติ");
-              }
+              // The success toast (waiting vs auto-approved) is emitted by the
+              // store, which knows the returned status.
+              if (ok) setCreating(false);
             }}
             onCancel={() => setCreating(false)}
           />

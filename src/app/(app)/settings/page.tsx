@@ -181,7 +181,7 @@ export default function SettingsPage() {
       setBaseline(setting);
       toast("บันทึกการตั้งค่าแล้ว");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ", "error");
     } finally {
       setSaving(false);
     }
@@ -193,7 +193,7 @@ export default function SettingsPage() {
       const r = await api.post<{ sent: boolean; reason?: string }>(`/api/settings/line/test/${kind}`, {});
       toast(r.sent ? "ส่งทดสอบเข้ากลุ่ม LINE แล้ว ✓" : r.reason ?? "ส่งทดสอบไม่สำเร็จ");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ส่งทดสอบไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ส่งทดสอบไม่สำเร็จ", "error");
     } finally {
       setTestingSummary(null);
     }
@@ -220,7 +220,7 @@ export default function SettingsPage() {
       setHolidays((prev) => prev.filter((x) => x.id !== h.id));
       toast("ลบวันหยุดแล้ว");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ลบไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ลบไม่สำเร็จ", "error");
     }
   }
 

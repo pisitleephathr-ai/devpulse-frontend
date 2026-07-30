@@ -136,7 +136,7 @@ export function TaskAttachments({ taskId, initialAttachments = [], canManage }: 
       toast("ลบไฟล์แล้ว");
       void refresh();
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ลบไฟล์ไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ลบไฟล์ไม่สำเร็จ", "error");
     } finally {
       setPendingDelete(null);
     }

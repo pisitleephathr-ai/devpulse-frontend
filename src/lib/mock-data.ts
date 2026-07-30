@@ -145,9 +145,13 @@ export const NAV_ITEMS: NavItem[] = [
 /** Human page titles shown in the header, keyed by first path segment. */
 export const PAGE_TITLES: Record<string, string> = {
   dashboard: "แดชบอร์ด",
+  "my-day": "งานของฉัน",
   standup: "ประชุมอัปเดตงานประจำวัน",
   reports: "รายงานประจำวัน",
   tasks: "บอร์ดงาน",
+  analytics: "วิเคราะห์ทีม",
+  plan: "แผนงานรายสัปดาห์",
+  kudos: "ชื่นชมเพื่อน",
   projects: "โปรเจกต์",
   leaves: "คำขอลา",
   calendar: "ปฏิทินทีม",
@@ -428,6 +432,27 @@ export function canMoveTask(
   if (!who.id) return false;
   if (isTesterTarget(to)) return task.handoff?.id === who.id;
   return task.assignees.some((a) => a.id === who.id);
+}
+
+/**
+ * Why a move is blocked, in Thai — for surfacing a reason when a drag is
+ * rejected (so the user isn't left guessing). Returns null if the move is
+ * actually allowed.
+ */
+export function moveBlockReason(
+  task: Task,
+  to: TaskStatus,
+  who: { id: string | null; isManager: boolean }
+): string | null {
+  if (task.status === to) return null;
+  if (canMoveTask(task, to, who)) return null;
+  if (!(ALLOWED_TRANSITIONS[task.status] ?? []).includes(to)) {
+    return `ย้ายจาก "${task.status}" ไป "${to}" ไม่ได้ — ต้องไปทีละขั้นตามลำดับ ห้ามข้ามหรือย้อนกลับ`;
+  }
+  if (isTesterTarget(to)) {
+    return "ขั้นทดสอบ/ส่งมอบ ย้ายได้เฉพาะผู้รับต่อ (ผู้ทดสอบ) ของงานนี้";
+  }
+  return "ย้ายได้เฉพาะผู้รับผิดชอบงานนี้";
 }
 
 export const PRIORITIES: Priority[] = ["High", "Medium", "Low"];

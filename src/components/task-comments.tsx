@@ -151,7 +151,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
       setText("");
       setMention(null);
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ส่งความคิดเห็นไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ส่งความคิดเห็นไม่สำเร็จ", "error");
     } finally {
       setSubmitting(false);
     }
@@ -168,7 +168,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
       setComments((c) => c.map((x) => (x.id === id ? comment : x)));
       setEditingId(null);
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "แก้ไขไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "แก้ไขไม่สำเร็จ", "error");
     }
   }
 
@@ -178,7 +178,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
       setComments((c) => c.filter((x) => x.id !== id));
       toast("ลบความคิดเห็นแล้ว");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ลบไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ลบไม่สำเร็จ", "error");
     }
   }
 

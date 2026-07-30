@@ -293,7 +293,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fn();
       return true;
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ", "error");
       return false;
     } finally {
       mutationsRef.current--;
@@ -316,7 +316,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reportsPageRef.current = next;
       setReportsHasMore(r.hasMore ?? false);
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "โหลดเพิ่มไม่สำเร็จ");
+      toast(err instanceof ApiError ? err.message : "โหลดเพิ่มไม่สำเร็จ", "error");
     } finally {
       setLoadingMoreReports(false);
     }
@@ -365,7 +365,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setTasks((prev) => [...prev, mapped]);
         return mapped;
       } catch (err) {
-        toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ");
+        toast(err instanceof ApiError ? err.message : "ดำเนินการไม่สำเร็จ", "error");
         return null;
       } finally {
         mutationsRef.current--;
@@ -429,7 +429,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         toast("สร้างงานแก้ไขใหม่ใน To Do แล้ว");
         return mapped;
       } catch (err) {
-        toast(err instanceof ApiError ? err.message : "สร้างงานแก้ไขไม่สำเร็จ");
+        toast(err instanceof ApiError ? err.message : "สร้างงานแก้ไขไม่สำเร็จ", "error");
         return null;
       } finally {
         mutationsRef.current--;
@@ -452,6 +452,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
           data
         );
         setLeaves((prev) => [mapLeave(leave), ...prev]);
+        // Auto-approving leave types are approved on submit — tell the truth
+        // instead of always saying "waiting for approval".
+        toast(
+          leave.status === "APPROVED"
+            ? "ส่งคำขอลาแล้ว — อนุมัติอัตโนมัติแล้ว"
+            : "ส่งคำขอลาแล้ว — รอการอนุมัติ"
+        );
       }),
     [run]
   );

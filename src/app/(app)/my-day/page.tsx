@@ -145,7 +145,7 @@ export default function MyDayPage() {
     try {
       await api.patch(`/api/action-items/${it.id}`, { status: "DONE" });
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "อัปเดตไม่สำเร็จ");
+      toast(e instanceof ApiError ? e.message : "อัปเดตไม่สำเร็จ", "error");
       loadActions();
     }
   }
