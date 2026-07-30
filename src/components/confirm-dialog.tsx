@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 type ConfirmDialogProps = {
   open: boolean;
   onClose: () => void;
-  /** May be async — the dialog stays open with a busy state until it resolves. */
-  onConfirm: () => void | Promise<void>;
+  /** May be async — the dialog stays open with a busy state until it resolves.
+   *  Returns unknown so callers can use `cond && doAsync()` shorthand. */
+  onConfirm: () => unknown;
   title: string;
   message: string;
   confirmLabel?: string;
