@@ -61,7 +61,7 @@ export function KanbanBoard({
     !draggingCard || !canDropTo || canDropTo(draggingCard, status);
 
   return (
-    <div className="grid min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2 [grid-template-columns:repeat(7,minmax(200px,1fr))] [grid-template-rows:minmax(0,1fr)]">
+    <div className="flex flex-col gap-3.5 pb-2 lg:grid lg:min-h-0 lg:flex-1 lg:overflow-x-auto lg:[grid-template-columns:repeat(7,minmax(200px,1fr))] lg:[grid-template-rows:minmax(0,1fr)]">
       {columns.map((col) => {
         const accepts = columnAccepts(col.name);
         return (
@@ -87,10 +87,10 @@ export function KanbanBoard({
             setDragId(null);
           }}
           className={cn(
-            // Fill the grid row (definite 1fr height) so the board fits the
-            // viewport: empty columns stay tall (easy drop target) and full
-            // columns scroll their cards internally instead of growing the page.
-            "flex h-full min-h-[240px] flex-col gap-2.5 rounded-xl bg-zinc-100 p-2.5 transition-colors",
+            // Mobile: columns stack full-width and size to their content (the
+            // page scrolls). lg+: fill the grid row (definite 1fr height) so the
+            // board fits the viewport and each column scrolls its cards.
+            "flex h-auto flex-col gap-2.5 rounded-xl bg-zinc-100 p-2.5 transition-colors lg:h-full lg:min-h-[240px]",
             overCol === col.name &&
               "bg-teal-50 ring-1 ring-teal-200 dark:bg-teal-950/50 dark:ring-teal-800",
             // Dim columns that reject the card currently being dragged.
@@ -120,9 +120,9 @@ export function KanbanBoard({
             )}
           </div>
 
-          {/* Scrolls within the column; fills the height so empty columns are a
-              full drop target. */}
-          <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
+          {/* lg+: scrolls within the column; on mobile shows all cards and lets
+              the page scroll. */}
+          <div className="flex flex-col gap-2.5 pr-0.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
           {col.cards.map((card) => {
             const draggable = (canDrag ? canDrag(card) : true) && !selecting;
             const selected = selectedIds?.has(card.id) ?? false;

@@ -311,14 +311,14 @@ export default function CalendarPage() {
       {!loaded ? (
         <CalendarSkeleton />
       ) : (
-      <div className="flex h-[calc(100vh-13rem)] min-h-[540px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-        <div className="grid flex-none grid-cols-7 border-b border-hairline">
+      <div className="flex h-[calc(100vh-13rem)] min-h-[540px] flex-col overflow-y-hidden overflow-x-auto rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] lg:overflow-x-hidden">
+        <div className="grid min-w-[760px] flex-none grid-cols-7 border-b border-hairline lg:min-w-0">
           {WEEKDAYS.map((w) => (
             <div key={w} className="p-2.5 text-center text-[11.5px] font-semibold text-muted-foreground">{w}</div>
           ))}
         </div>
         <div
-          className="grid min-h-0 flex-1"
+          className="grid min-h-0 min-w-[760px] flex-1 lg:min-w-0"
           style={{ gridTemplateRows: `repeat(${weeks.length}, minmax(0, 1fr))` }}
         >
           {weeks.map((week, wi) => (
