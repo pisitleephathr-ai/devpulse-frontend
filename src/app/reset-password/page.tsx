@@ -61,11 +61,11 @@ export default function ResetPasswordPage() {
           <span className="text-xl font-bold tracking-[-0.02em]">DevPulse</span>
         </div>
 
-        <div className="rounded-[14px] border border-zinc-200 bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+        <div className="rounded-[14px] border border-border bg-card p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
           {missingToken ? (
             <>
               <div className="mb-1 text-[17px] font-semibold">ลิงก์ไม่ถูกต้อง</div>
-              <p className="mb-5 text-[13px] leading-relaxed text-zinc-500">
+              <p className="mb-5 text-[13px] leading-relaxed text-muted-foreground">
                 ลิงก์ตั้งรหัสผ่านไม่สมบูรณ์ กรุณาขอลิงก์ใหม่อีกครั้ง
               </p>
               <Link href="/forgot-password">
@@ -81,18 +81,18 @@ export default function ResetPasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowPw((s) => !s)}
-                  className="flex items-center gap-1.5 text-[12px] text-zinc-500 hover:text-zinc-700"
+                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground"
                 >
                   {showPw ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                   {showPw ? "ซ่อน" : "แสดง"}
                 </button>
               </div>
-              <div className="mb-5 text-[13px] text-zinc-500">
+              <div className="mb-5 text-[13px] text-muted-foreground">
                 กำหนดรหัสผ่านใหม่สำหรับบัญชีของคุณ
               </div>
 
               {error && (
-                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700">
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
                   <div className="flex items-center gap-2">
                     <TriangleAlert className="size-4 flex-none" />
                     {error}
@@ -120,7 +120,7 @@ export default function ResetPasswordPage() {
                 required
                 className="mb-1"
               />
-              <div className="mb-3.5 text-[11.5px] text-zinc-400">อย่างน้อย 8 ตัวอักษร</div>
+              <div className="mb-3.5 text-[11.5px] text-muted-foreground">อย่างน้อย 8 ตัวอักษร</div>
 
               <label className="mb-1.5 block text-[12.5px] font-medium">
                 ยืนยันรหัสผ่านใหม่
@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
 
         <Link
           href="/login"
-          className="mt-4 flex items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700"
+          className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" /> กลับไปหน้าเข้าสู่ระบบ
         </Link>
