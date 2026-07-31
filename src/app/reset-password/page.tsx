@@ -92,9 +92,19 @@ export default function ResetPasswordPage() {
               </div>
 
               {error && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700">
-                  <TriangleAlert className="size-4 flex-none" />
-                  {error}
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700">
+                  <div className="flex items-center gap-2">
+                    <TriangleAlert className="size-4 flex-none" />
+                    {error}
+                  </div>
+                  {/* Most failures here are an expired/used link — give a direct
+                      way to recover instead of a dead end. */}
+                  <Link
+                    href="/forgot-password"
+                    className="mt-1.5 inline-block font-medium underline underline-offset-2"
+                  >
+                    ขอลิงก์ใหม่
+                  </Link>
                 </div>
               )}
 
@@ -106,6 +116,7 @@ export default function ResetPasswordPage() {
                 value={pw.next}
                 onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))}
                 autoComplete="new-password"
+                autoFocus
                 required
                 className="mb-1"
               />
