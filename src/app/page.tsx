@@ -18,9 +18,9 @@ import { isAuthenticated } from "@/lib/auth";
 const FEATURES = [
   { icon: FileText, title: "รายงานประจำวัน", desc: "บันทึกงานที่ทำ แผนถัดไป และอุปสรรคของแต่ละวัน" },
   { icon: KanbanSquare, title: "บอร์ดงาน", desc: "ติดตามงานแบบ Kanban พร้อมลิงก์ ไฟล์แนบ และกำหนดส่ง" },
-  { icon: CalendarClock, title: "คำขอลา", desc: "ขอลาและอนุมัติผ่านระบบ พร้อมปฏิทินทีม" },
+  { icon: CalendarClock, title: "แจ้งติดธุระ", desc: "แจ้งวันที่ติดธุระได้เอง มีผลทันที พร้อมปฏิทินทีม" },
   { icon: LayoutDashboard, title: "แดชบอร์ดเชิงลึก", desc: "ภาระงานของทีม อุปสรรค และสถานะรายงานในที่เดียว" },
-  { icon: Bell, title: "การแจ้งเตือน", desc: "รับแจ้งเมื่อได้รับมอบหมายงานหรือคำขอลาถูกอนุมัติ" },
+  { icon: Bell, title: "การแจ้งเตือน", desc: "รับแจ้งเมื่อได้รับมอบหมายงานหรือมีความเคลื่อนไหวสำคัญ" },
   { icon: ShieldCheck, title: "สิทธิ์ตามบทบาท", desc: "ควบคุมการเข้าถึงด้วย RBAC และบันทึกกิจกรรมทั้งหมด" },
 ];
 
@@ -64,7 +64,7 @@ export default function LandingPage() {
           <span className="text-teal-600">ในที่เดียว</span>
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-relaxed text-zinc-600">
-          DevPulse คือแดชบอร์ดสำหรับทีมพัฒนา ติดตามรายงานประจำวัน งาน คำขอลา
+          DevPulse คือแดชบอร์ดสำหรับทีมพัฒนา ติดตามรายงานประจำวัน งาน การแจ้งติดธุระ
           อุปสรรค และกิจกรรมของทีมได้ในที่เดียว
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">

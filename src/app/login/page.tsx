@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Activity, TriangleAlert, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,9 @@ export default function LoginPage() {
     if (params.get("demo") === "1" || params.get("email")) {
       setEmail(params.get("email") || DEMO_EMAIL);
       setNotice("บัญชีทดลอง: กรอกรหัสผ่านที่ผู้ดูแลให้ไว้เพื่อเข้าสู่ระบบ");
+    }
+    if (params.get("reset") === "1") {
+      setNotice("ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่");
     }
     if (window.sessionStorage.getItem("devpulse_session_expired")) {
       window.sessionStorage.removeItem("devpulse_session_expired");
@@ -71,22 +75,22 @@ export default function LoginPage() {
 
         <form
           onSubmit={login}
-          className="rounded-[14px] border border-zinc-200 bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+          className="rounded-[14px] border border-border bg-card p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
         >
           <div className="mb-1 text-[17px] font-semibold">เข้าสู่ระบบ</div>
-          <div className="mb-5 text-[13px] text-zinc-500">
+          <div className="mb-5 text-[13px] text-muted-foreground">
             ระบบปฏิบัติการประจำวันของทีมคุณ
           </div>
 
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700">
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
               <TriangleAlert className="size-4 flex-none" />
               {error}
             </div>
           )}
 
           {notice && !error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-[12.5px] text-teal-800">
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-[12.5px] text-teal-800 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300">
               <Info className="size-4 flex-none" />
               {notice}
             </div>
@@ -101,9 +105,15 @@ export default function LoginPage() {
             className="mb-3.5"
           />
 
-          <label className="mb-1.5 block text-[12.5px] font-medium">
-            รหัสผ่าน
-          </label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-[12.5px] font-medium">รหัสผ่าน</label>
+            <Link
+              href="/forgot-password"
+              className="text-[12px] font-medium text-teal-600 hover:underline"
+            >
+              ลืมรหัสผ่าน?
+            </Link>
+          </div>
           <Input
             type="password"
             value={password}
@@ -112,7 +122,7 @@ export default function LoginPage() {
             className="mb-3.5"
           />
 
-          <label className="mb-[18px] flex cursor-pointer items-center gap-2 text-[13px] text-zinc-700">
+          <label className="mb-[18px] flex cursor-pointer items-center gap-2 text-[13px] text-foreground">
             <input
               type="checkbox"
               checked={remember}
@@ -127,7 +137,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-4 text-center text-xs text-zinc-400">
+        <div className="mt-4 text-center text-xs text-muted-foreground">
           เครื่องมือภายในองค์กร · ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์เข้าใช้งาน
         </div>
       </div>

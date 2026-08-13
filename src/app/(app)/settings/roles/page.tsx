@@ -45,7 +45,7 @@ const PERMISSION_OPTIONS = [
   {
     value: "TEAM_MANAGE",
     label: "จัดการทีม",
-    hint: "โปรเจกต์ · อนุมัติการลา · แก้ไขงาน/รายงานของทีม",
+    hint: "โปรเจกต์ · แก้ไขงาน/รายงานของทีม",
   },
   {
     value: "ADMIN_FULL",
@@ -63,8 +63,6 @@ const NOTIF_OPTIONS = [
   { value: "taskAssigned", label: "งานที่ได้รับมอบหมาย" },
   { value: "taskStatus", label: "สถานะงานของฉันเปลี่ยน" },
   { value: "mention", label: "ถูกพูดถึง (@) ในคอมเมนต์" },
-  { value: "leaveDecision", label: "ผลอนุมัติการลา (ของฉัน)" },
-  { value: "leaveRequest", label: "คำขอลาใหม่ (สำหรับผู้อนุมัติ)" },
   { value: "reportReminder", label: "เตือนส่งรายงานประจำวัน" },
   { value: "dailyDigest", label: "สรุปงานเช้า (ครบกำหนด/เลยกำหนด)" },
 ] as const;

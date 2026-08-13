@@ -121,10 +121,11 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
       </Field>
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        <Field label={isHalf ? "วันที่ลา" : "วันที่เริ่ม"}>
+        <Field label={isHalf ? "วันที่ติดธุระ" : "วันที่เริ่ม"}>
           <Input
             type="date"
             value={values.start}
+            min={bangkokDateISO()}
             onChange={(e) => set("start", e.target.value)}
           />
         </Field>
@@ -139,6 +140,7 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
             <Input
               type="date"
               value={values.end}
+              min={values.start || bangkokDateISO()}
               onChange={(e) => set("end", e.target.value)}
             />
           </Field>
@@ -150,7 +152,7 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
           rows={3}
           value={values.reason}
           onChange={(e) => set("reason", e.target.value)}
-          placeholder="อธิบายสั้นๆ ให้หัวหน้าทีมทราบ"
+          placeholder="อธิบายสั้นๆ ให้ทีมทราบ"
         />
       </Field>
 
@@ -164,7 +166,7 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
           ยกเลิก
         </Button>
         <Button type="button" onClick={submit} disabled={submitting}>
-          {submitting ? "กำลังส่ง…" : "ส่งคำขอ"}
+          {submitting ? "กำลังบันทึก…" : "บันทึกการแจ้ง"}
         </Button>
       </FormActions>
     </div>

@@ -488,7 +488,7 @@ function Overview({
               {(data.onLeaveUsers?.length ?? 0) > 0 && (
                 <div className="mt-3 border-t border-hairline-soft pt-3">
                   <div className="mb-1.5 text-[11.5px] font-medium text-muted-foreground">
-                    ลาวันนี้ ({data.onLeaveUsers!.length}) — ไม่ต้องส่งรายงาน
+                    ติดธุระวันนี้ ({data.onLeaveUsers!.length}) — ไม่ต้องส่งรายงาน
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {data.onLeaveUsers!.map((u) => (

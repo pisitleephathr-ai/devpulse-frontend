@@ -207,7 +207,7 @@ export default function SettingsPage() {
     } catch (err) {
       toast(
         err instanceof ApiError && err.status === 409
-          ? "ไม่สามารถลบประเภทการลานี้ได้ เนื่องจากมีคำขอลาที่ใช้งานอยู่"
+          ? "ไม่สามารถลบประเภทนี้ได้ เนื่องจากมีการแจ้งติดธุระที่ใช้งานอยู่"
           : err instanceof ApiError
           ? err.message
           : "ลบไม่สำเร็จ"
@@ -341,8 +341,8 @@ export default function SettingsPage() {
                   <>
                 <Section
                   icon={<Plane className="size-4" />}
-                  title="การลา"
-                  desc="เปิด/ปิดการลาครึ่งวัน และจัดการประเภทการลา"
+                  title="การติดธุระ"
+                  desc="เปิด/ปิดการแจ้งครึ่งวัน และจัดการประเภท"
                   action={
                     <button onClick={() => setAddLeaveOpen(true)} className="flex flex-none items-center gap-1 rounded-[7px] border border-border px-[11px] py-[5px] text-[12.5px] font-semibold text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 dark:hover:bg-teal-950/40">
                       <Plus className="size-3.5" /> เพิ่มประเภท
@@ -358,13 +358,7 @@ export default function SettingsPage() {
                         <span className="size-2.5 flex-none rounded-[3px]" style={{ background: lt.color }} />
                         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{lt.name}</span>
                         <span className="hidden flex-none text-[12px] text-muted-foreground sm:block">{lt.daysLabel}</span>
-                        <span
-                          className="flex-none rounded-full px-[9px] py-0.5 text-[11px] font-semibold"
-                          style={lt.autoApprove ? { background: "#dcfce7", color: "#15803d" } : { background: "#fef3c7", color: "#b45309" }}
-                        >
-                          {lt.autoApprove ? "อัตโนมัติ" : "ขออนุมัติ"}
-                        </span>
-                        <button onClick={() => setEditingLeave(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-zinc-500 transition-colors hover:bg-muted" aria-label={`แก้ไขประเภทการลา ${lt.name}`}>
+                        <button onClick={() => setEditingLeave(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-zinc-500 transition-colors hover:bg-muted" aria-label={`แก้ไขประเภท ${lt.name}`}>
                           <Pencil className="size-3.5" />
                         </button>
                         <button onClick={() => setPendingLeaveDelete(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40" aria-label={`ลบประเภทการลา ${lt.name}`}>
@@ -417,7 +411,7 @@ export default function SettingsPage() {
                 <Section icon={<Bell className="size-4" />} title="การแจ้งเตือนระบบ" desc="การแจ้งเตือนภายในแอป">
                   <div className="divide-y divide-hairline-soft">
                     <SwitchRow label="แจ้งเตือนให้ส่งรายงานประจำวัน" checked={setting.notifyReportReminder} onChange={(v) => set("notifyReportReminder", v)} />
-                    <SwitchRow label="แจ้งเตือนการอนุมัติคำขอลา" checked={setting.notifyLeaveApproval} onChange={(v) => set("notifyLeaveApproval", v)} />
+                    <SwitchRow label="แจ้งเตือนเมื่อมีการแจ้งติดธุระ" checked={setting.notifyLeaveApproval} onChange={(v) => set("notifyLeaveApproval", v)} />
                     <SwitchRow label="แจ้งเตือนงานที่ใกล้ครบกำหนด" checked={setting.notifyTaskDue} onChange={(v) => set("notifyTaskDue", v)} />
                   </div>
                 </Section>
@@ -515,7 +509,7 @@ export default function SettingsPage() {
                               onChange={(v) => set("linePersonalEnabled", v)}
                             />
                             <p className="mt-1 text-[11.5px] text-muted-foreground">
-                              ถ้าปิด จะไม่ส่ง DM ส่วนตัวถึงผู้ใช้ (งานที่มอบหมาย · ผลลา · คำขอลา · เตือนรายงาน) — ไม่กระทบการแจ้งเข้ากลุ่มด้านล่าง
+                              ถ้าปิด จะไม่ส่ง DM ส่วนตัวถึงผู้ใช้ (งานที่มอบหมาย · การถูกพูดถึง · เตือนรายงาน) — ไม่กระทบการแจ้งเข้ากลุ่มด้านล่าง
                             </p>
                           </div>
 
@@ -564,7 +558,7 @@ export default function SettingsPage() {
 
                           <div className="border-t border-hairline-soft pt-1">
                             <SwitchRow
-                              label="แจ้ง “คำขอลา” (ยื่น/อนุมัติ) เข้ากลุ่ม LINE"
+                              label="แจ้ง “ติดธุระ” (แจ้ง/ยกเลิก) เข้ากลุ่ม LINE"
                               checked={setting.lineNotifyLeave}
                               onChange={(v) => set("lineNotifyLeave", v)}
                             />
@@ -662,7 +656,7 @@ export default function SettingsPage() {
         onClose={() => setPendingLeaveDelete(null)}
         onConfirm={() => pendingLeaveDelete && deleteLeaveType(pendingLeaveDelete)}
         title="เก็บถาวรประเภทการลานี้?"
-        message={`ประเภท "${pendingLeaveDelete?.name}" จะถูกซ่อนจากการเลือกใหม่ แต่คำขอลาเดิมจะไม่ได้รับผลกระทบ`}
+        message={`ประเภท "${pendingLeaveDelete?.name}" จะถูกซ่อนจากการเลือกใหม่ แต่การแจ้งติดธุระเดิมจะไม่ได้รับผลกระทบ`}
         confirmLabel="เก็บถาวร"
         destructive
       />
@@ -1000,17 +994,9 @@ function LeaveTypeDialog({ open, onClose, onSaved, nextOrder, editing }: { open:
         <Field label="ชื่อประเภท">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น ลาไปอบรม" />
         </Field>
-        <div className="grid grid-cols-2 gap-3.5">
-          <Field label="จำนวนวัน">
-            <Input value={daysLabel} onChange={(e) => setDaysLabel(e.target.value)} placeholder="เช่น 5 วัน / ปี" />
-          </Field>
-          <Field label="การอนุมัติ">
-            <Select value={autoApprove} onChange={(e) => setAutoApprove(e.target.value)}>
-              <option value="false">ต้องขออนุมัติ</option>
-              <option value="true">อนุมัติอัตโนมัติ</option>
-            </Select>
-          </Field>
-        </div>
+        <Field label="จำนวนวัน">
+          <Input value={daysLabel} onChange={(e) => setDaysLabel(e.target.value)} placeholder="เช่น 5 วัน / ปี" />
+        </Field>
         <Field label="สี">
           <div className="flex items-center gap-2.5">
             <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="size-9 cursor-pointer rounded border border-border bg-card p-0.5" />
