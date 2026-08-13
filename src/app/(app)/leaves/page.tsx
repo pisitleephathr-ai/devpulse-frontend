@@ -16,42 +16,17 @@ import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { TableRowsSkeleton } from "@/components/skeletons";
 import { useData } from "@/lib/store";
-import {
-  LEAVE_TYPE_COLORS,
-  LEAVE_STATUS_OPTIONS,
-  type Leave,
-} from "@/lib/mock-data";
+import { LEAVE_STATUS_OPTIONS, type Leave } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { isManagerOrAdmin } from "@/lib/permissions";
 import { bangkokDateISO } from "@/lib/thai-datetime";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
 
-const TEMPLATE = "160px 96px 150px 92px minmax(170px,1fr) 104px 132px";
+const TEMPLATE = "180px 160px 96px minmax(180px,1fr) 110px 132px";
 
 export default function LeavesPage() {
-  const { leaves, users, loading, cancelLeave, addLeave, leaveTypes } = useData();
-  // Filter options from the configured leave types (active, sorted).
-  const typeOptions = useMemo(
-    () =>
-      leaveTypes
-        .filter((t) => t.isActive)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((t) => t.name),
-    [leaveTypes]
-  );
-  // Badge colors: prefer the built-in palette, then the configured policy color
-  // (as a light tint + solid), then a neutral fallback.
-  const policyColor = useMemo(
-    () => new Map(leaveTypes.map((t) => [t.name, t.color])),
-    [leaveTypes]
-  );
-  const typeColors = (name: string): [string, string] => {
-    if (LEAVE_TYPE_COLORS[name]) return LEAVE_TYPE_COLORS[name];
-    const hex = policyColor.get(name);
-    if (hex) return [`${hex}22`, hex];
-    return ["#e4e4e7", "#3f3f46"];
-  };
+  const { leaves, users, loading, cancelLeave, addLeave } = useData();
   const me = useCurrentUser();
   // Managers/admins see everyone's declarations → offer the member filter.
   const isManager = isManagerOrAdmin(me);
@@ -78,28 +53,24 @@ export default function LeavesPage() {
 
   const [search, setSearch] = usePersistedState("leaves.search", "");
   const [member, setMember] = usePersistedState("leaves.member", "all");
-  const [type, setType] = usePersistedState("leaves.type", "all");
   const [status, setStatus] = usePersistedState("leaves.status", "all");
 
-  const filtersActive =
-    !!search || member !== "all" || type !== "all" || status !== "all";
+  const filtersActive = !!search || member !== "all" || status !== "all";
 
   const filtered = useMemo(
     () =>
       leaves.filter(
         (l) =>
-          matchesSearch([l.name, l.reason, l.type], search) &&
+          matchesSearch([l.name, l.reason], search) &&
           (member === "all" || l.name === member) &&
-          (type === "all" || l.type === type) &&
           (status === "all" || l.status === status)
       ),
-    [leaves, search, member, type, status]
+    [leaves, search, member, status]
   );
 
   function clearFilters() {
     setSearch("");
     setMember("all");
-    setType("all");
     setStatus("all");
   }
 
@@ -139,16 +110,6 @@ export default function LeavesPage() {
         )}
         <Select
           className="w-auto py-[7px] text-[12.5px]"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        >
-          <option value="all">ประเภททั้งหมด</option>
-          {typeOptions.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </Select>
-        <Select
-          className="w-auto py-[7px] text-[12.5px]"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         >
@@ -173,16 +134,8 @@ export default function LeavesPage() {
       ) : (
       <DataTable
         template={TEMPLATE}
-        minWidth={960}
-        headers={[
-          "สมาชิก",
-          "ประเภท",
-          "วันที่",
-          "จำนวนวัน",
-          "เหตุผล",
-          "สถานะ",
-          "",
-        ]}
+        minWidth={860}
+        headers={["สมาชิก", "วันที่", "จำนวนวัน", "เหตุผล", "สถานะ", ""]}
       >
         {filtered.length === 0 ? (
           <EmptyState
@@ -199,13 +152,6 @@ export default function LeavesPage() {
                   {l.name}
                 </span>
               </div>
-              <span className="justify-self-start">
-                <StatusBadge
-                  label={l.type}
-                  colors={typeColors(l.type)}
-                  shape="tag"
-                />
-              </span>
               <span className="text-[12.5px] text-zinc-700 dark:text-zinc-300">{l.dates}</span>
               <span className="flex flex-col items-start gap-1 text-[12.5px] text-zinc-500">
                 <span className="whitespace-nowrap">{l.days} วัน</span>
@@ -272,23 +218,14 @@ export default function LeavesPage() {
               </div>
               <StatusBadge label={viewing.status} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <DetailField label="ประเภท">
-                <StatusBadge
-                  label={viewing.type}
-                  colors={typeColors(viewing.type)}
-                  shape="tag"
-                />
-              </DetailField>
-              <DetailField label="จำนวนวัน">
-                <span className="text-[13px]">
-                  {viewing.days} วัน
-                  {viewing.halfDayPeriod
-                    ? ` (${viewing.halfDayPeriod === "MORNING" ? "ครึ่งวันเช้า" : "ครึ่งวันบ่าย"})`
-                    : ""}
-                </span>
-              </DetailField>
-            </div>
+            <DetailField label="จำนวนวัน">
+              <span className="text-[13px]">
+                {viewing.days} วัน
+                {viewing.halfDayPeriod
+                  ? ` (${viewing.halfDayPeriod === "MORNING" ? "ครึ่งวันเช้า" : "ครึ่งวันบ่าย"})`
+                  : ""}
+              </span>
+            </DetailField>
             <DetailField label="เหตุผล">
               <p className="text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-300">
                 {viewing.reason}
@@ -309,7 +246,7 @@ export default function LeavesPage() {
         title="ยกเลิกติดธุระ?"
         message={
           cancelling
-            ? `ยกเลิกการแจ้งติดธุระ "${cancelling.type}" วันที่ ${cancelling.dates}? หลังถึงวันเริ่มแล้วจะยกเลิกไม่ได้`
+            ? `ยกเลิกการแจ้งติดธุระวันที่ ${cancelling.dates}? หลังถึงวันเริ่มแล้วจะยกเลิกไม่ได้`
             : ""
         }
         confirmLabel="ยกเลิกติดธุระ"

@@ -490,8 +490,8 @@ export type TaskInput = {
   attachments?: TaskAttachmentInput[];
 };
 export type LeaveInput = {
-  /** freeform leave-type name (a LeaveTypePolicy.name) */
-  type: string;
+  /** optional — "แจ้งติดธุระ" has one implicit category; server defaults it */
+  type?: string;
   startDate: string;
   endDate: string;
   reason: string;

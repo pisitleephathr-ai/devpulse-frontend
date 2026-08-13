@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FormActions } from "@/components/form-card";
 import { bangkokDateISO } from "@/lib/thai-datetime";
-import { useData } from "@/lib/store";
 import { type LeaveInput } from "@/lib/mappers";
 
 type Duration = "FULL" | "MORNING" | "AFTERNOON";
 
 type Values = {
-  type: string;
   duration: Duration;
   start: string;
   end: string;
@@ -21,7 +19,6 @@ type Values = {
 };
 
 const EMPTY: Values = {
-  type: "",
   duration: "FULL",
   // start/end are filled with today's Bangkok date on mount (hydration-safe).
   start: "",
@@ -32,17 +29,11 @@ const EMPTY: Values = {
 type LeaveFormProps = {
   onSubmit: (data: LeaveInput) => void;
   onCancel: () => void;
-  /** whether half-day leave is enabled (from org settings); defaults to true */
+  /** whether half-day is enabled (from org settings); defaults to true */
   allowHalfDay?: boolean;
 };
 
 export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveFormProps) {
-  const { leaveTypes } = useData();
-  const activeTypes = useMemo(
-    () => leaveTypes.filter((t) => t.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
-    [leaveTypes]
-  );
-
   const [values, setValues] = useState<Values>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof Values | "range", string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -52,13 +43,6 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues((v) => (v.start ? v : { ...v, start: today, end: today }));
   }, []);
-
-  // Default the type to the first configured leave type once loaded.
-  useEffect(() => {
-    if (activeTypes.length === 0) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setValues((v) => (v.type ? v : { ...v, type: activeTypes[0].name }));
-  }, [activeTypes]);
 
   const isHalf = values.duration !== "FULL";
 
@@ -75,7 +59,6 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
 
   function validate(): boolean {
     const next: typeof errors = {};
-    if (!values.type) next.type = "กรุณาเลือกประเภทการลา";
     if (!values.reason.trim()) next.reason = "กรุณาระบุเหตุผล";
     if (!isHalf && new Date(values.end) < new Date(values.start))
       next.range = "วันที่สิ้นสุดต้องไม่มาก่อนวันที่เริ่ม";
@@ -86,8 +69,8 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
   function submit() {
     if (!validate()) return;
     setSubmitting(true);
+    // No `type` — the server defaults it to the single "ติดธุระ" category.
     const data: LeaveInput = {
-      type: values.type,
       startDate: values.start,
       endDate: isHalf ? values.start : values.end,
       reason: values.reason.trim(),
@@ -98,17 +81,6 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
 
   return (
     <div className="flex flex-col gap-4">
-      <Field label="ประเภทการลา" error={errors.type}>
-        <Select value={values.type} onChange={(e) => set("type", e.target.value)}>
-          {activeTypes.length === 0 && <option value="">— ไม่มีประเภทการลา —</option>}
-          {activeTypes.map((t) => (
-            <option key={t.id} value={t.name}>
-              {t.name}
-            </option>
-          ))}
-        </Select>
-      </Field>
-
       <Field label="ระยะเวลา">
         <Select
           value={values.duration}
