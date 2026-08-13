@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ออฟไลน์ · DevPulse</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100vh;
+        display: flex; align-items: center; justify-content: center;
+        background: #f6f7f8; color: #18181b;
+        font-family: -apple-system, "Segoe UI", Tahoma, "Noto Sans Thai", sans-serif;
+        padding: 24px;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0a0a0c; color: #f4f4f5; }
+        .card { background: #18181b !important; border-color: #2a2a2e !important; }
+        .sub { color: #a1a1aa !important; }
+      }
+      .card {
+        width: 100%; max-width: 360px; text-align: center;
+        background: #ffffff; border: 1px solid #e4e4e7; border-radius: 16px;
+        padding: 32px 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      }
+      .badge {
+        width: 52px; height: 52px; margin: 0 auto 16px;
+        display: flex; align-items: center; justify-content: center;
+        background: #0d9488; border-radius: 13px;
+      }
+      h1 { font-size: 18px; margin: 0 0 6px; font-weight: 700; }
+      .sub { font-size: 13.5px; line-height: 1.7; color: #71717a; margin: 0 0 20px; }
+      button {
+        appearance: none; border: 0; cursor: pointer;
+        background: #0d9488; color: #fff; font-weight: 700; font-size: 14px;
+        padding: 11px 22px; border-radius: 10px; width: 100%;
+      }
+      button:active { transform: scale(0.98); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="badge">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+      </div>
+      <h1>ออฟไลน์อยู่</h1>
+      <p class="sub">
+        ดูเหมือนว่าอุปกรณ์ของคุณไม่ได้เชื่อมต่ออินเทอร์เน็ต
+        DevPulse ต้องออนไลน์เพื่อดึงข้อมูลล่าสุด — เชื่อมต่อแล้วลองอีกครั้ง
+      </p>
+      <button onclick="location.reload()">ลองอีกครั้ง</button>
+    </div>
+  </body>
+</html>

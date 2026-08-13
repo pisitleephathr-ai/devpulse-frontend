@@ -1,0 +1,24 @@
+{
+  "name": "DevPulse — ระบบจัดการทีม",
+  "short_name": "DevPulse",
+  "description": "ระบบปฏิบัติการประจำวันของทีมพัฒนาซอฟต์แวร์",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d9488",
+  "theme_color": "#0d9488",
+  "lang": "th",
+  "dir": "ltr",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "งานของฉันวันนี้", "short_name": "My Day", "url": "/my-day" },
+    { "name": "บอร์ดงาน", "short_name": "งาน", "url": "/tasks" },
+    { "name": "ส่งรายงานประจำวัน", "short_name": "รายงาน", "url": "/reports/new" }
+  ]
+}
