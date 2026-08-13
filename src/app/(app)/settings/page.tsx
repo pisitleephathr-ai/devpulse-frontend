@@ -13,7 +13,6 @@ import {
   Clock,
   ClipboardList,
   MessageCircle,
-  Pencil,
   HardDrive,
   Trophy,
   PartyPopper,
@@ -58,7 +57,6 @@ type Setting = {
   lineDailyDigest: boolean;
   lineDailyDigestTime: string;
 };
-type LeaveType = { id: string; name: string; daysLabel: string; color: string; autoApprove: boolean; sortOrder: number };
 type Holiday = { id: string; name: string; date: string; description: string; type: string; isActive: boolean };
 
 const REMINDER_OPTIONS = ["16:30 น.", "17:00 น.", "17:30 น."];
@@ -111,16 +109,12 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<TabId>("general");
   const [setting, setSetting] = useState<Setting>(DEFAULT_SETTING);
   const [baseline, setBaseline] = useState<Setting>(DEFAULT_SETTING);
-  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [saving, setSaving] = useState(false);
-  const [addLeaveOpen, setAddLeaveOpen] = useState(false);
-  const [editingLeave, setEditingLeave] = useState<LeaveType | null>(null);
   const [testingSummary, setTestingSummary] = useState<
     "leave" | "report" | "performance" | "highlight" | "digest" | null
   >(null);
   const [addHolidayOpen, setAddHolidayOpen] = useState(false);
-  const [pendingLeaveDelete, setPendingLeaveDelete] = useState<LeaveType | null>(null);
   const [pendingHolidayDelete, setPendingHolidayDelete] = useState<Holiday | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [lineStatus, setLineStatus] = useState<{
@@ -156,7 +150,6 @@ export default function SettingsPage() {
           setBaseline(s);
           setLineStatus(r.line ?? null);
         }),
-      api.get<{ leaveTypes: LeaveType[] }>("/api/settings/leave-types").then((r) => setLeaveTypes(r.leaveTypes)),
       api.get<{ holidays: Holiday[] }>("/api/settings/holidays").then((r) => setHolidays(r.holidays)),
     ])
       .catch(() => {})
@@ -199,21 +192,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function deleteLeaveType(lt: LeaveType) {
-    try {
-      await api.del(`/api/settings/leave-types/${lt.id}`);
-      setLeaveTypes((prev) => prev.filter((x) => x.id !== lt.id));
-      toast("เก็บถาวรประเภทการลาแล้ว");
-    } catch (err) {
-      toast(
-        err instanceof ApiError && err.status === 409
-          ? "ไม่สามารถลบประเภทนี้ได้ เนื่องจากมีการแจ้งติดธุระที่ใช้งานอยู่"
-          : err instanceof ApiError
-          ? err.message
-          : "ลบไม่สำเร็จ"
-      );
-    }
-  }
   async function deleteHoliday(h: Holiday) {
     try {
       await api.del(`/api/settings/holidays/${h.id}`);
@@ -342,31 +320,10 @@ export default function SettingsPage() {
                 <Section
                   icon={<Plane className="size-4" />}
                   title="การติดธุระ"
-                  desc="เปิด/ปิดการแจ้งครึ่งวัน และจัดการประเภท"
-                  action={
-                    <button onClick={() => setAddLeaveOpen(true)} className="flex flex-none items-center gap-1 rounded-[7px] border border-border px-[11px] py-[5px] text-[12.5px] font-semibold text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 dark:hover:bg-teal-950/40">
-                      <Plus className="size-3.5" /> เพิ่มประเภท
-                    </button>
-                  }
+                  desc="เปิด/ปิดการแจ้งครึ่งวัน"
                 >
                   <div className="divide-y divide-hairline-soft">
-                    <SwitchRow label="อนุญาตการลาครึ่งวัน (เช้า / บ่าย)" checked={setting.allowHalfDayLeave} onChange={(v) => set("allowHalfDayLeave", v)} />
-                  </div>
-                  <div className="mt-3 divide-y divide-hairline-soft overflow-hidden rounded-lg border border-border">
-                    {leaveTypes.map((lt) => (
-                      <div key={lt.id} className="flex items-center gap-2.5 px-3.5 py-2.5">
-                        <span className="size-2.5 flex-none rounded-[3px]" style={{ background: lt.color }} />
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{lt.name}</span>
-                        <span className="hidden flex-none text-[12px] text-muted-foreground sm:block">{lt.daysLabel}</span>
-                        <button onClick={() => setEditingLeave(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-zinc-500 transition-colors hover:bg-muted" aria-label={`แก้ไขประเภท ${lt.name}`}>
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button onClick={() => setPendingLeaveDelete(lt)} className="flex size-7 flex-none items-center justify-center rounded-[7px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40" aria-label={`ลบประเภทการลา ${lt.name}`}>
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    {leaveTypes.length === 0 && <div className="px-3.5 py-6 text-center text-[12.5px] text-muted-foreground">ยังไม่มีประเภทการลา</div>}
+                    <SwitchRow label="อนุญาตแจ้งครึ่งวัน (เช้า / บ่าย)" checked={setting.allowHalfDayLeave} onChange={(v) => set("allowHalfDayLeave", v)} />
                   </div>
                 </Section>
 
@@ -647,19 +604,8 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <LeaveTypeDialog open={addLeaveOpen} onClose={() => setAddLeaveOpen(false)} onSaved={(lt) => setLeaveTypes((prev) => [...prev, lt].sort((a, b) => a.sortOrder - b.sortOrder))} nextOrder={leaveTypes.length} />
-      <LeaveTypeDialog open={editingLeave !== null} editing={editingLeave} onClose={() => setEditingLeave(null)} onSaved={(lt) => setLeaveTypes((prev) => prev.map((x) => (x.id === lt.id ? lt : x)).sort((a, b) => a.sortOrder - b.sortOrder))} nextOrder={leaveTypes.length} />
       <AddHolidayDialog open={addHolidayOpen} onClose={() => setAddHolidayOpen(false)} onCreated={(h) => setHolidays((prev) => [...prev, h].sort((a, b) => a.date.localeCompare(b.date)))} />
 
-      <ConfirmDialog
-        open={pendingLeaveDelete !== null}
-        onClose={() => setPendingLeaveDelete(null)}
-        onConfirm={() => pendingLeaveDelete && deleteLeaveType(pendingLeaveDelete)}
-        title="เก็บถาวรประเภทการลานี้?"
-        message={`ประเภท "${pendingLeaveDelete?.name}" จะถูกซ่อนจากการเลือกใหม่ แต่การแจ้งติดธุระเดิมจะไม่ได้รับผลกระทบ`}
-        confirmLabel="เก็บถาวร"
-        destructive
-      />
       <ConfirmDialog
         open={pendingHolidayDelete !== null}
         onClose={() => setPendingHolidayDelete(null)}
@@ -925,86 +871,6 @@ function Switch({ checked, onChange, disabled, label }: { checked: boolean; onCh
         }`}
       />
     </button>
-  );
-}
-
-function LeaveTypeDialog({ open, onClose, onSaved, nextOrder, editing }: { open: boolean; onClose: () => void; onSaved: (lt: LeaveType) => void; nextOrder: number; editing?: LeaveType | null }) {
-  const [name, setName] = useState("");
-  const [daysLabel, setDaysLabel] = useState("");
-  const [color, setColor] = useState("#0d9488");
-  const [autoApprove, setAutoApprove] = useState("false");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  // Reset/prefill the form each time the dialog opens (blank for add, current values for edit).
-  useEffect(() => {
-    if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setError(null);
-    setName(editing?.name ?? "");
-    setDaysLabel(editing?.daysLabel ?? "");
-    setColor(editing?.color ?? "#0d9488");
-    setAutoApprove(editing?.autoApprove ? "true" : "false");
-  }, [open, editing]);
-
-  async function submit() {
-    if (!name.trim() || !daysLabel.trim()) {
-      setError("กรุณากรอกชื่อและจำนวนวัน");
-      return;
-    }
-    setSaving(true);
-    try {
-      const body = {
-        name: name.trim(),
-        daysLabel: daysLabel.trim(),
-        color,
-        autoApprove: autoApprove === "true",
-      };
-      if (editing) {
-        const { leaveType } = await api.patch<{ leaveType: LeaveType }>(`/api/settings/leave-types/${editing.id}`, body);
-        onSaved(leaveType);
-        toast("บันทึกประเภทการลาแล้ว");
-      } else {
-        const { leaveType } = await api.post<{ leaveType: LeaveType }>("/api/settings/leave-types", { ...body, sortOrder: nextOrder });
-        onSaved(leaveType);
-        toast("เพิ่มประเภทการลาแล้ว");
-      }
-      onClose();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "บันทึกไม่สำเร็จ");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={editing ? "แก้ไขประเภทการลา" : "เพิ่มประเภทการลา"}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>ยกเลิก</Button>
-          <Button onClick={submit} disabled={saving}>{saving ? "กำลังบันทึก…" : editing ? "บันทึก" : "เพิ่มประเภท"}</Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        {error && <p className="text-[12px] text-red-600">{error}</p>}
-        <Field label="ชื่อประเภท">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น ลาไปอบรม" />
-        </Field>
-        <Field label="จำนวนวัน">
-          <Input value={daysLabel} onChange={(e) => setDaysLabel(e.target.value)} placeholder="เช่น 5 วัน / ปี" />
-        </Field>
-        <Field label="สี">
-          <div className="flex items-center gap-2.5">
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="size-9 cursor-pointer rounded border border-border bg-card p-0.5" />
-            <Input value={color} onChange={(e) => setColor(e.target.value)} className="w-32 font-mono" />
-          </div>
-        </Field>
-      </div>
-    </Dialog>
   );
 }
 
