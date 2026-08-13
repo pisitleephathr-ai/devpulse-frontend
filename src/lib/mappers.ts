@@ -494,7 +494,8 @@ export type LeaveInput = {
   type?: string;
   startDate: string;
   endDate: string;
-  reason: string;
+  /** optional — a note is helpful but not required */
+  reason?: string;
   halfDayPeriod?: "MORNING" | "AFTERNOON";
 };
 export type UserInput = {
