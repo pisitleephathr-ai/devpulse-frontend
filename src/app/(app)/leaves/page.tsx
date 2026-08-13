@@ -162,7 +162,7 @@ export default function LeavesPage() {
                 ) : null}
               </span>
               <span className="truncate text-[12.5px] text-zinc-500">
-                {l.reason}
+                {l.reason || "—"}
               </span>
               <span>
                 <StatusBadge label={l.status} />
@@ -228,7 +228,7 @@ export default function LeavesPage() {
             </DetailField>
             <DetailField label="เหตุผล">
               <p className="text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-300">
-                {viewing.reason}
+                {viewing.reason || "—"}
               </p>
             </DetailField>
           </div>

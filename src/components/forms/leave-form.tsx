@@ -59,7 +59,7 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
 
   function validate(): boolean {
     const next: typeof errors = {};
-    if (!values.reason.trim()) next.reason = "กรุณาระบุเหตุผล";
+    // reason is optional — no required check.
     if (!isHalf && new Date(values.end) < new Date(values.start))
       next.range = "วันที่สิ้นสุดต้องไม่มาก่อนวันที่เริ่ม";
     setErrors(next);
@@ -119,12 +119,12 @@ export function LeaveForm({ onSubmit, onCancel, allowHalfDay = true }: LeaveForm
         )}
       </div>
 
-      <Field label="เหตุผล" error={errors.reason}>
+      <Field label="เหตุผล (ไม่บังคับ)" error={errors.reason}>
         <Textarea
           rows={3}
           value={values.reason}
           onChange={(e) => set("reason", e.target.value)}
-          placeholder="อธิบายสั้นๆ ให้ทีมทราบ"
+          placeholder="อธิบายสั้นๆ ให้ทีมทราบ (ถ้ามี)"
         />
       </Field>
 
