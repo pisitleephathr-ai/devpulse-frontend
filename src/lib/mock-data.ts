@@ -52,6 +52,9 @@ export const STATUS_BADGES: Record<string, [string, string]> = {
   "รออนุมัติ": ["#fef3c7", "#b45309"],
   "อนุมัติแล้ว": ["#dcfce7", "#15803d"],
   "ปฏิเสธ": ["#fee2e2", "#b91c1c"],
+  // "แจ้งติดธุระ" states
+  "ติดธุระ": ["#ccfbf1", "#0f766e"],
+  "ยกเลิก": ["#f4f4f5", "#71717a"],
   "ใช้งานอยู่": ["#dcfce7", "#15803d"],
   "ปิดใช้งาน": ["#f4f4f5", "#71717a"],
 };
@@ -134,7 +137,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "plan", label: "แผนงานสัปดาห์", href: "/plan", icon: "CalendarRange" },
   { id: "kudos", label: "ชื่นชมเพื่อน", href: "/kudos", icon: "Award" },
   { id: "projects", label: "โปรเจกต์", href: "/projects", icon: "FolderKanban" },
-  { id: "leaves", label: "คำขอลา", href: "/leaves", icon: "CalendarClock" },
+  { id: "leaves", label: "แจ้งติดธุระ", href: "/leaves", icon: "CalendarClock" },
   { id: "calendar", label: "ปฏิทินทีม", href: "/calendar", icon: "CalendarDays" },
   { id: "activity", label: "บันทึกกิจกรรม", href: "/activity", icon: "Activity" },
   { id: "users", label: "ผู้ใช้งาน", href: "/users", icon: "Users" },
@@ -153,7 +156,7 @@ export const PAGE_TITLES: Record<string, string> = {
   plan: "แผนงานรายสัปดาห์",
   kudos: "ชื่นชมเพื่อน",
   projects: "โปรเจกต์",
-  leaves: "คำขอลา",
+  leaves: "แจ้งติดธุระ",
   calendar: "ปฏิทินทีม",
   activity: "บันทึกกิจกรรม",
   users: "ผู้ใช้งาน",
@@ -518,14 +521,19 @@ export function groupTasks(tasks: Task[]): KanbanColumn[] {
 /* Leave requests                                                      */
 /* ------------------------------------------------------------------ */
 
-export type LeaveStatus = "รออนุมัติ" | "อนุมัติแล้ว" | "ปฏิเสธ";
+export type LeaveStatus = "ติดธุระ" | "ยกเลิก";
 
 export type Leave = {
   id: string;
+  /** owner id (from the API) — used to gate "cancel my own" actions */
+  userId?: string;
   name: string;
   key: string;
   type: string;
   dates: string;
+  /** raw ISO start/end (used to enforce "cancel only before the start date") */
+  startDate: string;
+  endDate: string;
   days: number;
   halfDayPeriod?: "MORNING" | "AFTERNOON" | null;
   reason: string;
@@ -533,12 +541,12 @@ export type Leave = {
 };
 
 const LEAVES_SEED: Omit<Leave, "id">[] = [
-  { name: "ทอม โอคาฟอร์", key: "Tom", type: "ลาพักร้อน", dates: "20–24 ก.ค.", days: 5, reason: "ไปเที่ยวกับครอบครัวที่ลิสบอน", status: "อนุมัติแล้ว" },
-  { name: "ปรียา นาอีร์", key: "Priya", type: "ลากิจ", dates: "15 ก.ค.", days: 1, reason: "ย้ายที่อยู่", status: "รออนุมัติ" },
-  { name: "โจนาส เวเบอร์", key: "Jonas", type: "ลาพักร้อน", dates: "3–14 ส.ค.", days: 10, reason: "พักร้อนช่วงฤดูร้อน", status: "รออนุมัติ" },
-  { name: "มายา เฉิน", key: "Maya", type: "ลากิจ", dates: "31 ก.ค.", days: 1, reason: "นัดพบแพทย์", status: "รออนุมัติ" },
-  { name: "ซาร่า ลินด์ควิสต์", key: "Sara", type: "ลาป่วย", dates: "8 ก.ค.", days: 1, reason: "ไข้หวัด", status: "อนุมัติแล้ว" },
-  { name: "อเล็กซ์ รุยซ์", key: "Alex", type: "ลากิจ", dates: "30 มิ.ย.", days: 1, reason: "ติดต่อราชการ", status: "ปฏิเสธ" },
+  { name: "ทอม โอคาฟอร์", key: "Tom", type: "ลาพักร้อน", dates: "20–24 ก.ค.", startDate: "2026-07-20", endDate: "2026-07-24", days: 5, reason: "ไปเที่ยวกับครอบครัวที่ลิสบอน", status: "ติดธุระ" },
+  { name: "ปรียา นาอีร์", key: "Priya", type: "ลากิจ", dates: "15 ก.ค.", startDate: "2026-07-15", endDate: "2026-07-15", days: 1, reason: "ย้ายที่อยู่", status: "ติดธุระ" },
+  { name: "โจนาส เวเบอร์", key: "Jonas", type: "ลาพักร้อน", dates: "3–14 ส.ค.", startDate: "2026-08-03", endDate: "2026-08-14", days: 10, reason: "พักร้อนช่วงฤดูร้อน", status: "ติดธุระ" },
+  { name: "มายา เฉิน", key: "Maya", type: "ลากิจ", dates: "31 ก.ค.", startDate: "2026-07-31", endDate: "2026-07-31", days: 1, reason: "นัดพบแพทย์", status: "ติดธุระ" },
+  { name: "ซาร่า ลินด์ควิสต์", key: "Sara", type: "ลาป่วย", dates: "8 ก.ค.", startDate: "2026-07-08", endDate: "2026-07-08", days: 1, reason: "ไข้หวัด", status: "ติดธุระ" },
+  { name: "อเล็กซ์ รุยซ์", key: "Alex", type: "ลากิจ", dates: "30 มิ.ย.", startDate: "2026-06-30", endDate: "2026-06-30", days: 1, reason: "ติดต่อราชการ", status: "ยกเลิก" },
 ];
 
 export const LEAVES: Leave[] = LEAVES_SEED.map((l, i) => ({
@@ -546,22 +554,19 @@ export const LEAVES: Leave[] = LEAVES_SEED.map((l, i) => ({
   ...l,
 }));
 
-export const LEAVE_STATUS_OPTIONS: LeaveStatus[] = ["รออนุมัติ", "อนุมัติแล้ว", "ปฏิเสธ"];
+export const LEAVE_STATUS_OPTIONS: LeaveStatus[] = ["ติดธุระ", "ยกเลิก"];
 
+/** Count of active busy declarations (used where a quick tally is handy). */
 export function pendingLeaveCount(leaves: Leave[] = LEAVES): number {
-  return leaves.filter((l) => l.status === "รออนุมัติ").length;
+  return leaves.filter((l) => l.status === "ติดธุระ").length;
 }
 
-/** Upcoming leave shown on the dashboard right column. */
+/** Upcoming busy declarations shown on the dashboard right column. */
 export function upcomingLeave(leaves: Leave[] = LEAVES) {
-  const approved = leaves.filter(
-    (l) => l.status === "อนุมัติแล้ว" && !l.dates.includes("มิ.ย.")
-  );
-  const pending = leaves.filter((l) => l.status === "รออนุมัติ").slice(0, 2);
-  return [...approved, ...pending].slice(0, 3).map((l) => ({
-    ...l,
-    displayDates: l.dates + (l.status === "รออนุมัติ" ? " · รออนุมัติ" : ""),
-  }));
+  return leaves
+    .filter((l) => l.status === "ติดธุระ" && !l.dates.includes("มิ.ย."))
+    .slice(0, 3)
+    .map((l) => ({ ...l, displayDates: l.dates }));
 }
 
 /* ------------------------------------------------------------------ */

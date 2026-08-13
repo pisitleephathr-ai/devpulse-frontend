@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { canAccessMenu, isCommonMenu, isAdmin } from "@/lib/permissions";
 import { Avatar } from "@/components/ui/avatar";
-import { useData } from "@/lib/store";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { roleNameOf } from "@/lib/mappers";
 import { api } from "@/lib/api";
@@ -71,7 +70,6 @@ export function Sidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
-  const { pendingLeaveCount: pending } = useData();
   const me = useCurrentUser();
   const admin = isAdmin(me);
   // Neutral placeholders before the real user loads (avoid flashing a fake name).
@@ -265,7 +263,6 @@ export function Sidebar({
                   item.href === "/settings"
                     ? pathname === "/settings"
                     : pathname === item.href || pathname.startsWith(item.href + "/");
-                const badge = item.key === "leaves" && pending > 0 ? pending : null;
 
                 return (
                   <Link
@@ -287,11 +284,6 @@ export function Sidebar({
                       strokeWidth={1.8}
                     />
                     <span className="flex-1">{item.label}</span>
-                    {badge && (
-                      <span className="rounded-full bg-amber-100 px-[7px] py-px text-[11px] font-semibold text-amber-700">
-                        {badge}
-                      </span>
-                    )}
                   </Link>
                 );
               })}

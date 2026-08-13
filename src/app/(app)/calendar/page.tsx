@@ -47,7 +47,7 @@ const TYPE_META: Record<
   HOLIDAY: { label: "วันหยุด", cls: "cal-pill-holiday", dot: "#e11d48", href: "/calendar", icon: CalendarOff },
   TASK: { label: "งาน", cls: "cal-pill-task", dot: "#2563eb", href: "/tasks", icon: KanbanSquare },
   REPORT: { label: "รายงาน", cls: "cal-pill-report", dot: "#0d9488", href: "/reports", icon: FileText },
-  LEAVE: { label: "ลา", cls: "cal-pill-leave", dot: "#d97706", href: "/leaves", icon: Plane },
+  LEAVE: { label: "ติดธุระ", cls: "cal-pill-leave", dot: "#d97706", href: "/leaves", icon: Plane },
   EVENT: { label: "กิจกรรม", cls: "cal-pill-event", dot: "#7c3aed", href: "/calendar", icon: CalendarClock },
 };
 
@@ -267,7 +267,7 @@ export default function CalendarPage() {
         <Select className="w-auto py-[7px] text-[12.5px]" value={typeF} onChange={(e) => setTypeF(e.target.value as "all" | CalType)}>
           <option value="all">ทุกประเภท</option>
           <option value="TASK">งาน</option>
-          <option value="LEAVE">การลา</option>
+          <option value="LEAVE">ติดธุระ</option>
           <option value="EVENT">กิจกรรม</option>
         </Select>
         {projects.length > 0 && (

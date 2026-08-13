@@ -326,7 +326,7 @@ export default function PlanPage() {
                         >
                           {onLeave && (
                             <div className="mb-1 rounded bg-rose-100 px-1 py-0.5 text-center text-[9.5px] font-semibold text-rose-600 dark:bg-rose-900/40 dark:text-rose-300">
-                              ลา
+                              ติดธุระ
                             </div>
                           )}
                           <div className="flex flex-col gap-1">
@@ -369,7 +369,7 @@ export default function PlanPage() {
               <span className="inline-block size-1.5 rounded-full bg-amber-500" /> มีงานค้างถึงวันที่ระบุ
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block size-3 rounded bg-rose-100 dark:bg-rose-900/40" /> วันลา
+              <span className="inline-block size-3 rounded bg-rose-100 dark:bg-rose-900/40" /> วันติดธุระ
             </span>
             <span>แสดงเฉพาะวันทำงาน · งานวางตามวัน “คาดการณ์เสร็จ”</span>
           </div>

@@ -31,7 +31,7 @@ const TYPE_META: Record<ResultType, { label: string; icon: LucideIcon; order: nu
   REPORT: { label: "รายงาน", icon: FileText, order: 1 },
   USER: { label: "ผู้ใช้", icon: Users, order: 2 },
   PROJECT: { label: "โปรเจกต์", icon: FolderKanban, order: 3 },
-  LEAVE: { label: "การลา", icon: CalendarClock, order: 4 },
+  LEAVE: { label: "ติดธุระ", icon: CalendarClock, order: 4 },
   CALENDAR: { label: "ปฏิทิน", icon: CalendarDays, order: 5 },
 };
 
@@ -187,7 +187,7 @@ export function GlobalSearch() {
             <div className="max-h-[52vh] overflow-y-auto py-1.5">
               {!q.trim() ? (
                 <div className="px-4 py-8 text-center text-[12.5px] text-zinc-400">
-                  พิมพ์เพื่อค้นหางาน รายงาน ผู้ใช้ โปรเจกต์ การลา และปฏิทิน
+                  พิมพ์เพื่อค้นหางาน รายงาน ผู้ใช้ โปรเจกต์ การติดธุระ และปฏิทิน
                 </div>
               ) : loading && results.length === 0 ? (
                 <div className="px-4 py-8 text-center text-[12.5px] text-zinc-400">

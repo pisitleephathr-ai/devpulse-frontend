@@ -2,19 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/lib/use-persisted-state";
-import { Plus, CalendarClock } from "lucide-react";
+import { Plus, CalendarClock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeaveForm } from "@/components/forms/leave-form";
 import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { DataTable, DataTableRow } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { TableRowsSkeleton } from "@/components/skeletons";
-import { toast } from "@/components/ui/toaster";
 import { useData } from "@/lib/store";
 import {
   LEAVE_TYPE_COLORS,
@@ -22,15 +22,15 @@ import {
   type Leave,
 } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/use-current-user";
-import { canApproveLeave } from "@/lib/permissions";
+import { isManagerOrAdmin } from "@/lib/permissions";
+import { bangkokDateISO } from "@/lib/thai-datetime";
 import { SearchInput } from "@/components/search-input";
 import { matchesSearch } from "@/lib/filters";
-import { X } from "lucide-react";
 
-const TEMPLATE = "160px 96px 150px 92px minmax(170px,1fr) 104px 172px";
+const TEMPLATE = "160px 96px 150px 92px minmax(170px,1fr) 104px 132px";
 
 export default function LeavesPage() {
-  const { leaves, users, loading, setLeaveStatus, addLeave, leaveTypes } = useData();
+  const { leaves, users, loading, cancelLeave, addLeave, leaveTypes } = useData();
   // Filter options from the configured leave types (active, sorted).
   const typeOptions = useMemo(
     () =>
@@ -53,9 +53,21 @@ export default function LeavesPage() {
     return ["#e4e4e7", "#3f3f46"];
   };
   const me = useCurrentUser();
-  // Anyone with approval rights can decide any pending leave — including their own.
-  const canApprove = canApproveLeave(me);
+  // Managers/admins see everyone's declarations → offer the member filter.
+  const isManager = isManagerOrAdmin(me);
+
+  // You may cancel only your OWN active declaration, and only before its start
+  // date (once the day arrives it can't be undone).
+  const canCancel = (l: Leave) =>
+    !!me &&
+    l.userId === me.id &&
+    l.status === "ติดธุระ" &&
+    bangkokDateISO() < l.startDate.slice(0, 10);
+
   const [creating, setCreating] = useState(false);
+  const [viewing, setViewing] = useState<Leave | null>(null);
+  const [cancelling, setCancelling] = useState<Leave | null>(null);
+
   // Open the create modal when arriving via ?new=1 (e.g. the dashboard shortcut).
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("new") === "1") {
@@ -68,7 +80,6 @@ export default function LeavesPage() {
   const [member, setMember] = usePersistedState("leaves.member", "all");
   const [type, setType] = usePersistedState("leaves.type", "all");
   const [status, setStatus] = usePersistedState("leaves.status", "all");
-  const [viewing, setViewing] = useState<Leave | null>(null);
 
   const filtersActive =
     !!search || member !== "all" || type !== "all" || status !== "all";
@@ -92,33 +103,27 @@ export default function LeavesPage() {
     setStatus("all");
   }
 
-  function decide(l: Leave, next: "อนุมัติแล้ว" | "ปฏิเสธ") {
-    setLeaveStatus(l.id, next);
-    const verb = next === "อนุมัติแล้ว" ? "อนุมัติ" : "ปฏิเสธ";
-    toast(`${verb}คำขอ${l.type}ของ${l.name.split(" ")[0]}แล้ว`);
-  }
-
   return (
     <div className="flex flex-col gap-4 px-7 py-6">
       <PageHeader
-        eyebrow="LEAVE REQUESTS"
-        title="คำขอลา"
+        eyebrow="BUSY / OUT OF OFFICE"
+        title="แจ้งติดธุระ"
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus className="size-3.5" strokeWidth={2.4} />
-            ขอลา
+            แจ้งติดธุระ
           </Button>
         }
       />
 
-      <FilterBar trailing={`${filtered.length} คำขอ`}>
+      <FilterBar trailing={`${filtered.length} รายการ`}>
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder="ค้นหาชื่อ เหตุผล…"
         />
-        {/* Member filter only for approvers — others see just their own leaves. */}
-        {canApprove && (
+        {/* Member filter only for managers — others see just their own. */}
+        {isManager && (
           <Select
             className="w-auto py-[7px] text-[12.5px]"
             value={member}
@@ -155,7 +160,7 @@ export default function LeavesPage() {
         {filtersActive && (
           <button
             onClick={clearFilters}
-            className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px] text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
+            className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-[7px] text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-transparent dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             <X className="size-3" />
             ล้างตัวกรอง
@@ -168,7 +173,7 @@ export default function LeavesPage() {
       ) : (
       <DataTable
         template={TEMPLATE}
-        minWidth={1000}
+        minWidth={960}
         headers={[
           "สมาชิก",
           "ประเภท",
@@ -182,8 +187,8 @@ export default function LeavesPage() {
         {filtered.length === 0 ? (
           <EmptyState
             icon={<CalendarClock className="size-5" />}
-            title="ไม่พบคำขอลา"
-            description="ลองปรับตัวกรอง หรือสร้างคำขอใหม่"
+            title="ยังไม่มีการแจ้งติดธุระ"
+            description="ลองปรับตัวกรอง หรือแจ้งติดธุระใหม่"
           />
         ) : (
           filtered.map((l) => (
@@ -201,7 +206,7 @@ export default function LeavesPage() {
                   shape="tag"
                 />
               </span>
-              <span className="text-[12.5px] text-zinc-700">{l.dates}</span>
+              <span className="text-[12.5px] text-zinc-700 dark:text-zinc-300">{l.dates}</span>
               <span className="flex flex-col items-start gap-1 text-[12.5px] text-zinc-500">
                 <span className="whitespace-nowrap">{l.days} วัน</span>
                 {l.halfDayPeriod ? (
@@ -219,25 +224,17 @@ export default function LeavesPage() {
               <div className="flex justify-end gap-1.5">
                 <button
                   onClick={() => setViewing(l)}
-                  className="rounded-[7px] border border-zinc-200 px-2.5 py-1 text-[12px] font-medium text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50"
+                  className="rounded-[7px] border border-zinc-200 px-2.5 py-1 text-[12px] font-medium text-teal-600 transition-colors hover:border-teal-200 hover:bg-teal-50 dark:border-zinc-700 dark:hover:bg-teal-500/10"
                 >
                   ดู
                 </button>
-                {canApprove && l.status === "รออนุมัติ" && (
-                  <>
-                    <button
-                      onClick={() => decide(l, "อนุมัติแล้ว")}
-                      className="rounded-[7px] border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 transition-colors hover:bg-green-100"
-                    >
-                      อนุมัติ
-                    </button>
-                    <button
-                      onClick={() => decide(l, "ปฏิเสธ")}
-                      className="rounded-[7px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 transition-colors hover:border-red-200 hover:bg-red-50"
-                    >
-                      ปฏิเสธ
-                    </button>
-                  </>
+                {canCancel(l) && (
+                  <button
+                    onClick={() => setCancelling(l)}
+                    className="rounded-[7px] border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 transition-colors hover:border-red-200 hover:bg-red-50 dark:border-zinc-700 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-500/10"
+                  >
+                    ยกเลิก
+                  </button>
                 )}
               </div>
             </DataTableRow>
@@ -250,29 +247,18 @@ export default function LeavesPage() {
       <Dialog
         open={viewing !== null}
         onClose={() => setViewing(null)}
-        title="รายละเอียดคำขอลา"
+        title="รายละเอียดการแจ้งติดธุระ"
         footer={
-          viewing && canApprove && viewing.status === "รออนุมัติ" ? (
-            <>
-              <button
-                onClick={() => {
-                  decide(viewing, "ปฏิเสธ");
-                  setViewing(null);
-                }}
-                className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-[13px] font-semibold text-red-700 transition-colors hover:border-red-200 hover:bg-red-50"
-              >
-                ปฏิเสธ
-              </button>
-              <button
-                onClick={() => {
-                  decide(viewing, "อนุมัติแล้ว");
-                  setViewing(null);
-                }}
-                className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-[13px] font-semibold text-green-700 transition-colors hover:bg-green-100"
-              >
-                อนุมัติ
-              </button>
-            </>
+          viewing && canCancel(viewing) ? (
+            <button
+              onClick={() => {
+                setCancelling(viewing);
+                setViewing(null);
+              }}
+              className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-[13px] font-semibold text-red-700 transition-colors hover:border-red-200 hover:bg-red-50 dark:border-zinc-700 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-500/10"
+            >
+              ยกเลิกติดธุระ
+            </button>
           ) : null
         }
       >
@@ -290,7 +276,7 @@ export default function LeavesPage() {
               <DetailField label="ประเภท">
                 <StatusBadge
                   label={viewing.type}
-                  colors={LEAVE_TYPE_COLORS[viewing.type]}
+                  colors={typeColors(viewing.type)}
                   shape="tag"
                 />
               </DetailField>
@@ -304,7 +290,7 @@ export default function LeavesPage() {
               </DetailField>
             </div>
             <DetailField label="เหตุผล">
-              <p className="text-[13px] leading-relaxed text-zinc-700">
+              <p className="text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-300">
                 {viewing.reason}
               </p>
             </DetailField>
@@ -312,19 +298,37 @@ export default function LeavesPage() {
         )}
       </Dialog>
 
-      {/* Create leave request */}
+      {/* Self-cancel confirmation */}
+      <ConfirmDialog
+        open={cancelling !== null}
+        onClose={() => setCancelling(null)}
+        onConfirm={async () => {
+          if (cancelling) await cancelLeave(cancelling.id);
+          setCancelling(null);
+        }}
+        title="ยกเลิกติดธุระ?"
+        message={
+          cancelling
+            ? `ยกเลิกการแจ้งติดธุระ "${cancelling.type}" วันที่ ${cancelling.dates}? หลังถึงวันเริ่มแล้วจะยกเลิกไม่ได้`
+            : ""
+        }
+        confirmLabel="ยกเลิกติดธุระ"
+        cancelLabel="ปิด"
+        destructive
+      />
+
+      {/* New busy declaration */}
       <Dialog
         open={creating}
         onClose={() => setCreating(false)}
-        title="ขอลา"
-        description="ส่งคำขอลาให้หัวหน้าทีมพิจารณา"
+        title="แจ้งติดธุระ"
+        description="แจ้งวันที่คุณติดธุระให้ทีมทราบ — มีผลทันที ไม่ต้องรออนุมัติ"
       >
         {creating && (
           <LeaveForm
             onSubmit={async (data) => {
               const ok = await addLeave(data);
-              // The success toast (waiting vs auto-approved) is emitted by the
-              // store, which knows the returned status.
+              // Success toast is emitted by the store.
               if (ok) setCreating(false);
             }}
             onCancel={() => setCreating(false)}

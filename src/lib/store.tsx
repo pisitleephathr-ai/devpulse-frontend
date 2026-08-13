@@ -21,7 +21,6 @@ import {
   mapTask,
   mapLeave,
   LABEL_TO_TASK_STATUS,
-  TH_TO_LEAVE_STATUS,
   type ApiProject,
   type ApiReport,
   type ApiTask,
@@ -53,7 +52,6 @@ type DataContextValue = {
   projects: ApiProject[];
   loading: boolean;
   error: string | null;
-  pendingLeaveCount: number;
   refresh: () => Promise<void>;
 
   /** reports are paginated (load-more); these drive the "โหลดเพิ่ม" control. */
@@ -76,8 +74,8 @@ type DataContextValue = {
   setTaskAttachmentCount: (id: string, count: number) => void;
 
   addLeave: (data: LeaveInput) => Promise<boolean>;
-  /** statusLabel is the Thai label ("อนุมัติแล้ว" / "ปฏิเสธ"). */
-  setLeaveStatus: (id: string, statusLabel: string) => Promise<boolean>;
+  /** Cancel one's own busy declaration (only allowed before the start date). */
+  cancelLeave: (id: string) => Promise<boolean>;
 
   addUser: (data: UserInput) => Promise<boolean>;
   updateUser: (id: string, data: UserUpdateInput) => Promise<boolean>;
@@ -452,25 +450,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
           data
         );
         setLeaves((prev) => [mapLeave(leave), ...prev]);
-        // Auto-approving leave types are approved on submit — tell the truth
-        // instead of always saying "waiting for approval".
-        toast(
-          leave.status === "APPROVED"
-            ? "ส่งคำขอลาแล้ว — อนุมัติอัตโนมัติแล้ว"
-            : "ส่งคำขอลาแล้ว — รอการอนุมัติ"
-        );
+        toast("แจ้งติดธุระแล้ว");
       }),
     [run]
   );
-  const setLeaveStatus = useCallback(
-    (id: string, statusLabel: string) =>
+  const cancelLeave = useCallback(
+    (id: string) =>
       run(async () => {
-        const enumStatus = TH_TO_LEAVE_STATUS[statusLabel];
-        const action = enumStatus === "APPROVED" ? "approve" : "reject";
         const { leave } = await api.patch<{ leave: ApiLeave }>(
-          `/api/leaves/${id}/${action}`
+          `/api/leaves/${id}/cancel`
         );
         setLeaves((prev) => prev.map((l) => (l.id === id ? mapLeave(leave) : l)));
+        toast("ยกเลิกติดธุระแล้ว");
       }),
     [run]
   );
@@ -543,11 +534,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [run]
   );
 
-  const pendingLeaveCount = useMemo(
-    () => leaves.filter((l) => l.status === "รออนุมัติ").length,
-    [leaves]
-  );
-
   const value = useMemo<DataContextValue>(
     () => ({
       users,
@@ -557,7 +543,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       projects,
       loading,
       error,
-      pendingLeaveCount,
       refresh,
       reportsHasMore,
       loadingMoreReports,
@@ -572,7 +557,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reworkTask,
       setTaskAttachmentCount,
       addLeave,
-      setLeaveStatus,
+      cancelLeave,
       addUser,
       updateUser,
       toggleUser,
@@ -591,7 +576,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       projects,
       loading,
       error,
-      pendingLeaveCount,
       refresh,
       reportsHasMore,
       loadingMoreReports,
@@ -606,7 +590,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reworkTask,
       setTaskAttachmentCount,
       addLeave,
-      setLeaveStatus,
+      cancelLeave,
       addUser,
       updateUser,
       toggleUser,

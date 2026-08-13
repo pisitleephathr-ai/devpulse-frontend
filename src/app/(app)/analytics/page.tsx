@@ -1283,7 +1283,7 @@ function TeamTable({
                 <span className="truncate text-[12.5px] font-medium">{w.name}</span>
                 {w.onLeave && (
                   <span className="flex-none rounded-full bg-zinc-100 px-1.5 py-px text-[9.5px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                    ลา
+                    ติดธุระ
                   </span>
                 )}
               </div>
@@ -1331,7 +1331,7 @@ function ReportDot({ status }: { status?: "submitted" | "missing" | "leave" }) {
   if (status === "submitted")
     return <span title="ส่งแล้ว"><CheckCircle2 className="size-4 text-emerald-500" /></span>;
   if (status === "leave")
-    return <span title="ลา"><CalendarOff className="size-4 text-zinc-400" /></span>;
+    return <span title="ติดธุระ"><CalendarOff className="size-4 text-zinc-400" /></span>;
   if (status === "missing")
     return <span title="ยังไม่ส่ง" className="block size-2.5 rounded-full" style={{ background: C_CRIT }} />;
   return <span className="block size-2.5 rounded-full bg-muted" title="ไม่ต้องส่ง" />;

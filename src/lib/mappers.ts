@@ -27,7 +27,7 @@ export type TaskStatusEnum =
   | "DELIVERY_FAIL";
 export type PriorityEnum = "HIGH" | "MEDIUM" | "LOW";
 export type LeaveTypeEnum = "VACATION" | "SICK" | "PERSONAL" | "PARENTAL";
-export type LeaveStatusEnum = "PENDING" | "APPROVED" | "REJECTED";
+export type LeaveStatusEnum = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
 /* --------------------------- API entity types -------------------------- */
 
@@ -266,10 +266,14 @@ export const LEAVE_TYPE_TO_TH: Record<string, string> = {
   PERSONAL: "ลากิจ",
   PARENTAL: "ลาเลี้ยงดูบุตร",
 };
+// Self-service "แจ้งติดธุระ": APPROVED = active (ติดธุระ), CANCELLED = ยกเลิก.
+// Legacy PENDING/REJECTED rows (from the old approval flow) are folded into the
+// two current states so nothing surfaces the retired "รออนุมัติ" wording.
 export const LEAVE_STATUS_TO_TH: Record<LeaveStatusEnum, string> = {
-  PENDING: "รออนุมัติ",
-  APPROVED: "อนุมัติแล้ว",
-  REJECTED: "ปฏิเสธ",
+  PENDING: "ติดธุระ",
+  APPROVED: "ติดธุระ",
+  REJECTED: "ยกเลิก",
+  CANCELLED: "ยกเลิก",
 };
 
 function invert<T extends string>(map: Record<T, string>): Record<string, T> {
@@ -415,10 +419,14 @@ export function mapTask(t: ApiTask): Task {
 export function mapLeave(l: ApiLeave): Leave {
   return {
     id: l.id,
+    userId: l.user.id,
     name: l.user.name,
     key: l.user.avatarKey,
     type: LEAVE_TYPE_TO_TH[l.type] ?? l.type,
     dates: formatThaiRange(l.startDate, l.endDate),
+    // Raw ISO start/end kept so the UI can enforce "cancel only before start".
+    startDate: l.startDate,
+    endDate: l.endDate,
     days: l.days,
     halfDayPeriod: l.halfDayPeriod ?? null,
     reason: l.reason,

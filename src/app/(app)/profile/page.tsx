@@ -51,8 +51,6 @@ const NOTIF_TOGGLES: { key: keyof LinePrefs; label: string; hint: string }[] = [
   { key: "taskAssigned", label: "งานที่ได้รับมอบหมาย", hint: "เมื่อมีคนมอบหมายงานให้คุณ" },
   { key: "taskStatus", label: "สถานะงานของฉันเปลี่ยน", hint: "เมื่องานที่คุณรับผิดชอบถูกย้ายสถานะ" },
   { key: "mention", label: "ถูกพูดถึง (@) ในคอมเมนต์", hint: "เมื่อมีคน @ ชื่อคุณในความคิดเห็น" },
-  { key: "leaveDecision", label: "ผลอนุมัติการลา", hint: "เมื่อคำขอลาของคุณถูกอนุมัติ/ปฏิเสธ" },
-  { key: "leaveRequest", label: "คำขอลาใหม่", hint: "เมื่อมีคนส่งคำขอลา (สำหรับผู้อนุมัติ)" },
   { key: "reportReminder", label: "เตือนส่งรายงานประจำวัน", hint: "เมื่อยังไม่ส่งรายงานตอนเย็น" },
   { key: "dailyDigest", label: "สรุปงานเช้า", hint: "งานเลยกำหนด/ครบกำหนดวันนี้-พรุ่งนี้ ทุกเช้า" },
 ];
@@ -400,7 +398,7 @@ export default function ProfilePage() {
             ) : (
               <>
                 <p className="text-[12.5px] leading-relaxed text-muted-foreground">
-                  เชื่อมต่อเพื่อรับแจ้งเตือนส่วนตัว (งานที่ได้รับมอบหมาย, ผลอนุมัติลา) ทาง LINE
+                  เชื่อมต่อเพื่อรับแจ้งเตือนส่วนตัว (งานที่ได้รับมอบหมาย, การถูกพูดถึง) ทาง LINE
                   ของคุณ ทำได้โดยสร้างรหัสด้านล่าง แล้วส่งรหัสนั้นในแชท LINE OA ของทีม
                 </p>
 

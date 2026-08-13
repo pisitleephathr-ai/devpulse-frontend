@@ -196,8 +196,8 @@ export default function DashboardPage() {
     { label: "เกินกำหนด", value: t?.overdue, sub: `วันนี้ ${t?.dueToday ?? 0}`, icon: <AlarmClock className="size-[18px]" />, color: "#e11d48" },
     { label: "รายงานวันนี้", value: r ? `${r.submittedCount}/${r.totalMembers}` : undefined, sub: "ส่งแล้ว", icon: <ClipboardCheck className="size-[18px]" />, color: "#0d9488" },
     { label: "อุปสรรค", value: insights?.topBlockers.length, sub: "ต้องช่วยแก้", icon: <TriangleAlert className="size-[18px]" />, color: "#f59e0b" },
-    { label: "ลาวันนี้", value: onLeaveToday.length, sub: "อนุมัติแล้ว", icon: <Plane className="size-[18px]" />, color: "#f97316" },
-    { label: "รออนุมัติลา", value: summary?.stats.pendingLeaves, sub: "คำขอค้าง", icon: <Stamp className="size-[18px]" />, color: "#6366f1" },
+    { label: "ติดธุระวันนี้", value: onLeaveToday.length, sub: "วันนี้", icon: <Plane className="size-[18px]" />, color: "#f97316" },
+    { label: "ติดธุระเร็วๆ นี้", value: summary?.stats.pendingLeaves, sub: "กำลังจะถึง", icon: <Stamp className="size-[18px]" />, color: "#6366f1" },
   ];
 
   const activityItems = (summary?.recentActivity ?? []).map((a) => ({
@@ -227,7 +227,7 @@ export default function DashboardPage() {
           {onLeaveToday.length > 0 && (
             <div className="hidden items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 sm:flex">
               <Plane className="size-3.5 text-orange-500" />
-              <span className="text-[12px] text-muted-foreground">ลาวันนี้</span>
+              <span className="text-[12px] text-muted-foreground">ติดธุระวันนี้</span>
               <div className="flex -space-x-1.5">
                 {onLeaveToday.slice(0, 4).map((l) => (
                   <span key={l.id} className="rounded-full ring-2 ring-[color:var(--card)]" title={l.user.name}>
@@ -258,7 +258,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap gap-2">
         {canCreateTask && <QuickAction href="/tasks" icon={<KanbanSquare className="size-4" />} label="สร้างงาน" />}
         <QuickAction href="/reports/new" icon={<Plus className="size-4" />} label="เขียนรายงาน" />
-        <QuickAction href="/leaves?new=1" icon={<CalendarClock className="size-4" />} label="ขอลา" />
+        <QuickAction href="/leaves?new=1" icon={<CalendarClock className="size-4" />} label="แจ้งติดธุระ" />
         <QuickAction href="/reports" icon={<FileText className="size-4" />} label="ดูรายงาน" />
       </div>
 
@@ -569,7 +569,7 @@ function WorkloadRow({
             {w.onLeave && !submitted ? (
               <>
                 <span className="size-1.5 rounded-full bg-sky-400" />
-                <span className="text-sky-600 dark:text-sky-400">ลา</span>
+                <span className="text-sky-600 dark:text-sky-400">ติดธุระ</span>
               </>
             ) : (
               <>
